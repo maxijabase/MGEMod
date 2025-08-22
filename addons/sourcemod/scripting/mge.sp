@@ -164,7 +164,8 @@ bool
     g_bTimerRunning         [MAXARENAS + 1],
     g_bArenaHasCap          [MAXARENAS + 1],
     g_bArenaHasCapTrigger   [MAXARENAS + 1],
-    g_bArenaBoostVectors    [MAXARENAS + 1];
+    g_bArenaBoostVectors    [MAXARENAS + 1],
+    g_bArenaClassChange     [MAXARENAS + 1];
 
 int
     g_iArenaCount,
@@ -224,6 +225,12 @@ int
     g_iPlayerHandicap       [MAXPLAYERS + 1];
 
 TFClassType g_tfctPlayerClass[MAXPLAYERS + 1];
+
+// Class tracking for duels
+TFClassType g_tfctPlayerDuelClass[MAXPLAYERS + 1];
+
+// Track all classes used during a duel (for arenas with class changes allowed)
+ArrayList g_alPlayerDuelClasses[MAXPLAYERS + 1];
 
 // Bot things
 bool g_bPlayerAskedForBot[MAXPLAYERS + 1];
@@ -608,6 +615,12 @@ public void OnClientPostAdminCheck(int client)
         g_bHitBlip[client] = false;
         g_bShowHud[client] = true;
         g_bPlayerRestoringAmmo[client] = false;
+        
+        // Initialize class tracking ArrayList
+        if (g_alPlayerDuelClasses[client] != null)
+            delete g_alPlayerDuelClasses[client];
+        g_alPlayerDuelClasses[client] = new ArrayList();
+        
         CreateTimer(15.0, Timer_WelcomePlayer, GetClientUserId(client));
 
         if (!g_bNoStats)
@@ -658,6 +671,13 @@ public void OnClientDisconnect(int client)
         g_iPlayerSlot[client] = 0;
         g_iArenaQueue[arena_index][player_slot] = 0;
         g_iPlayerHandicap[client] = 0;
+        
+        // Cleanup class tracking ArrayList
+        if (g_alPlayerDuelClasses[client] != null)
+        {
+            delete g_alPlayerDuelClasses[client];
+            g_alPlayerDuelClasses[client] = null;
+        }
 
         if (g_bFourPersonArena[arena_index])
         {
@@ -1306,6 +1326,26 @@ int StartCountDown(int arena_index)
 
         if (red_f1 && blu_f1 && red_f2 && blu_f2)
         {
+            // Store player classes for duel tracking
+            g_tfctPlayerDuelClass[red_f1] = g_tfctPlayerClass[red_f1];
+            g_tfctPlayerDuelClass[blu_f1] = g_tfctPlayerClass[blu_f1];
+            g_tfctPlayerDuelClass[red_f2] = g_tfctPlayerClass[red_f2];
+            g_tfctPlayerDuelClass[blu_f2] = g_tfctPlayerClass[blu_f2];
+            
+            // Initialize class tracking lists for dynamic recording
+            if (g_bArenaClassChange[arena_index])
+            {
+                g_alPlayerDuelClasses[red_f1].Clear();
+                g_alPlayerDuelClasses[blu_f1].Clear();
+                g_alPlayerDuelClasses[red_f2].Clear();
+                g_alPlayerDuelClasses[blu_f2].Clear();
+                
+                g_alPlayerDuelClasses[red_f1].Push(view_as<int>(g_tfctPlayerClass[red_f1]));
+                g_alPlayerDuelClasses[blu_f1].Push(view_as<int>(g_tfctPlayerClass[blu_f1]));
+                g_alPlayerDuelClasses[red_f2].Push(view_as<int>(g_tfctPlayerClass[red_f2]));
+                g_alPlayerDuelClasses[blu_f2].Push(view_as<int>(g_tfctPlayerClass[blu_f2]));
+            }
+            
             float enginetime = GetGameTime();
 
             for (int i = 0; i <= 2; i++)
@@ -1348,6 +1388,20 @@ int StartCountDown(int arena_index)
 
         if (red_f1 && blu_f1)
         {
+            // Store player classes for duel tracking
+            g_tfctPlayerDuelClass[red_f1] = g_tfctPlayerClass[red_f1];
+            g_tfctPlayerDuelClass[blu_f1] = g_tfctPlayerClass[blu_f1];
+            
+            // Initialize class tracking lists for dynamic recording
+            if (g_bArenaClassChange[arena_index])
+            {
+                g_alPlayerDuelClasses[red_f1].Clear();
+                g_alPlayerDuelClasses[blu_f1].Clear();
+                
+                g_alPlayerDuelClasses[red_f1].Push(view_as<int>(g_tfctPlayerClass[red_f1]));
+                g_alPlayerDuelClasses[blu_f1].Push(view_as<int>(g_tfctPlayerClass[blu_f1]));
+            }
+            
             float enginetime = GetGameTime();
 
             for (int i = 0; i <= 2; i++)
@@ -2185,14 +2239,18 @@ void CalcELO(int winner, int loser)
     int loser_team_slot = (g_iPlayerSlot[loser] > 2) ? (g_iPlayerSlot[loser] - 2) : g_iPlayerSlot[loser];
 
     // DB entry for this specific duel.
+    char winnerClass[64], loserClass[64];
+    GetPlayerClassString(winner, arena_index, winnerClass, sizeof(winnerClass));
+    GetPlayerClassString(loser, arena_index, loserClass, sizeof(loserClass));
+    
     if (g_bUseSQLite)
     {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s')",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index]);
+        Format(query, sizeof(query), "INSERT INTO mgemod_duels VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s')",
+            g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass);
         db.Query(SQLErrorCheckCallback, query);
     } else {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, gametime, mapname, arenaname) VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s')",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index]);
+        Format(query, sizeof(query), "INSERT INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, gametime, mapname, arenaname, winnerclass, loserclass) VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s')",
+            g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass);
         db.Query(SQLErrorCheckCallback, query);
     }
 
@@ -2250,14 +2308,20 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
 
 
     // DB entry for this specific duel.
+    char winnerClass[64], winner2Class[64], loserClass[64], loser2Class[64];
+    GetPlayerClassString(winner, arena_index, winnerClass, sizeof(winnerClass));
+    GetPlayerClassString(winner2, arena_index, winner2Class, sizeof(winner2Class));
+    GetPlayerClassString(loser, arena_index, loserClass, sizeof(loserClass));
+    GetPlayerClassString(loser2, arena_index, loser2Class, sizeof(loser2Class));
+    
     if (g_bUseSQLite)
     {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s')",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index]);
+        Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s')",
+            g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class);
         db.Query(SQLErrorCheckCallback, query);
     } else {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 (winner, winner2, loser, loser2, winnerscore, loserscore, winlimit, gametime, mapname, arenaname) VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s')",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index]);
+        Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 (winner, winner2, loser, loser2, winnerscore, loserscore, winlimit, gametime, mapname, arenaname, winnerclass, winner2class, loserclass, loser2class) VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s')",
+            g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class);
         db.Query(SQLErrorCheckCallback, query);
     }
 
@@ -2412,6 +2476,7 @@ bool LoadSpawnPoints()
                             g_bArenaUltiduo[g_iArenaCount] = KvGetNum(kv, "ultiduo", 0) ? true : false;
                             g_bArenaKoth[g_iArenaCount] = KvGetNum(kv, "koth", 0) ? true : false;
                             g_bArenaTurris[g_iArenaCount] = KvGetNum(kv, "turris", 0) ? true : false;
+                            g_bArenaClassChange[g_iArenaCount] = KvGetNum(kv, "classchange", 1) ? true : false;
                             g_iDefaultCapTime[g_iArenaCount] = KvGetNum(kv, "timer", 180);
                             //parsing allowed classes for current arena
                             char sAllowedClasses[128];
@@ -3255,10 +3320,24 @@ Action Command_JoinClass(int client, int args)
 
             if (g_iPlayerSlot[client] == SLOT_ONE || g_iPlayerSlot[client] == SLOT_TWO || (g_bFourPersonArena[arena_index] && (g_iPlayerSlot[client] == SLOT_FOUR || g_iPlayerSlot[client] == SLOT_THREE)))
             {
+                // Check if arena has class change disabled and fight has started
+                if (!g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] == AS_FIGHT)
+                {
+                    MC_PrintToChat(client, "Class changes are disabled during fights in this arena!");
+                    return Plugin_Handled;
+                }
+                
                 if (g_iArenaStatus[arena_index] != AS_FIGHT || g_bArenaMGE[arena_index] || g_bArenaEndif[arena_index] || g_bArenaKoth[arena_index])
                 {
                     TF2_SetPlayerClass(client, new_class);
                     g_tfctPlayerClass[client] = new_class;
+                    
+                    // Add class to tracking list if class changes are allowed and duel is active
+                    if (g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] != AS_IDLE && 
+                        g_alPlayerDuelClasses[client].FindValue(view_as<int>(new_class)) == -1)
+                    {
+                        g_alPlayerDuelClasses[client].Push(view_as<int>(new_class));
+                    }
                     if (IsPlayerAlive(client))
                     {
                         if ((g_iArenaStatus[arena_index] == AS_FIGHT && g_bArenaMGE[arena_index] || g_bArenaEndif[arena_index]))
@@ -3848,16 +3927,88 @@ void PrepareSQL() // Opens the connection to the database, and creates the table
     if (g_bUseSQLite)
     {
         db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INTEGER, steamid TEXT, name TEXT, wins INTEGER, losses INTEGER, lastplayed INTEGER, hitblip INTEGER)");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner TEXT, loser TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner TEXT, winner2 TEXT, loser TEXT, loser2 TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
+        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner TEXT, loser TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT, winnerclass TEXT, loserclass TEXT) ");
+        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner TEXT, winner2 TEXT, loser TEXT, loser2 TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT, winnerclass TEXT, winner2class TEXT, loserclass TEXT, loser2class TEXT) ");
     }
     else
     {
         db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INT(4) NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INT(4) NOT NULL, losses INT(4) NOT NULL, lastplayed INT(11) NOT NULL, hitblip INT(2) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner VARCHAR(32) NOT NULL, winner2 VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, loser2 VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
+        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL, winnerclass VARCHAR(64), loserclass VARCHAR(64)) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
+        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner VARCHAR(32) NOT NULL, winner2 VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, loser2 VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL, winnerclass VARCHAR(64), winner2class VARCHAR(64), loserclass VARCHAR(64), loser2class VARCHAR(64)) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
     }
 
+    RunDatabaseMigrations();
+}
+
+void RunDatabaseMigrations()
+{
+    Migration_001_AddClassColumns();
+}
+
+void Migration_001_AddClassColumns()
+{
+    if (g_bUseSQLite)
+    {
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass TEXT DEFAULT NULL");
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass TEXT DEFAULT NULL");
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass TEXT DEFAULT NULL");
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class TEXT DEFAULT NULL");
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass TEXT DEFAULT NULL");
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class TEXT DEFAULT NULL");
+    }
+    else
+    {
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL");
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL");
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL");
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class VARCHAR(64) DEFAULT NULL");
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL");
+        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class VARCHAR(64) DEFAULT NULL");
+    }
+    
+    LogMessage("[Migration 001] Added class tracking columns to duel tables");
+}
+
+char[] TFClassToString(TFClassType class)
+{
+    char className[16];
+    switch (class)
+    {
+        case TFClass_Scout: strcopy(className, sizeof(className), "scout");
+        case TFClass_Sniper: strcopy(className, sizeof(className), "sniper");
+        case TFClass_Soldier: strcopy(className, sizeof(className), "soldier");
+        case TFClass_DemoMan: strcopy(className, sizeof(className), "demoman");
+        case TFClass_Medic: strcopy(className, sizeof(className), "medic");
+        case TFClass_Heavy: strcopy(className, sizeof(className), "heavy");
+        case TFClass_Pyro: strcopy(className, sizeof(className), "pyro");
+        case TFClass_Spy: strcopy(className, sizeof(className), "spy");
+        case TFClass_Engineer: strcopy(className, sizeof(className), "engineer");
+        default: strcopy(className, sizeof(className), "unknown");
+    }
+    return className;
+}
+
+void GetPlayerClassString(int client, int arena_index, char[] buffer, int maxlen)
+{
+    if (g_bArenaClassChange[arena_index] && g_alPlayerDuelClasses[client] != null && g_alPlayerDuelClasses[client].Length > 0)
+    {
+        // Build comma-separated list of all classes used
+        buffer[0] = '\0';
+        for (int i = 0; i < g_alPlayerDuelClasses[client].Length; i++)
+        {
+            char className[16];
+            strcopy(className, sizeof(className), TFClassToString(view_as<TFClassType>(g_alPlayerDuelClasses[client].Get(i))));
+            
+            if (i > 0)
+                StrCat(buffer, maxlen, ",");
+            StrCat(buffer, maxlen, className);
+        }
+    }
+    else
+    {
+        // Use single class from duel start
+        strcopy(buffer, maxlen, TFClassToString(g_tfctPlayerDuelClass[client]));
+    }
 }
 
 void T_SQLQueryOnConnect(Database owner, DBResultSet hndl, const char[] error, any data)
