@@ -4015,7 +4015,13 @@ void T_SQLQueryOnConnect(Database owner, DBResultSet hndl, const char[] error, a
 {
     int client = data;
 
-    if ( hndl == null )
+    if (owner == null)
+    {
+        LogError("T_SQLQueryOnConnect failed: database connection lost");
+        return;
+    }
+    
+    if (hndl == null)
     {
         LogError("T_SQLQueryOnConnect failed: %s", error);
         return;
@@ -4060,6 +4066,12 @@ void T_SQL_Top5(Database owner, DBResultSet hndl, const char[] error, any data)
 {
     int client = data;
 
+    if (owner == null)
+    {
+        LogError("[Top5] Query failed: database connection lost");
+        return;
+    }
+    
     if (hndl == null)
     {
         LogError("[Top5] Query failed: %s", error);
@@ -4099,6 +4111,13 @@ void T_SQL_Test(Database owner, DBResultSet hndl, const char[] error, any data)
 {
     int client = data;
 
+    if (owner == null)
+    {
+        LogError("[Test] Query failed: database connection lost");
+        PrintToChat(client, "[Test] Database connection lost");
+        return;
+    }
+    
     if (hndl == null)
     {
         LogError("[Test] Query failed: %s", error);
@@ -4120,10 +4139,10 @@ void T_SQL_Test(Database owner, DBResultSet hndl, const char[] error, any data)
 
 void SQLErrorCheckCallback(Database owner, DBResultSet hndl, const char[] error, any data)
 {
-    if (!StrEqual("", error))
+    if (owner == null)
     {
-        LogError("Query failed: %s", error);
-
+        LogError("SQLErrorCheckCallback: Database connection lost (owner handle is null)");
+        
         if (!g_bNoStats)
         {
             g_bNoStats = true;
@@ -4137,15 +4156,27 @@ void SQLErrorCheckCallback(Database owner, DBResultSet hndl, const char[] error,
             if (g_hDBReconnectTimer == null)
                 g_hDBReconnectTimer = CreateTimer(float(60 * g_iReconnectInterval), Timer_ReconnectToDB, TIMER_FLAG_NO_MAPCHANGE);
         }
-
+    }
+    else if (!StrEqual("", error))
+    {
+        LogError("SQLErrorCheckCallback: Query failed (connection OK): %s", error);
     }
 }
 
 void SQLDbConnTest(Database owner, DBResultSet hndl, const char[] error, any data)
 {
-    if (!StrEqual("", error))
+    if (owner == null)
     {
-        LogError("Query failed: %s", error);
+        LogError("Database connection test failed: connection lost");
+        LogError("Database reconnect failed, next attempt in %i minutes.", g_iReconnectInterval);
+        PrintHintTextToAll("%t", "DatabaseDown", g_iReconnectInterval);
+
+        if (g_hDBReconnectTimer == null)
+            g_hDBReconnectTimer = CreateTimer(float(60 * g_iReconnectInterval), Timer_ReconnectToDB, TIMER_FLAG_NO_MAPCHANGE);
+    }
+    else if (!StrEqual("", error))
+    {
+        LogError("Database connection test query failed: %s", error);
         LogError("Database reconnect failed, next attempt in %i minutes.", g_iReconnectInterval);
         PrintHintTextToAll("%t", "DatabaseDown", g_iReconnectInterval);
 
