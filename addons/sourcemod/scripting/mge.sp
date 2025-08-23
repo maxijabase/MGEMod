@@ -419,9 +419,6 @@ public void OnPluginStart()
     // Set up the log file for debug logging.
     BuildPath(Path_SM, g_sLogFile, sizeof(g_sLogFile), "logs/mgemod.log");
 
-    /*  This is here in the event of the plugin being hot-loaded while players are in the server.
-        Should probably delete this, as the rest of the code doesn't really support hot-loading. */
-
     PrintToChatAll("[MGEMod] Plugin reloaded. Slaying all players to avoid bugs.");
 
     for (int i = 1; i <= MaxClients; i++)
@@ -429,9 +426,12 @@ public void OnPluginStart()
         if (IsValidClient(i))
         {
             ForcePlayerSuicide(i);
-            OnClientPostAdminCheck(i);
             g_bCanPlayerSwap[i] = true;
             g_bCanPlayerGetIntel[i] = true;
+            
+            if (g_alPlayerDuelClasses[i] != null)
+                delete g_alPlayerDuelClasses[i];
+            g_alPlayerDuelClasses[i] = new ArrayList();
         }
     }
 }
@@ -3927,14 +3927,14 @@ void PrepareSQL() // Opens the connection to the database, and creates the table
     if (g_bUseSQLite)
     {
         db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INTEGER, steamid TEXT, name TEXT, wins INTEGER, losses INTEGER, lastplayed INTEGER, hitblip INTEGER)");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner TEXT, loser TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT, winnerclass TEXT, loserclass TEXT) ");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner TEXT, winner2 TEXT, loser TEXT, loser2 TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT, winnerclass TEXT, winner2class TEXT, loserclass TEXT, loser2class TEXT) ");
+        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner TEXT, loser TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
+        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner TEXT, winner2 TEXT, loser TEXT, loser2 TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
     }
     else
     {
         db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INT(4) NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INT(4) NOT NULL, losses INT(4) NOT NULL, lastplayed INT(11) NOT NULL, hitblip INT(2) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL, winnerclass VARCHAR(64), loserclass VARCHAR(64)) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner VARCHAR(32) NOT NULL, winner2 VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, loser2 VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL, winnerclass VARCHAR(64), winner2class VARCHAR(64), loserclass VARCHAR(64), loser2class VARCHAR(64)) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
+        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
+        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner VARCHAR(32) NOT NULL, winner2 VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, loser2 VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
     }
 
     RunDatabaseMigrations();
@@ -3942,31 +3942,172 @@ void PrepareSQL() // Opens the connection to the database, and creates the table
 
 void RunDatabaseMigrations()
 {
-    Migration_001_AddClassColumns();
+    LogMessage("[Migrations] Starting database schema migrations");
+    CreateMigrationsTable();
+}
+
+void CreateMigrationsTable()
+{
+    char query[512];
+    if (g_bUseSQLite)
+    {
+        Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS mgemod_migrations (id INTEGER PRIMARY KEY, migration_name TEXT UNIQUE, executed_at INTEGER)");
+    }
+    else
+    {
+        Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS mgemod_migrations (id INT AUTO_INCREMENT PRIMARY KEY, migration_name VARCHAR(255) UNIQUE, executed_at INT) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB");
+    }
+    db.Query(CreateMigrationsTableCallback, query);
+}
+
+void CreateMigrationsTableCallback(Database owner, DBResultSet hndl, const char[] error, any data)
+{
+    if (owner == null)
+    {
+        LogError("[Migrations] Database connection lost while creating migrations table");
+        return;
+    }
+    
+    if (!StrEqual("", error))
+    {
+        LogError("[Migrations] Failed to create migrations table: %s", error);
+        return;
+    }
+    
+    LogMessage("[Migrations] Migrations table ready");
+    
+    // Run individual migrations
+    CheckAndRunMigration("001_add_class_columns");
+}
+
+void CheckAndRunMigration(const char[] migrationName)
+{
+    char query[256];
+    Format(query, sizeof(query), "SELECT COUNT(*) FROM mgemod_migrations WHERE migration_name = '%s'", migrationName);
+    
+    DataPack pack = new DataPack();
+    pack.WriteString(migrationName);
+    
+    db.Query(CheckMigrationCallback, query, pack);
+}
+
+void CheckMigrationCallback(Database owner, DBResultSet hndl, const char[] error, any data)
+{
+    DataPack pack = view_as<DataPack>(data);
+    pack.Reset();
+    
+    char migrationName[64];
+    pack.ReadString(migrationName, sizeof(migrationName));
+    delete pack;
+    
+    if (owner == null)
+    {
+        LogError("[Migrations] Database connection lost while checking migration: %s", migrationName);
+        return;
+    }
+    
+    if (!StrEqual("", error))
+    {
+        LogError("[Migrations] Failed to check migration %s: %s", migrationName, error);
+        return;
+    }
+    
+    if (hndl.FetchRow())
+    {
+        int migrationExists = hndl.FetchInt(0);
+        if (migrationExists == 0)
+        {
+            LogMessage("[Migrations] Running migration: %s", migrationName);
+            RunMigration(migrationName);
+        }
+        else
+        {
+            LogMessage("[Migrations] Migration %s already executed (skipping)", migrationName);
+        }
+    }
+}
+
+void RunMigration(const char[] migrationName)
+{
+    if (StrEqual(migrationName, "001_add_class_columns"))
+    {
+        Migration_001_AddClassColumns();
+    }
 }
 
 void Migration_001_AddClassColumns()
 {
+    LogMessage("[Migration 001] Adding class tracking columns");
+    
     if (g_bUseSQLite)
     {
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass TEXT DEFAULT NULL");
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass TEXT DEFAULT NULL");
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass TEXT DEFAULT NULL");
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class TEXT DEFAULT NULL");
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass TEXT DEFAULT NULL");
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class TEXT DEFAULT NULL");
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass TEXT DEFAULT NULL", 1);
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass TEXT DEFAULT NULL", 2);
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass TEXT DEFAULT NULL", 3);
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class TEXT DEFAULT NULL", 4);
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass TEXT DEFAULT NULL", 5);
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class TEXT DEFAULT NULL", 6);
     }
     else
     {
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL");
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL");
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL");
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class VARCHAR(64) DEFAULT NULL");
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL");
-        db.Query(SQLErrorCheckCallback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class VARCHAR(64) DEFAULT NULL");
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL", 1);
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL", 2);
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL", 3);
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class VARCHAR(64) DEFAULT NULL", 4);
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL", 5);
+        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class VARCHAR(64) DEFAULT NULL", 6);
+    }
+}
+
+void Migration_001_Callback(Database owner, DBResultSet hndl, const char[] error, any data)
+{
+    static int completedSteps = 0;
+    
+    if (owner == null)
+    {
+        LogError("[Migration 001] Database connection lost during step %d", data);
+        return;
     }
     
-    LogMessage("[Migration 001] Added class tracking columns to duel tables");
+    if (!StrEqual("", error))
+    {
+        LogError("[Migration 001] Step %d failed: %s", data, error);
+        return;
+    }
+    
+    completedSteps++;
+    
+    // When all steps are complete, mark migration as done
+    if (completedSteps >= 6)
+    {
+        LogMessage("[Migration 001] Successfully added all class tracking columns");
+        MarkMigrationComplete("001_add_class_columns");
+        completedSteps = 0;
+    }
+}
+
+void MarkMigrationComplete(const char[] migrationName)
+{
+    char query[256];
+    Format(query, sizeof(query), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('%s', %d)", migrationName, GetTime());
+    db.Query(MarkMigrationCallback, query);
+}
+
+void MarkMigrationCallback(Database owner, DBResultSet hndl, const char[] error, any data)
+{
+    if (owner == null)
+    {
+        LogError("[Migrations] Database connection lost while marking migration complete");
+        return;
+    }
+    
+    if (!StrEqual("", error))
+    {
+        LogError("[Migrations] Failed to mark migration complete: %s", error);
+        return;
+    }
+    
+    LogMessage("[Migrations] Migration marked as complete");
 }
 
 char[] TFClassToString(TFClassType class)
@@ -4185,8 +4326,9 @@ void SQLDbConnTest(Database owner, DBResultSet hndl, const char[] error, any dat
     } else {
         g_bNoStats = gcvar_stats.BoolValue ? false : true;
 
-        if (!g_bNoStats)
+        if (!g_bNoStats && db != null)
         {
+            // Database connection successful - handle both reconnection and hot-loading scenarios
             for (int i = 1; i <= MaxClients; i++)
             {
                 if (IsValidClient(i))
@@ -4197,6 +4339,16 @@ void SQLDbConnTest(Database owner, DBResultSet hndl, const char[] error, any dat
                     strcopy(g_sPlayerSteamID[i], 32, steamid);
                     Format(query, sizeof(query), "SELECT rating, hitblip, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
                     db.Query(T_SQLQueryOnConnect, query, i);
+                    
+                    // Handle hot-loading case: initialize client state that requires DB
+                    if (!IsFakeClient(i))
+                    {
+                        // Ensure spectator team and proper client setup
+                        ChangeClientTeam(i, TEAM_SPEC);
+                        g_bHitBlip[i] = false;
+                        g_bShowHud[i] = true;
+                        g_bPlayerRestoringAmmo[i] = false;
+                    }
                 }
             }
 
@@ -4204,11 +4356,11 @@ void SQLDbConnTest(Database owner, DBResultSet hndl, const char[] error, any dat
             ShowHudToAll();
 
             PrintHintTextToAll("%t", "StatsRestored");
+            LogError("Database connection restored.");
         } else {
             PrintHintTextToAll("%t", "StatsRestoredDown");
+            LogError("Database connection restored but stats are disabled or DB handle is invalid.");
         }
-
-        LogError("Database connection restored.");
     }
 }
 
