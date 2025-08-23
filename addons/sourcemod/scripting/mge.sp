@@ -4009,7 +4009,6 @@ void SQLErrorCheckCallback(Database owner, DBResultSet hndl, const char[] error,
     else if (!StrEqual("", error))
     {
         LogError("SQLErrorCheckCallback: Query failed (connection OK): %s", error);
-        // Note: This is just a query error, not a connection loss - no reconnect needed
     }
 }
 
