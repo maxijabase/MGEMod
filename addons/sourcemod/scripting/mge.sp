@@ -17,7 +17,6 @@
 #define MAXARENAS 63
 #define MAXSPAWNS 15
 #define HUDFADEOUTTIME 120.0
-#define MAPCONFIGFILE "configs/mgemod_spawns.cfg"
 
 #pragma newdecls required
 
@@ -81,8 +80,7 @@ Handle
     hm_KothCap;
 
 // Global Variables
-char g_sMapName[256],
-     g_spawnFile[128];
+char g_sMapName[256];
 
 bool g_bBlockFallDamage,
      g_bUseSQLite,
@@ -116,8 +114,7 @@ ConVar
     gcvar_bballParticle_blue,
     gcvar_noDisplayRating,
     gcvar_stats,
-    gcvar_reconnectInterval,
-    gcvar_spawnFile;
+    gcvar_reconnectInterval;
 
 // Classes
 bool g_tfctClassAllowed[10];
@@ -327,7 +324,6 @@ public void OnPluginStart()
     gcvar_midairHP = CreateConVar("mgemod_midair_hp", "5", "", FCVAR_NONE, true, 1.0);
     gcvar_noDisplayRating = CreateConVar("mgemod_hide_rating", "0", "Hide the in-game display of rating points. They will still be tracked in the database.");
     gcvar_reconnectInterval = CreateConVar("mgemod_reconnect_interval", "5", "How long (in minutes) to wait between database reconnection attempts.");
-    gcvar_spawnFile = CreateConVar("mgemod_spawnfile", MAPCONFIGFILE, "Spawn file");
 
     // Populate global variables with their corresponding convar values.
     g_iDefaultFragLimit = gcvar_fragLimit.IntValue;
@@ -341,7 +337,6 @@ public void OnPluginStart()
     gcvar_dbConfig.GetString(g_sDBConfig, sizeof(g_sDBConfig));
     gcvar_bballParticle_red.GetString(g_sBBallParticleRed, sizeof(g_sBBallParticleRed));
     gcvar_bballParticle_blue.GetString(g_sBBallParticleBlue, sizeof(g_sBBallParticleBlue));
-    gcvar_spawnFile.GetString(g_spawnFile, sizeof(g_spawnFile));
 
     g_bNoStats = gcvar_stats.BoolValue ? false : true;
 
@@ -361,7 +356,6 @@ public void OnPluginStart()
     ParseAllowedClasses("", g_tfctClassAllowed);
 
     // Hook convar changes.
-    gcvar_spawnFile.AddChangeHook(handler_ConVarChange);
     gcvar_fragLimit.AddChangeHook(handler_ConVarChange);
     gcvar_allowedClasses.AddChangeHook(handler_ConVarChange);
     gcvar_blockFallDamage.AddChangeHook(handler_ConVarChange);
@@ -2349,9 +2343,6 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
 bool LoadSpawnPoints()
 {
     char txtfile[256];
-    BuildPath(Path_SM, txtfile, sizeof(txtfile), g_spawnFile);
-
-    char spawn[64];
     GetCurrentMap(g_sMapName, sizeof(g_sMapName));
 
     //  "workshop/mge_training_v8_beta4b.ugc1996603816"
@@ -2368,10 +2359,14 @@ bool LoadSpawnPoints()
         }
     }
 
-    KeyValues kv = new KeyValues("SpawnConfig");
+    // Build path to map-specific config file: configs/mge/{mapname}.cfg
+    Format(txtfile, sizeof(txtfile), "configs/mge/%s.cfg", g_sMapName);
+    BuildPath(Path_SM, txtfile, sizeof(txtfile), txtfile);
 
+    KeyValues kv = new KeyValues("SpawnConfigs");
+
+    char spawn[64];
     char spawnCo[6][16];
-    char kvmap[32];
     int count;
     int i;
     g_iArenaCount = 0;
@@ -2381,130 +2376,125 @@ bool LoadSpawnPoints()
         g_iArenaSpawns[j] = 0;
     }
 
-    if (FileToKeyValues(kv, txtfile))
+    // Fail early if file can't be loaded
+    if (!FileToKeyValues(kv, txtfile))
     {
-        if (KvGotoFirstSubKey(kv))
+        LogError("Error. Can't find cfg file: %s", txtfile);
+        CloseHandle(kv);
+        return false;
+    }
+    
+    // Config file root is already SpawnConfigs, go directly to arenas
+    if (!KvGotoFirstSubKey(kv))
+    {
+        LogError("Error in cfg file: %s", txtfile);
+        CloseHandle(kv);
+        return false;
+    }
+    
+    do
+    {
+        g_iArenaCount++;
+        KvGetSectionName(kv, g_sArenaOriginalName[g_iArenaCount], 64);
+        int id;
+        if (KvGetNameSymbol(kv, "1", id))
         {
+            char intstr[4];
+            char intstr2[4];
             do
             {
-                KvGetSectionName(kv, kvmap, 64);
-                if (StrEqual(g_sMapName, kvmap, false))
+                g_iArenaSpawns[g_iArenaCount]++;
+                IntToString(g_iArenaSpawns[g_iArenaCount], intstr, sizeof(intstr));
+                IntToString(g_iArenaSpawns[g_iArenaCount]+1, intstr2, sizeof(intstr2));
+                KvGetString(kv, intstr, spawn, sizeof(spawn));
+                count = ExplodeString(spawn, " ", spawnCo, 6, 16);
+                if (count==6)
                 {
-                    if (KvGotoFirstSubKey(kv))
+                    for (i=0; i<3; i++)
                     {
-                        do
-                        {
-                            g_iArenaCount++;
-                            KvGetSectionName(kv, g_sArenaOriginalName[g_iArenaCount], 64);
-                            int id;
-                            if (KvGetNameSymbol(kv, "1", id))
-                            {
-                                char intstr[4];
-                                char intstr2[4];
-                                do
-                                {
-                                    g_iArenaSpawns[g_iArenaCount]++;
-                                    IntToString(g_iArenaSpawns[g_iArenaCount], intstr, sizeof(intstr));
-                                    IntToString(g_iArenaSpawns[g_iArenaCount]+1, intstr2, sizeof(intstr2));
-                                    KvGetString(kv, intstr, spawn, sizeof(spawn));
-                                    count = ExplodeString(spawn, " ", spawnCo, 6, 16);
-                                    if (count==6)
-                                    {
-                                        for (i=0; i<3; i++)
-                                        {
-                                            g_fArenaSpawnOrigin[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][i] = StringToFloat(spawnCo[i]);
-                                        }
-                                        for (i=3; i<6; i++)
-                                        {
-                                            g_fArenaSpawnAngles[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][i-3] = StringToFloat(spawnCo[i]);
-                                        }
-                                    } else if(count==4) {
-                                        for (i=0; i<3; i++)
-                                        {
-                                            g_fArenaSpawnOrigin[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][i] = StringToFloat(spawnCo[i]);
-                                        }
-                                        g_fArenaSpawnAngles[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][0] = 0.0;
-                                        g_fArenaSpawnAngles[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][1] = StringToFloat(spawnCo[3]);
-                                        g_fArenaSpawnAngles[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][2] = 0.0;
-                                    } else {
-                                        SetFailState("Error in cfg file. Wrong number of parametrs (%d) on spawn <%i> in arena <%s>",count,g_iArenaSpawns[g_iArenaCount],g_sArenaOriginalName[g_iArenaCount]);
-                                    }
-                                } while (KvGetNameSymbol(kv, intstr2, id));
-                                LogMessage("Loaded %d spawns on arena %s.",g_iArenaSpawns[g_iArenaCount], g_sArenaOriginalName[g_iArenaCount]);
-                            } else {
-                                LogError("Could not load spawns on arena %s.", g_sArenaOriginalName[g_iArenaCount]);
-                            }
-
-                            if (KvGetNameSymbol(kv, "cap", id)) {
-                                KvGetString(kv, "cap",  g_sArenaCap[g_iArenaCount], 64);
-                                g_bArenaHasCap[g_iArenaCount] = true;
-
-                                LogMessage("Found cap point on arena %s.", g_sArenaOriginalName[g_iArenaCount]);
-                            } else {
-                                g_bArenaHasCap[g_iArenaCount] = false;
-                            }
-
-                            if (KvGetNameSymbol(kv, "cap_trigger", id)) {
-                                KvGetString(kv, "cap_trigger",  g_sArenaCapTrigger[g_iArenaCount], 64);
-                                g_bArenaHasCapTrigger[g_iArenaCount] = true;
-                            }
-
-                            //optional parametrs
-                            g_iArenaMgelimit[g_iArenaCount] = KvGetNum(kv, "fraglimit", g_iDefaultFragLimit);
-                            g_iArenaCaplimit[g_iArenaCount] = KvGetNum(kv, "caplimit", g_iDefaultFragLimit);
-                            g_iArenaMinRating[g_iArenaCount] = KvGetNum(kv, "minrating", -1);
-                            g_iArenaMaxRating[g_iArenaCount] = KvGetNum(kv, "maxrating", -1);
-                            g_bArenaMidair[g_iArenaCount] = KvGetNum(kv, "midair", 0) ? true : false ;
-                            g_iArenaCdTime[g_iArenaCount] = KvGetNum(kv, "cdtime", DEFAULT_CDTIME);
-                            g_bArenaMGE[g_iArenaCount] = KvGetNum(kv, "mge", 0) ? true : false ;
-                            g_fArenaHPRatio[g_iArenaCount] = KvGetFloat(kv, "hpratio", 1.5);
-                            g_bArenaEndif[g_iArenaCount] = KvGetNum(kv, "endif", 0) ? true : false ;
-                            g_iArenaAirshotHeight[g_iArenaCount] = KvGetNum(kv, "airshotheight", 250);
-                            g_bArenaBoostVectors[g_iArenaCount] = KvGetNum(kv, "boostvectors", 0) ? true : false ;
-                            g_bArenaBBall[g_iArenaCount] = KvGetNum(kv, "bball", 0) ? true : false ;
-                            g_bVisibleHoops[g_iArenaCount] = KvGetNum(kv, "vishoop", 0) ? true : false ;
-                            g_iArenaEarlyLeave[g_iArenaCount] = KvGetNum(kv, "earlyleave", 0);
-                            g_bArenaInfAmmo[g_iArenaCount] = KvGetNum(kv, "infammo", 1) ? true : false ;
-                            g_bArenaShowHPToPlayers[g_iArenaCount] = KvGetNum(kv, "showhp", 1) ? true : false ;
-                            g_fArenaMinSpawnDist[g_iArenaCount] = KvGetFloat(kv, "mindist", 100.0);
-                            g_bFourPersonArena[g_iArenaCount] = KvGetNum(kv, "4player", 0) ? true : false;
-                            g_bArenaAllowChange[g_iArenaCount] = KvGetNum(kv, "allowchange", 0) ? true : false;
-                            g_bArenaAllowKoth[g_iArenaCount] = KvGetNum(kv, "allowkoth", 0) ? true : false;
-                            g_bArenaKothTeamSpawn[g_iArenaCount] = KvGetNum(kv, "kothteamspawn", 0) ? true : false;
-                            g_fArenaRespawnTime[g_iArenaCount] = KvGetFloat(kv, "respawntime", 0.1);
-                            g_bArenaAmmomod[g_iArenaCount] = KvGetNum(kv, "ammomod", 0) ? true : false;
-                            g_bArenaUltiduo[g_iArenaCount] = KvGetNum(kv, "ultiduo", 0) ? true : false;
-                            g_bArenaKoth[g_iArenaCount] = KvGetNum(kv, "koth", 0) ? true : false;
-                            g_bArenaTurris[g_iArenaCount] = KvGetNum(kv, "turris", 0) ? true : false;
-                            g_bArenaClassChange[g_iArenaCount] = KvGetNum(kv, "classchange", 1) ? true : false;
-                            g_iDefaultCapTime[g_iArenaCount] = KvGetNum(kv, "timer", 180);
-                            //parsing allowed classes for current arena
-                            char sAllowedClasses[128];
-                            KvGetString(kv, "classes", sAllowedClasses, sizeof(sAllowedClasses));
-                            LogMessage("%s classes: <%s>", g_sArenaOriginalName[g_iArenaCount], sAllowedClasses);
-                            ParseAllowedClasses(sAllowedClasses,g_tfctArenaAllowedClasses[g_iArenaCount]);
-                            g_iArenaFraglimit[g_iArenaCount] = g_iArenaMgelimit[g_iArenaCount];
-                            UpdateArenaName(g_iArenaCount);
-                        } while (KvGotoNextKey(kv));
+                        g_fArenaSpawnOrigin[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][i] = StringToFloat(spawnCo[i]);
                     }
-                    break;
+                    for (i=3; i<6; i++)
+                    {
+                        g_fArenaSpawnAngles[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][i-3] = StringToFloat(spawnCo[i]);
+                    }
+                } else if(count==4) {
+                    for (i=0; i<3; i++)
+                    {
+                        g_fArenaSpawnOrigin[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][i] = StringToFloat(spawnCo[i]);
+                    }
+                    g_fArenaSpawnAngles[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][0] = 0.0;
+                    g_fArenaSpawnAngles[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][1] = StringToFloat(spawnCo[3]);
+                    g_fArenaSpawnAngles[g_iArenaCount][g_iArenaSpawns[g_iArenaCount]][2] = 0.0;
+                } else {
+                    SetFailState("Error in cfg file. Wrong number of parametrs (%d) on spawn <%i> in arena <%s>",count,g_iArenaSpawns[g_iArenaCount],g_sArenaOriginalName[g_iArenaCount]);
                 }
-            } while (KvGotoNextKey(kv));
-            if (g_iArenaCount)
-            {
-                LogMessage("Loaded %d arenas. MGEMod enabled.",g_iArenaCount);
-                CloseHandle(kv);
-                return true;
-            } else {
-                CloseHandle(kv);
-                return false;
-            }
+            } while (KvGetNameSymbol(kv, intstr2, id));
+            LogMessage("Loaded %d spawns on arena %s.",g_iArenaSpawns[g_iArenaCount], g_sArenaOriginalName[g_iArenaCount]);
         } else {
-            LogError("Error in cfg file.");
-            return false;
+            LogError("Could not load spawns on arena %s.", g_sArenaOriginalName[g_iArenaCount]);
         }
+
+        if (KvGetNameSymbol(kv, "cap", id)) {
+            KvGetString(kv, "cap",  g_sArenaCap[g_iArenaCount], 64);
+            g_bArenaHasCap[g_iArenaCount] = true;
+
+            LogMessage("Found cap point on arena %s.", g_sArenaOriginalName[g_iArenaCount]);
+        } else {
+            g_bArenaHasCap[g_iArenaCount] = false;
+        }
+
+        if (KvGetNameSymbol(kv, "cap_trigger", id)) {
+            KvGetString(kv, "cap_trigger",  g_sArenaCapTrigger[g_iArenaCount], 64);
+            g_bArenaHasCapTrigger[g_iArenaCount] = true;
+        }
+
+        //optional parametrs
+        g_iArenaMgelimit[g_iArenaCount] = KvGetNum(kv, "fraglimit", g_iDefaultFragLimit);
+        g_iArenaCaplimit[g_iArenaCount] = KvGetNum(kv, "caplimit", g_iDefaultFragLimit);
+        g_iArenaMinRating[g_iArenaCount] = KvGetNum(kv, "minrating", -1);
+        g_iArenaMaxRating[g_iArenaCount] = KvGetNum(kv, "maxrating", -1);
+        g_bArenaMidair[g_iArenaCount] = KvGetNum(kv, "midair", 0) ? true : false ;
+        g_iArenaCdTime[g_iArenaCount] = KvGetNum(kv, "cdtime", DEFAULT_CDTIME);
+        g_bArenaMGE[g_iArenaCount] = KvGetNum(kv, "mge", 0) ? true : false ;
+        g_fArenaHPRatio[g_iArenaCount] = KvGetFloat(kv, "hpratio", 1.5);
+        g_bArenaEndif[g_iArenaCount] = KvGetNum(kv, "endif", 0) ? true : false ;
+        g_iArenaAirshotHeight[g_iArenaCount] = KvGetNum(kv, "airshotheight", 250);
+        g_bArenaBoostVectors[g_iArenaCount] = KvGetNum(kv, "boostvectors", 0) ? true : false ;
+        g_bArenaBBall[g_iArenaCount] = KvGetNum(kv, "bball", 0) ? true : false ;
+        g_bVisibleHoops[g_iArenaCount] = KvGetNum(kv, "vishoop", 0) ? true : false ;
+        g_iArenaEarlyLeave[g_iArenaCount] = KvGetNum(kv, "earlyleave", 0);
+        g_bArenaInfAmmo[g_iArenaCount] = KvGetNum(kv, "infammo", 1) ? true : false ;
+        g_bArenaShowHPToPlayers[g_iArenaCount] = KvGetNum(kv, "showhp", 1) ? true : false ;
+        g_fArenaMinSpawnDist[g_iArenaCount] = KvGetFloat(kv, "mindist", 100.0);
+        g_bFourPersonArena[g_iArenaCount] = KvGetNum(kv, "4player", 0) ? true : false;
+        g_bArenaAllowChange[g_iArenaCount] = KvGetNum(kv, "allowchange", 0) ? true : false;
+        g_bArenaAllowKoth[g_iArenaCount] = KvGetNum(kv, "allowkoth", 0) ? true : false;
+        g_bArenaKothTeamSpawn[g_iArenaCount] = KvGetNum(kv, "kothteamspawn", 0) ? true : false;
+        g_fArenaRespawnTime[g_iArenaCount] = KvGetFloat(kv, "respawntime", 0.1);
+        g_bArenaAmmomod[g_iArenaCount] = KvGetNum(kv, "ammomod", 0) ? true : false;
+        g_bArenaUltiduo[g_iArenaCount] = KvGetNum(kv, "ultiduo", 0) ? true : false;
+        g_bArenaKoth[g_iArenaCount] = KvGetNum(kv, "koth", 0) ? true : false;
+        g_bArenaTurris[g_iArenaCount] = KvGetNum(kv, "turris", 0) ? true : false;
+        g_bArenaClassChange[g_iArenaCount] = KvGetNum(kv, "classchange", 1) ? true : false;
+        g_iDefaultCapTime[g_iArenaCount] = KvGetNum(kv, "timer", 180);
+        //parsing allowed classes for current arena
+        char sAllowedClasses[128];
+        KvGetString(kv, "classes", sAllowedClasses, sizeof(sAllowedClasses));
+        LogMessage("%s classes: <%s>", g_sArenaOriginalName[g_iArenaCount], sAllowedClasses);
+        ParseAllowedClasses(sAllowedClasses,g_tfctArenaAllowedClasses[g_iArenaCount]);
+        g_iArenaFraglimit[g_iArenaCount] = g_iArenaMgelimit[g_iArenaCount];
+        UpdateArenaName(g_iArenaCount);
+    } while (KvGotoNextKey(kv));
+    
+    if (g_iArenaCount)
+    {
+        LogMessage("Loaded %d arenas from %s. MGEMod enabled.", g_iArenaCount, txtfile);
+        CloseHandle(kv);
+        return true;
     } else {
-        LogError("Error. Can't find cfg file");
+        LogMessage("No arenas found in %s.", txtfile);
+        CloseHandle(kv);
         return false;
     }
 }
@@ -3098,11 +3088,7 @@ void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] new
         g_iReconnectInterval = StringToInt(newValue);
     else if (convar == gcvar_dbConfig)
         strcopy(g_sDBConfig, sizeof(g_sDBConfig), newValue);
-    else if (convar == gcvar_spawnFile)
-    {
-        strcopy(g_spawnFile, sizeof(g_spawnFile), newValue);
-        LoadSpawnPoints();
-    }
+
 }
 
 // ====[ COMMANDS ]====================================================
