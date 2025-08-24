@@ -592,10 +592,10 @@ public void OnClientPostAdminCheck(int client)
             if (g_bPlayerAskedForBot[i])
             {
                 int arena_index = g_iPlayerArena[i];
-                DataPack pk;
-                CreateDataTimer(1.5, Timer_AddBotInQueue, pk);
-                pk.WriteCell(GetClientUserId(client));
-                pk.WriteCell(arena_index);
+                DataPack pack = new DataPack();
+                CreateDataTimer(1.5, Timer_AddBotInQueue, pack);
+                pack.WriteCell(GetClientUserId(client));
+                pack.WriteCell(arena_index);
                 g_iPlayerRating[client] = 1551;
                 g_bPlayerAskedForBot[i] = false;
                 break;
@@ -1329,6 +1329,16 @@ int StartCountDown(int arena_index)
             // Initialize class tracking lists for dynamic recording
             if (g_bArenaClassChange[arena_index])
             {
+                // Ensure ArrayLists are initialized for all players (including bots)
+                if (g_alPlayerDuelClasses[red_f1] == null)
+                    g_alPlayerDuelClasses[red_f1] = new ArrayList();
+                if (g_alPlayerDuelClasses[blu_f1] == null)
+                    g_alPlayerDuelClasses[blu_f1] = new ArrayList();
+                if (g_alPlayerDuelClasses[red_f2] == null)
+                    g_alPlayerDuelClasses[red_f2] = new ArrayList();
+                if (g_alPlayerDuelClasses[blu_f2] == null)
+                    g_alPlayerDuelClasses[blu_f2] = new ArrayList();
+                    
                 g_alPlayerDuelClasses[red_f1].Clear();
                 g_alPlayerDuelClasses[blu_f1].Clear();
                 g_alPlayerDuelClasses[red_f2].Clear();
@@ -1389,6 +1399,12 @@ int StartCountDown(int arena_index)
             // Initialize class tracking lists for dynamic recording
             if (g_bArenaClassChange[arena_index])
             {
+                // Ensure ArrayLists are initialized for all players (including bots)
+                if (g_alPlayerDuelClasses[red_f1] == null)
+                    g_alPlayerDuelClasses[red_f1] = new ArrayList();
+                if (g_alPlayerDuelClasses[blu_f1] == null)
+                    g_alPlayerDuelClasses[blu_f1] = new ArrayList();
+                    
                 g_alPlayerDuelClasses[red_f1].Clear();
                 g_alPlayerDuelClasses[blu_f1].Clear();
                 
@@ -3932,11 +3948,11 @@ void CreateMigrationsTable()
     char query[512];
     if (g_bUseSQLite)
     {
-        Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS mgemod_migrations (id INTEGER PRIMARY KEY, migration_name TEXT UNIQUE, executed_at INTEGER)");
+        db.Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS mgemod_migrations (id INTEGER PRIMARY KEY, migration_name TEXT UNIQUE, executed_at INTEGER)");
     }
     else
     {
-        Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS mgemod_migrations (id INT AUTO_INCREMENT PRIMARY KEY, migration_name VARCHAR(255) UNIQUE, executed_at INT) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB");
+        db.Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS mgemod_migrations (id INT AUTO_INCREMENT PRIMARY KEY, migration_name VARCHAR(255) UNIQUE, executed_at INT) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB");
     }
     db.Query(CreateMigrationsTableCallback, query);
 }
@@ -3964,7 +3980,7 @@ void CreateMigrationsTableCallback(Database owner, DBResultSet hndl, const char[
 void CheckAndRunMigration(const char[] migrationName)
 {
     char query[256];
-    Format(query, sizeof(query), "SELECT COUNT(*) FROM mgemod_migrations WHERE migration_name = '%s'", migrationName);
+    db.Format(query, sizeof(query), "SELECT COUNT(*) FROM mgemod_migrations WHERE migration_name = '%s'", migrationName);
     
     DataPack pack = new DataPack();
     pack.WriteString(migrationName);
@@ -3972,11 +3988,9 @@ void CheckAndRunMigration(const char[] migrationName)
     db.Query(CheckMigrationCallback, query, pack);
 }
 
-void CheckMigrationCallback(Database owner, DBResultSet hndl, const char[] error, any data)
+void CheckMigrationCallback(Database owner, DBResultSet hndl, const char[] error, DataPack pack)
 {
-    DataPack pack = view_as<DataPack>(data);
     pack.Reset();
-    
     char migrationName[64];
     pack.ReadString(migrationName, sizeof(migrationName));
     delete pack;
@@ -5437,11 +5451,11 @@ Action Timer_DeleteParticle(Handle timer, any particle)
 }
 */
 
-Action Timer_AddBotInQueue(Handle timer, DataPack pk)
+Action Timer_AddBotInQueue(Handle timer, DataPack pack)
 {
-    pk.Reset();
-    int client = GetClientOfUserId(pk.ReadCell());
-    int arena_index = pk.ReadCell();
+    pack.Reset();
+    int client = GetClientOfUserId(pack.ReadCell());
+    int arena_index = pack.ReadCell();
     AddInQueue(client, arena_index);
 
     return Plugin_Continue;
