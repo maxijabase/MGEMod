@@ -4006,6 +4006,7 @@ void CreateMigrationsTableCallback(Database db, DBResultSet results, const char[
     // Run individual migrations
     CheckAndRunMigration("001_add_class_columns");
     CheckAndRunMigration("002_duel_timing_columns");
+    CheckAndRunMigration("003_add_primary_keys");
 }
 
 void CheckAndRunMigration(const char[] migrationName)
@@ -4064,6 +4065,11 @@ void RunMigration(const char[] migrationName)
     {
         g_migrationProgress.SetValue(migrationName, 4);
         Migration_002_DuelTimingColumns();
+    }
+    else if (StrEqual(migrationName, "003_add_primary_keys"))
+    {
+        g_migrationProgress.SetValue(migrationName, 3);
+        Migration_003_AddPrimaryKeys();
     }
 }
 
@@ -4169,6 +4175,26 @@ void Migration_002_DuelTimingColumns()
         ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels ADD COLUMN starttime INT(11) DEFAULT NULL", 2);
         ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels_2v2 CHANGE gametime endtime INT(11) NOT NULL", 3);
         ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN starttime INT(11) DEFAULT NULL", 4);
+    }
+}
+
+void Migration_003_AddPrimaryKeys()
+{
+    LogMessage("[Migration 003] Adding primary keys to database tables");
+    
+    if (g_bUseSQLite)
+    {
+        // SQLite: Add auto-incrementing ID columns and primary key constraint
+        ExecuteMigrationStep("003_add_primary_keys", "ALTER TABLE mgemod_duels ADD COLUMN id INTEGER PRIMARY KEY", 1);
+        ExecuteMigrationStep("003_add_primary_keys", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN id INTEGER PRIMARY KEY", 2);
+        ExecuteMigrationStep("003_add_primary_keys", "CREATE UNIQUE INDEX idx_stats_steamid ON mgemod_stats (steamid)", 3);
+    }
+    else
+    {
+        // MySQL: Add auto-incrementing ID columns and primary key constraint
+        ExecuteMigrationStep("003_add_primary_keys", "ALTER TABLE mgemod_duels ADD COLUMN id INT AUTO_INCREMENT PRIMARY KEY FIRST", 1);
+        ExecuteMigrationStep("003_add_primary_keys", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN id INT AUTO_INCREMENT PRIMARY KEY FIRST", 2);
+        ExecuteMigrationStep("003_add_primary_keys", "ALTER TABLE mgemod_stats ADD PRIMARY KEY (steamid)", 3);
     }
 }
 
