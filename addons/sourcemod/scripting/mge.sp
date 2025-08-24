@@ -84,7 +84,8 @@ char g_sMapName[256];
 
 bool g_bBlockFallDamage,
      g_bUseSQLite,
-     g_bAutoCvar;
+     g_bAutoCvar,
+     g_b2v2SkipCountdown;
 
 int
     g_iDefaultFragLimit,
@@ -114,7 +115,8 @@ ConVar
     gcvar_bballParticle_blue,
     gcvar_noDisplayRating,
     gcvar_stats,
-    gcvar_reconnectInterval;
+    gcvar_reconnectInterval,
+    gcvar_2v2SkipCountdown;
 
 // Classes
 bool g_tfctClassAllowed[10];
@@ -325,6 +327,7 @@ public void OnPluginStart()
     gcvar_midairHP = CreateConVar("mgemod_midair_hp", "5", "", FCVAR_NONE, true, 1.0);
     gcvar_noDisplayRating = CreateConVar("mgemod_hide_rating", "0", "Hide the in-game display of rating points. They will still be tracked in the database.");
     gcvar_reconnectInterval = CreateConVar("mgemod_reconnect_interval", "5", "How long (in minutes) to wait between database reconnection attempts.");
+    gcvar_2v2SkipCountdown = CreateConVar("mgemod_2v2_skip_countdown", "0", "Skip countdown between 2v2 rounds? (0 = Normal countdown, 1 = Skip countdown)", FCVAR_NONE, true, 0.0, true, 1.0);
 
     // Populate global variables with their corresponding convar values.
     g_iDefaultFragLimit = gcvar_fragLimit.IntValue;
@@ -334,6 +337,7 @@ public void OnPluginStart()
     g_bAutoCvar = gcvar_autoCvar.IntValue ? true : false;
     g_bNoDisplayRating = gcvar_noDisplayRating.IntValue ? true : false;
     g_iReconnectInterval = gcvar_reconnectInterval.IntValue;
+    g_b2v2SkipCountdown = gcvar_2v2SkipCountdown.IntValue ? true : false;
 
     gcvar_dbConfig.GetString(g_sDBConfig, sizeof(g_sDBConfig));
     gcvar_bballParticle_red.GetString(g_sBBallParticleRed, sizeof(g_sBBallParticleRed));
@@ -372,6 +376,7 @@ public void OnPluginStart()
     gcvar_bballParticle_blue.AddChangeHook(handler_ConVarChange);
     gcvar_noDisplayRating.AddChangeHook(handler_ConVarChange);
     gcvar_reconnectInterval.AddChangeHook(handler_ConVarChange);
+    gcvar_2v2SkipCountdown.AddChangeHook(handler_ConVarChange);
 
     // Create/register client commands.
     RegConsoleCmd("mgemod", Command_Menu, "MGEMod Menu");
@@ -3106,6 +3111,8 @@ void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] new
         g_iReconnectInterval = StringToInt(newValue);
     else if (convar == gcvar_dbConfig)
         strcopy(g_sDBConfig, sizeof(g_sDBConfig), newValue);
+    else if (convar == gcvar_2v2SkipCountdown)
+        StringToInt(newValue) ? (g_b2v2SkipCountdown = true) : (g_b2v2SkipCountdown = false);
 
 }
 
@@ -4795,7 +4802,10 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 
                 g_iArenaStatus[arena_index] = AS_FIGHT;
                 */
-                CreateTimer(0.1, Timer_NewRound, arena_index);
+                if (g_b2v2SkipCountdown)
+                    CreateTimer(0.1, Timer_New2v2Round, arena_index);
+                else
+                    CreateTimer(0.1, Timer_NewRound, arena_index);
             }
 
 
@@ -5376,6 +5386,23 @@ Action Timer_Tele(Handle timer, int userid)
 Action Timer_NewRound(Handle timer, any arena_index)
 {
     StartCountDown(arena_index);
+
+    return Plugin_Continue;
+}
+
+Action Timer_New2v2Round(Handle timer, any arena_index) {
+    int red_f1 = g_iArenaQueue[arena_index][SLOT_ONE]; /* Red (slot one) player. */
+    int blu_f1 = g_iArenaQueue[arena_index][SLOT_TWO]; /* Blu (slot two) player. */
+
+    int red_f2 = g_iArenaQueue[arena_index][SLOT_THREE]; /* 2nd Red (slot three) player. */
+    int blu_f2 = g_iArenaQueue[arena_index][SLOT_FOUR]; /* 2nd Blu (slot four) player. */
+
+    if (red_f1) ResetPlayer(red_f1);
+    if (blu_f1) ResetPlayer(blu_f1);
+    if (red_f2) ResetPlayer(red_f2);
+    if (blu_f2) ResetPlayer(blu_f2);
+
+    g_iArenaStatus[arena_index] = AS_FIGHT;
 
     return Plugin_Continue;
 }
