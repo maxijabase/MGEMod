@@ -3325,7 +3325,9 @@ Action Command_JoinClass(int client, int args)
             if (g_iPlayerSlot[client] == SLOT_ONE || g_iPlayerSlot[client] == SLOT_TWO || (g_bFourPersonArena[arena_index] && (g_iPlayerSlot[client] == SLOT_FOUR || g_iPlayerSlot[client] == SLOT_THREE)))
             {
                 // Check if arena has class change disabled and fight has started
-                if (!g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] == AS_FIGHT)
+                // Allow class changes if score is still 0-0, even during fight
+                if (!g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] == AS_FIGHT && 
+                    (g_iArenaScore[arena_index][SLOT_ONE] != 0 || g_iArenaScore[arena_index][SLOT_TWO] != 0))
                 {
                     MC_PrintToChat(client, "Class changes are disabled during fights in this arena!");
                     return Plugin_Handled;
@@ -3361,10 +3363,13 @@ Action Command_JoinClass(int client, int args)
                             }
                             if (g_iArenaStatus[arena_index] == AS_FIGHT && killer)
                             {
-
-                                g_iArenaScore[arena_index][killer_team_slot] += 1;
-                                MC_PrintToChat(killer, "%t", "ClassChangePointOpponent");
-                                MC_PrintToChat(client, "%t", "ClassChangePoint");
+                                // Only award points on class change if arena allows class changes
+                                if (g_bArenaClassChange[arena_index])
+                                {
+                                    g_iArenaScore[arena_index][killer_team_slot] += 1;
+                                    MC_PrintToChat(killer, "%t", "ClassChangePointOpponent");
+                                    MC_PrintToChat(client, "%t", "ClassChangePoint");
+                                }
 
                                 if (g_bFourPersonArena[arena_index] && killer_teammate)
                                 {
