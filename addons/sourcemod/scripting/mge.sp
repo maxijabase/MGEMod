@@ -91,7 +91,7 @@ int
     g_iAirshotHeight = 80;
 
 // Database
-Database db; // Connection to SQL database.
+Database g_DB; // Connection to SQL database.
 Handle g_hDBReconnectTimer;
 
 char g_sDBConfig[256];
@@ -621,10 +621,10 @@ public void OnClientPostAdminCheck(int client)
         {
             char steamid_dirty[31], steamid[64], query[256];
             GetClientAuthId(client, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty));
-            db.Escape(steamid_dirty, steamid, sizeof(steamid));
+            g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
             strcopy(g_sPlayerSteamID[client], 32, steamid);
             Format(query, sizeof(query), "SELECT rating, hitblip, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
-            db.Query(T_SQLQueryOnConnect, query, client);
+            g_DB.Query(T_SQLQueryOnConnect, query, client);
         }
     }
 
@@ -2234,8 +2234,8 @@ void CalcELO(int winner, int loser)
     int time = GetTime();
     char query[512], sCleanArenaname[128], sCleanMapName[128];
 
-    db.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
-    db.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
+    g_DB.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
+    g_DB.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
 
     if (IsValidClient(winner) && !g_bNoDisplayRating)
         MC_PrintToChat(winner, "%t", "GainedPoints", winnerscore);
@@ -2257,22 +2257,22 @@ void CalcELO(int winner, int loser)
     {
         Format(query, sizeof(query), "INSERT INTO mgemod_duels VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s')",
             g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass);
-        db.Query(SQLErrorCheckCallback, query);
+        g_DB.Query(SQLErrorCheckCallback, query);
     } else {
         Format(query, sizeof(query), "INSERT INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, gametime, mapname, arenaname, winnerclass, loserclass) VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s')",
             g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass);
-        db.Query(SQLErrorCheckCallback, query);
+        g_DB.Query(SQLErrorCheckCallback, query);
     }
 
     //winner's stats
     Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[winner], time, g_sPlayerSteamID[winner]);
-    db.Query(SQLErrorCheckCallback, query);
+    g_DB.Query(SQLErrorCheckCallback, query);
 
     //loser's stats
     Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[loser], time, g_sPlayerSteamID[loser]);
-    db.Query(SQLErrorCheckCallback, query);
+    g_DB.Query(SQLErrorCheckCallback, query);
 }
 
 void CalcELO2(int winner, int winner2, int loser, int loser2)
@@ -2301,8 +2301,8 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
     int time = GetTime();
     char query[512], sCleanArenaname[128], sCleanMapName[128];
 
-    db.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
-    db.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
+    g_DB.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
+    g_DB.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
 
     if (IsValidClient(winner) && !g_bNoDisplayRating)
         MC_PrintToChat(winner, "%t", "GainedPoints", winnerscore);
@@ -2328,32 +2328,32 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
     {
         Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s')",
             g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class);
-        db.Query(SQLErrorCheckCallback, query);
+        g_DB.Query(SQLErrorCheckCallback, query);
     } else {
         Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 (winner, winner2, loser, loser2, winnerscore, loserscore, winlimit, gametime, mapname, arenaname, winnerclass, winner2class, loserclass, loser2class) VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s')",
             g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class);
-        db.Query(SQLErrorCheckCallback, query);
+        g_DB.Query(SQLErrorCheckCallback, query);
     }
 
     //winner's stats
     Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[winner], time, g_sPlayerSteamID[winner]);
-    db.Query(SQLErrorCheckCallback, query);
+    g_DB.Query(SQLErrorCheckCallback, query);
 
     //winner's teammate stats
     Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[winner2], time, g_sPlayerSteamID[winner2]);
-    db.Query(SQLErrorCheckCallback, query);
+    g_DB.Query(SQLErrorCheckCallback, query);
 
     //loser's stats
     Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[loser], time, g_sPlayerSteamID[loser]);
-    db.Query(SQLErrorCheckCallback, query);
+    g_DB.Query(SQLErrorCheckCallback, query);
 
     //loser's teammate stats
     Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[loser2], time, g_sPlayerSteamID[loser2]);
-    db.Query(SQLErrorCheckCallback, query);
+    g_DB.Query(SQLErrorCheckCallback, query);
 }
 // ====[ UTIL ]====================================================
 bool LoadSpawnPoints()
@@ -3003,7 +3003,7 @@ int Menu_Top5(Menu menu, MenuAction action, int param1, int param2)
                 char query[256];
                 Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT %i, 5", g_iELOMenuPage[param1] * 5);
                 //new data[] = {param1, param2+5, false};
-                db.Query(T_SQL_Top5, query, param1);
+                g_DB.Query(T_SQL_Top5, query, param1);
             }
             //If the player selected back show the previous menu
             if (param2 == 1)
@@ -3014,14 +3014,14 @@ int Menu_Top5(Menu menu, MenuAction action, int param1, int param2)
                     char query[256];
                     Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT 5");
                     //new data[] = {param1, param2-5, true};
-                    db.Query(T_SQL_Top5, query, param1);
+                    g_DB.Query(T_SQL_Top5, query, param1);
                 }
                 else
                 {
                     char query[256];
                     Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT %i, 5", g_iELOMenuPage[param1] * 5);
                     //new data[] = {param1, param2-5, false};
-                    db.Query(T_SQL_Top5, query, param1);
+                    g_DB.Query(T_SQL_Top5, query, param1);
                 }
             }
         }
@@ -3210,7 +3210,7 @@ Action Command_Top5(int client, int args)
     g_iELOMenuPage[client] = 0;
     char query[256];
     Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT 5");
-    db.Query(T_SQL_Top5, query, client);
+    g_DB.Query(T_SQL_Top5, query, client);
     return Plugin_Continue;
 }
 
@@ -3608,7 +3608,7 @@ Action Command_ConnectionTest(int client, int args)
 
     char query[256];
     Format(query, sizeof(query), "SELECT rating FROM mgemod_stats LIMIT 1");
-    db.Query(T_SQL_Test, query, client);
+    g_DB.Query(T_SQL_Test, query, client);
 
     return Plugin_Handled;
 }
@@ -3884,18 +3884,18 @@ void PrepareSQL() // Opens the connection to the database, and creates the table
     char error[256];
 
     // initial mysql connect
-    if (db == null && SQL_CheckConfig(g_sDBConfig))
+    if (g_DB == null && SQL_CheckConfig(g_sDBConfig))
     {
-        db = SQL_Connect(g_sDBConfig, /* persistent */ true, error, sizeof(error));
+        g_DB = SQL_Connect(g_sDBConfig, /* persistent */ true, error, sizeof(error));
     }
 
     // failed mysql connect for whatever reason (likely no config in databases.cfg)
-    if (db == null)
+    if (g_DB == null)
     {
         LogError("Cant use database config <%s> <Error: %s>, trying SQLite <storage-local>...", g_sDBConfig, error);
-        db = SQL_Connect("storage-local", true, error, sizeof(error));
+        g_DB = SQL_Connect("storage-local", true, error, sizeof(error));
 
-        if (db == null)
+        if (g_DB == null)
         {
             SetFailState("Could not connect to database: %s", error);
         }
@@ -3906,7 +3906,7 @@ void PrepareSQL() // Opens the connection to the database, and creates the table
     }
 
     char ident[16];
-    db.Driver.GetIdentifier(ident, sizeof(ident));
+    g_DB.Driver.GetIdentifier(ident, sizeof(ident));
 
     if (StrEqual(ident, "mysql", false))
     {
@@ -3923,15 +3923,15 @@ void PrepareSQL() // Opens the connection to the database, and creates the table
 
     if (g_bUseSQLite)
     {
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INTEGER, steamid TEXT, name TEXT, wins INTEGER, losses INTEGER, lastplayed INTEGER, hitblip INTEGER)");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner TEXT, loser TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner TEXT, winner2 TEXT, loser TEXT, loser2 TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
+        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INTEGER, steamid TEXT, name TEXT, wins INTEGER, losses INTEGER, lastplayed INTEGER, hitblip INTEGER)");
+        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner TEXT, loser TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
+        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner TEXT, winner2 TEXT, loser TEXT, loser2 TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
     }
     else
     {
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INT(4) NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INT(4) NOT NULL, losses INT(4) NOT NULL, lastplayed INT(11) NOT NULL, hitblip INT(2) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
-        db.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner VARCHAR(32) NOT NULL, winner2 VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, loser2 VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
+        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INT(4) NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INT(4) NOT NULL, losses INT(4) NOT NULL, lastplayed INT(11) NOT NULL, hitblip INT(2) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
+        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
+        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner VARCHAR(32) NOT NULL, winner2 VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, loser2 VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
     }
 
     RunDatabaseMigrations();
@@ -3948,18 +3948,18 @@ void CreateMigrationsTable()
     char query[512];
     if (g_bUseSQLite)
     {
-        db.Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS mgemod_migrations (id INTEGER PRIMARY KEY, migration_name TEXT UNIQUE, executed_at INTEGER)");
+        g_DB.Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS mgemod_migrations (id INTEGER PRIMARY KEY, migration_name TEXT UNIQUE, executed_at INTEGER)");
     }
     else
     {
-        db.Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS mgemod_migrations (id INT AUTO_INCREMENT PRIMARY KEY, migration_name VARCHAR(255) UNIQUE, executed_at INT) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB");
+        g_DB.Format(query, sizeof(query), "CREATE TABLE IF NOT EXISTS mgemod_migrations (id INT AUTO_INCREMENT PRIMARY KEY, migration_name VARCHAR(255) UNIQUE, executed_at INT) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB");
     }
-    db.Query(CreateMigrationsTableCallback, query);
+    g_DB.Query(CreateMigrationsTableCallback, query);
 }
 
-void CreateMigrationsTableCallback(Database owner, DBResultSet hndl, const char[] error, any data)
+void CreateMigrationsTableCallback(Database db, DBResultSet results, const char[] error, any data)
 {
-    if (owner == null)
+    if (db == null)
     {
         LogError("[Migrations] Database connection lost while creating migrations table");
         return;
@@ -3980,22 +3980,22 @@ void CreateMigrationsTableCallback(Database owner, DBResultSet hndl, const char[
 void CheckAndRunMigration(const char[] migrationName)
 {
     char query[256];
-    db.Format(query, sizeof(query), "SELECT COUNT(*) FROM mgemod_migrations WHERE migration_name = '%s'", migrationName);
+    g_DB.Format(query, sizeof(query), "SELECT COUNT(*) FROM mgemod_migrations WHERE migration_name = '%s'", migrationName);
     
     DataPack pack = new DataPack();
     pack.WriteString(migrationName);
     
-    db.Query(CheckMigrationCallback, query, pack);
+    g_DB.Query(CheckMigrationCallback, query, pack);
 }
 
-void CheckMigrationCallback(Database owner, DBResultSet hndl, const char[] error, DataPack pack)
+void CheckMigrationCallback(Database db, DBResultSet results, const char[] error, DataPack pack)
 {
     pack.Reset();
     char migrationName[64];
     pack.ReadString(migrationName, sizeof(migrationName));
     delete pack;
     
-    if (owner == null)
+    if (db == null)
     {
         LogError("[Migrations] Database connection lost while checking migration: %s", migrationName);
         return;
@@ -4007,9 +4007,9 @@ void CheckMigrationCallback(Database owner, DBResultSet hndl, const char[] error
         return;
     }
     
-    if (hndl.FetchRow())
+    if (results.FetchRow())
     {
-        int migrationExists = hndl.FetchInt(0);
+        int migrationExists = results.FetchInt(0);
         if (migrationExists == 0)
         {
             LogMessage("[Migrations] Running migration: %s", migrationName);
@@ -4036,29 +4036,29 @@ void Migration_001_AddClassColumns()
     
     if (g_bUseSQLite)
     {
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass TEXT DEFAULT NULL", 1);
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass TEXT DEFAULT NULL", 2);
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass TEXT DEFAULT NULL", 3);
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class TEXT DEFAULT NULL", 4);
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass TEXT DEFAULT NULL", 5);
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class TEXT DEFAULT NULL", 6);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass TEXT DEFAULT NULL", 1);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass TEXT DEFAULT NULL", 2);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass TEXT DEFAULT NULL", 3);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class TEXT DEFAULT NULL", 4);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass TEXT DEFAULT NULL", 5);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class TEXT DEFAULT NULL", 6);
     }
     else
     {
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL", 1);
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL", 2);
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL", 3);
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class VARCHAR(64) DEFAULT NULL", 4);
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL", 5);
-        db.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class VARCHAR(64) DEFAULT NULL", 6);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL", 1);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL", 2);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL", 3);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class VARCHAR(64) DEFAULT NULL", 4);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL", 5);
+        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class VARCHAR(64) DEFAULT NULL", 6);
     }
 }
 
-void Migration_001_Callback(Database owner, DBResultSet hndl, const char[] error, any data)
+void Migration_001_Callback(Database db, DBResultSet results, const char[] error, any data)
 {
     static int completedSteps = 0;
     
-    if (owner == null)
+    if (db == null)
     {
         LogError("[Migration 001] Database connection lost during step %d", data);
         return;
@@ -4085,12 +4085,12 @@ void MarkMigrationComplete(const char[] migrationName)
 {
     char query[256];
     Format(query, sizeof(query), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('%s', %d)", migrationName, GetTime());
-    db.Query(MarkMigrationCallback, query);
+    g_DB.Query(MarkMigrationCallback, query);
 }
 
-void MarkMigrationCallback(Database owner, DBResultSet hndl, const char[] error, any data)
+void MarkMigrationCallback(Database db, DBResultSet results, const char[] error, any data)
 {
-    if (owner == null)
+    if (db == null)
     {
         LogError("[Migrations] Database connection lost while marking migration complete");
         return;
@@ -4147,17 +4147,17 @@ void GetPlayerClassString(int client, int arena_index, char[] buffer, int maxlen
     }
 }
 
-void T_SQLQueryOnConnect(Database owner, DBResultSet hndl, const char[] error, any data)
+void T_SQLQueryOnConnect(Database db, DBResultSet results, const char[] error, any data)
 {
     int client = data;
 
-    if (owner == null)
+    if (db == null)
     {
         LogError("T_SQLQueryOnConnect failed: database connection lost");
         return;
     }
     
-    if (hndl == null)
+    if (results == null)
     {
         LogError("T_SQLQueryOnConnect failed: %s", error);
         return;
@@ -4174,12 +4174,12 @@ void T_SQLQueryOnConnect(Database owner, DBResultSet hndl, const char[] error, a
     GetClientName(client, namesql_dirty, sizeof(namesql_dirty));
     db.Escape(namesql_dirty, namesql, sizeof(namesql));
 
-    if (hndl.FetchRow())
+    if (results.FetchRow())
     {
-        g_iPlayerRating[client] = hndl.FetchInt(0);
-        g_bHitBlip[client] = hndl.FetchInt(1) == 1;
-        g_iPlayerWins[client] = hndl.FetchInt(2);
-        g_iPlayerLosses[client] = hndl.FetchInt(3);
+        g_iPlayerRating[client] = results.FetchInt(0);
+        g_bHitBlip[client] = results.FetchInt(1) == 1;
+        g_iPlayerWins[client] = results.FetchInt(2);
+        g_iPlayerLosses[client] = results.FetchInt(3);
 
         Format(query, sizeof(query), "UPDATE mgemod_stats SET name='%s' WHERE steamid='%s'", namesql, g_sPlayerSteamID[client]);
         db.Query(SQLErrorCheckCallback, query);
@@ -4198,17 +4198,17 @@ void T_SQLQueryOnConnect(Database owner, DBResultSet hndl, const char[] error, a
     }
 }
 
-void T_SQL_Top5(Database owner, DBResultSet hndl, const char[] error, any data)
+void T_SQL_Top5(Database db, DBResultSet results, const char[] error, any data)
 {
     int client = data;
 
-    if (owner == null)
+    if (db == null)
     {
         LogError("[Top5] Query failed: database connection lost");
         return;
     }
     
-    if (hndl == null)
+    if (results == null)
     {
         LogError("[Top5] Query failed: %s", error);
         return;
@@ -4220,18 +4220,18 @@ void T_SQL_Top5(Database owner, DBResultSet hndl, const char[] error, any data)
         return;
     }
 
-    if (SQL_GetRowCount(hndl) == 5)
+    if (SQL_GetRowCount(results) == 5)
     {
         int rating[5], i;
         char name[5][MAX_NAME_LENGTH];
 
-        while (hndl.FetchRow())
+        while (results.FetchRow())
         {
             if (i > 5)
                 break;
 
-            hndl.FetchString(1, name[i], 64);
-            rating[i] = hndl.FetchInt(0);
+            results.FetchString(1, name[i], 64);
+            rating[i] = results.FetchInt(0);
 
             i++;
         }
@@ -4243,18 +4243,18 @@ void T_SQL_Top5(Database owner, DBResultSet hndl, const char[] error, any data)
 
 }
 
-void T_SQL_Test(Database owner, DBResultSet hndl, const char[] error, any data)
+void T_SQL_Test(Database db, DBResultSet results, const char[] error, any data)
 {
     int client = data;
 
-    if (owner == null)
+    if (db == null)
     {
         LogError("[Test] Query failed: database connection lost");
         PrintToChat(client, "[Test] Database connection lost");
         return;
     }
     
-    if (hndl == null)
+    if (results == null)
     {
         LogError("[Test] Query failed: %s", error);
         PrintToChat(client, "[Test] Query failed: %s", error);
@@ -4267,17 +4267,17 @@ void T_SQL_Test(Database owner, DBResultSet hndl, const char[] error, any data)
         return;
     }
 
-    if (hndl.FetchRow())
+    if (results.FetchRow())
         PrintToChat(client, "\x01Database is \x04Up\x01.");
     else
         PrintToChat(client, "\x01Database is \x04Down\x01.");
 }
 
-void SQLErrorCheckCallback(Database owner, DBResultSet hndl, const char[] error, any data)
+void SQLErrorCheckCallback(Database db, DBResultSet results, const char[] error, any data)
 {
-    if (owner == null)
+    if (db == null)
     {
-        LogError("SQLErrorCheckCallback: Database connection lost (owner handle is null)");
+        LogError("SQLErrorCheckCallback: Database connection lost (db handle is null)");
         
         if (!g_bNoStats)
         {
@@ -4299,9 +4299,9 @@ void SQLErrorCheckCallback(Database owner, DBResultSet hndl, const char[] error,
     }
 }
 
-void SQLDbConnTest(Database owner, DBResultSet hndl, const char[] error, any data)
+void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any data)
 {
-    if (owner == null)
+    if (db == null)
     {
         LogError("Database connection test failed: connection lost");
         LogError("Database reconnect failed, next attempt in %i minutes.", g_iReconnectInterval);
@@ -5474,7 +5474,7 @@ Action Timer_ReconnectToDB(Handle timer)
 
     char query[256];
     Format(query, sizeof(query), "SELECT rating FROM mgemod_stats LIMIT 1");
-    db.Query(SQLDbConnTest, query);
+    g_DB.Query(SQLDbConnTest, query);
 
     return Plugin_Continue;
 }
