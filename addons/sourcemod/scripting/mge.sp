@@ -3944,9 +3944,20 @@ void PrepareSQL() // Opens the connection to the database, and creates the table
     RunDatabaseMigrations();
 }
 
+// Migration tracking structure
+StringMap g_migrationProgress;
+
+void InitializeMigrationSystem()
+{
+    if (g_migrationProgress != null)
+        delete g_migrationProgress;
+    g_migrationProgress = new StringMap();
+}
+
 void RunDatabaseMigrations()
 {
     LogMessage("[Migrations] Starting database schema migrations");
+    InitializeMigrationSystem();
     CreateMigrationsTable();
 }
 
@@ -4034,11 +4045,72 @@ void RunMigration(const char[] migrationName)
 {
     if (StrEqual(migrationName, "001_add_class_columns"))
     {
+        g_migrationProgress.SetValue(migrationName, 6);
         Migration_001_AddClassColumns();
     }
     else if (StrEqual(migrationName, "002_duel_timing_columns"))
     {
+        g_migrationProgress.SetValue(migrationName, 4);
         Migration_002_DuelTimingColumns();
+    }
+}
+
+void ExecuteMigrationStep(const char[] migrationName, const char[] query, int stepNumber)
+{
+    DataPack pack = new DataPack();
+    pack.WriteString(migrationName);
+    pack.WriteCell(stepNumber);
+    g_DB.Query(GenericMigrationCallback, query, pack);
+}
+
+void GenericMigrationCallback(Database db, DBResultSet results, const char[] error, DataPack pack)
+{
+    pack.Reset();
+    char migrationName[64];
+    pack.ReadString(migrationName, sizeof(migrationName));
+    int stepNumber = pack.ReadCell();
+    delete pack;
+    
+    if (db == null)
+    {
+        LogError("[Migration %s] Database connection lost during step %d", migrationName, stepNumber);
+        return;
+    }
+    
+    if (!StrEqual("", error))
+    {
+        LogError("[Migration %s] Step %d failed: %s", migrationName, stepNumber, error);
+        return;
+    }
+    
+    // Get expected total steps for this migration
+    int totalSteps;
+    if (!g_migrationProgress.GetValue(migrationName, totalSteps))
+    {
+        LogError("[Migration %s] No step count registered for migration", migrationName);
+        return;
+    }
+    
+    // Get current progress (completed steps)
+    char progressKey[128];
+    Format(progressKey, sizeof(progressKey), "%s_completed", migrationName);
+    int completedSteps;
+    g_migrationProgress.GetValue(progressKey, completedSteps);
+    
+    completedSteps++;
+    g_migrationProgress.SetValue(progressKey, completedSteps);
+    
+    LogMessage("[Migration %s] Step %d/%d completed", migrationName, completedSteps, totalSteps);
+    
+    // When all steps are complete, mark migration as done
+    if (completedSteps >= totalSteps)
+    {
+        LogMessage("[Migration %s] All steps completed successfully", migrationName);
+        MarkMigrationComplete(migrationName);
+        
+        // Clean up progress tracking for this migration
+        g_migrationProgress.Remove(migrationName);
+        g_migrationProgress.Remove(progressKey);
     }
 }
 
@@ -4048,21 +4120,21 @@ void Migration_001_AddClassColumns()
     
     if (g_bUseSQLite)
     {
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass TEXT DEFAULT NULL", 1);
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass TEXT DEFAULT NULL", 2);
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass TEXT DEFAULT NULL", 3);
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class TEXT DEFAULT NULL", 4);
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass TEXT DEFAULT NULL", 5);
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class TEXT DEFAULT NULL", 6);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels ADD COLUMN winnerclass TEXT DEFAULT NULL", 1);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels ADD COLUMN loserclass TEXT DEFAULT NULL", 2);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass TEXT DEFAULT NULL", 3);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class TEXT DEFAULT NULL", 4);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass TEXT DEFAULT NULL", 5);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class TEXT DEFAULT NULL", 6);
     }
     else
     {
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL", 1);
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL", 2);
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL", 3);
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class VARCHAR(64) DEFAULT NULL", 4);
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL", 5);
-        g_DB.Query(Migration_001_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class VARCHAR(64) DEFAULT NULL", 6);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL", 1);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL", 2);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winnerclass VARCHAR(64) DEFAULT NULL", 3);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN winner2class VARCHAR(64) DEFAULT NULL", 4);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loserclass VARCHAR(64) DEFAULT NULL", 5);
+        ExecuteMigrationStep("001_add_class_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN loser2class VARCHAR(64) DEFAULT NULL", 6);
     }
 }
 
@@ -4073,72 +4145,18 @@ void Migration_002_DuelTimingColumns()
     if (g_bUseSQLite)
     {
         // For SQLite: rename gametime to endtime, then add starttime
-        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels RENAME COLUMN gametime TO endtime", 1);
-        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels ADD COLUMN starttime INTEGER DEFAULT NULL", 2);
-        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels_2v2 RENAME COLUMN gametime TO endtime", 3);
-        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN starttime INTEGER DEFAULT NULL", 4);
+        ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels RENAME COLUMN gametime TO endtime", 1);
+        ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels ADD COLUMN starttime INTEGER DEFAULT NULL", 2);
+        ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels_2v2 RENAME COLUMN gametime TO endtime", 3);
+        ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN starttime INTEGER DEFAULT NULL", 4);
     }
     else
     {
         // For MySQL: change column name and add new column
-        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels CHANGE gametime endtime INT(11) NOT NULL", 1);
-        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels ADD COLUMN starttime INT(11) DEFAULT NULL", 2);
-        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels_2v2 CHANGE gametime endtime INT(11) NOT NULL", 3);
-        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN starttime INT(11) DEFAULT NULL", 4);
-    }
-}
-
-void Migration_001_Callback(Database db, DBResultSet results, const char[] error, any data)
-{
-    static int completedSteps = 0;
-    
-    if (db == null)
-    {
-        LogError("[Migration 001] Database connection lost during step %d", data);
-        return;
-    }
-    
-    if (!StrEqual("", error))
-    {
-        LogError("[Migration 001] Step %d failed: %s", data, error);
-        return;
-    }
-    
-    completedSteps++;
-    
-    // When all steps are complete, mark migration as done
-    if (completedSteps >= 6)
-    {
-        LogMessage("[Migration 001] Successfully added all class tracking columns");
-        MarkMigrationComplete("001_add_class_columns");
-        completedSteps = 0;
-    }
-}
-
-void Migration_002_Callback(Database db, DBResultSet results, const char[] error, any data)
-{
-    static int completedSteps = 0;
-    
-    if (db == null)
-    {
-        LogError("[Migration 002] Database connection lost during step %d", data);
-        return;
-    }
-    
-    if (!StrEqual("", error))
-    {
-        LogError("[Migration 002] Step %d failed: %s", data, error);
-        return;
-    }
-    
-    completedSteps++;
-    
-    // When all steps are complete, mark migration as done
-    if (completedSteps >= 4)
-    {
-        LogMessage("[Migration 002] Successfully converted gametime to endtime and added starttime column");
-        MarkMigrationComplete("002_duel_timing_columns");
-        completedSteps = 0;
+        ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels CHANGE gametime endtime INT(11) NOT NULL", 1);
+        ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels ADD COLUMN starttime INT(11) DEFAULT NULL", 2);
+        ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels_2v2 CHANGE gametime endtime INT(11) NOT NULL", 3);
+        ExecuteMigrationStep("002_duel_timing_columns", "ALTER TABLE mgemod_duels_2v2 ADD COLUMN starttime INT(11) DEFAULT NULL", 4);
     }
 }
 
@@ -4162,8 +4180,6 @@ void MarkMigrationCallback(Database db, DBResultSet results, const char[] error,
         LogError("[Migrations] Failed to mark migration complete: %s", error);
         return;
     }
-    
-    LogMessage("[Migrations] Migration marked as complete");
 }
 
 char[] TFClassToString(TFClassType class)
