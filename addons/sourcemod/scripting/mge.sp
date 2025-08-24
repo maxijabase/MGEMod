@@ -2430,7 +2430,6 @@ bool LoadSpawnPoints()
                     SetFailState("Error in cfg file. Wrong number of parametrs (%d) on spawn <%i> in arena <%s>",count,g_iArenaSpawns[g_iArenaCount],g_sArenaOriginalName[g_iArenaCount]);
                 }
             } while (KvGetNameSymbol(kv, intstr2, id));
-            LogMessage("Loaded %d spawns on arena %s.",g_iArenaSpawns[g_iArenaCount], g_sArenaOriginalName[g_iArenaCount]);
         } else {
             LogError("Could not load spawns on arena %s.", g_sArenaOriginalName[g_iArenaCount]);
         }
@@ -2438,8 +2437,6 @@ bool LoadSpawnPoints()
         if (KvGetNameSymbol(kv, "cap", id)) {
             KvGetString(kv, "cap",  g_sArenaCap[g_iArenaCount], 64);
             g_bArenaHasCap[g_iArenaCount] = true;
-
-            LogMessage("Found cap point on arena %s.", g_sArenaOriginalName[g_iArenaCount]);
         } else {
             g_bArenaHasCap[g_iArenaCount] = false;
         }
@@ -2481,7 +2478,6 @@ bool LoadSpawnPoints()
         //parsing allowed classes for current arena
         char sAllowedClasses[128];
         KvGetString(kv, "classes", sAllowedClasses, sizeof(sAllowedClasses));
-        LogMessage("%s classes: <%s>", g_sArenaOriginalName[g_iArenaCount], sAllowedClasses);
         ParseAllowedClasses(sAllowedClasses,g_tfctArenaAllowedClasses[g_iArenaCount]);
         g_iArenaFraglimit[g_iArenaCount] = g_iArenaMgelimit[g_iArenaCount];
         UpdateArenaName(g_iArenaCount);
@@ -6381,5 +6377,4 @@ void UpdateArenaName(int arena)
         g_bArenaEndif[arena] ? "ENDIF" : ""
     );
     Format(g_sArenaName[arena], sizeof(g_sArenaName), "%s [%s %s]", g_sArenaOriginalName[arena], mode, type);
-    LogMessage("Arena %s updated to %s", g_sArenaOriginalName[arena], g_sArenaName[arena]);
 }
