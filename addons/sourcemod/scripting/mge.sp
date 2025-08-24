@@ -170,6 +170,7 @@ int
     g_iCappingTeam          [MAXARENAS + 1],
     g_iCapturePoint         [MAXARENAS + 1],
     g_iDefaultCapTime       [MAXARENAS + 1],
+    g_iArenaDuelStartTime   [MAXARENAS + 1],  // Unix timestamp when duel started
     //                      [what arena is the cap point in][Team Red or Team Blu Time left]
     g_iKothTimer            [MAXARENAS + 1][4],
     // 1 = neutral, 2 = RED, 3 = BLU
@@ -2253,14 +2254,17 @@ void CalcELO(int winner, int loser)
     GetPlayerClassString(winner, arena_index, winnerClass, sizeof(winnerClass));
     GetPlayerClassString(loser, arena_index, loserClass, sizeof(loserClass));
     
+    int startTime = g_iArenaDuelStartTime[arena_index];
+    int endTime = time;
+    
     if (g_bUseSQLite)
     {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s')",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass);
+        Format(query, sizeof(query), "INSERT INTO mgemod_duels VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i)",
+            g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass, startTime);
         g_DB.Query(SQLErrorCheckCallback, query);
     } else {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, gametime, mapname, arenaname, winnerclass, loserclass) VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s')",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass);
+        Format(query, sizeof(query), "INSERT INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, loserclass) VALUES ('%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s')",
+            g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass);
         g_DB.Query(SQLErrorCheckCallback, query);
     }
 
@@ -2324,14 +2328,17 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
     GetPlayerClassString(loser, arena_index, loserClass, sizeof(loserClass));
     GetPlayerClassString(loser2, arena_index, loser2Class, sizeof(loser2Class));
     
+    int startTime = g_iArenaDuelStartTime[arena_index];
+    int endTime = time;
+    
     if (g_bUseSQLite)
     {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s')",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class);
+        Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', %i)",
+            g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class, startTime);
         g_DB.Query(SQLErrorCheckCallback, query);
     } else {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 (winner, winner2, loser, loser2, winnerscore, loserscore, winlimit, gametime, mapname, arenaname, winnerclass, winner2class, loserclass, loser2class) VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s')",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], time, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class);
+        Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 (winner, winner2, loser, loser2, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, winner2class, loserclass, loser2class) VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s')",
+            g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class);
         g_DB.Query(SQLErrorCheckCallback, query);
     }
 
@@ -3975,6 +3982,7 @@ void CreateMigrationsTableCallback(Database db, DBResultSet results, const char[
     
     // Run individual migrations
     CheckAndRunMigration("001_add_class_columns");
+    CheckAndRunMigration("002_duel_timing_columns");
 }
 
 void CheckAndRunMigration(const char[] migrationName)
@@ -4028,6 +4036,10 @@ void RunMigration(const char[] migrationName)
     {
         Migration_001_AddClassColumns();
     }
+    else if (StrEqual(migrationName, "002_duel_timing_columns"))
+    {
+        Migration_002_DuelTimingColumns();
+    }
 }
 
 void Migration_001_AddClassColumns()
@@ -4054,6 +4066,28 @@ void Migration_001_AddClassColumns()
     }
 }
 
+void Migration_002_DuelTimingColumns()
+{
+    LogMessage("[Migration 002] Converting gametime to endtime and adding starttime column");
+    
+    if (g_bUseSQLite)
+    {
+        // For SQLite: rename gametime to endtime, then add starttime
+        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels RENAME COLUMN gametime TO endtime", 1);
+        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels ADD COLUMN starttime INTEGER DEFAULT NULL", 2);
+        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels_2v2 RENAME COLUMN gametime TO endtime", 3);
+        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN starttime INTEGER DEFAULT NULL", 4);
+    }
+    else
+    {
+        // For MySQL: change column name and add new column
+        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels CHANGE gametime endtime INT(11) NOT NULL", 1);
+        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels ADD COLUMN starttime INT(11) DEFAULT NULL", 2);
+        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels_2v2 CHANGE gametime endtime INT(11) NOT NULL", 3);
+        g_DB.Query(Migration_002_Callback, "ALTER TABLE mgemod_duels_2v2 ADD COLUMN starttime INT(11) DEFAULT NULL", 4);
+    }
+}
+
 void Migration_001_Callback(Database db, DBResultSet results, const char[] error, any data)
 {
     static int completedSteps = 0;
@@ -4077,6 +4111,33 @@ void Migration_001_Callback(Database db, DBResultSet results, const char[] error
     {
         LogMessage("[Migration 001] Successfully added all class tracking columns");
         MarkMigrationComplete("001_add_class_columns");
+        completedSteps = 0;
+    }
+}
+
+void Migration_002_Callback(Database db, DBResultSet results, const char[] error, any data)
+{
+    static int completedSteps = 0;
+    
+    if (db == null)
+    {
+        LogError("[Migration 002] Database connection lost during step %d", data);
+        return;
+    }
+    
+    if (!StrEqual("", error))
+    {
+        LogError("[Migration 002] Step %d failed: %s", data, error);
+        return;
+    }
+    
+    completedSteps++;
+    
+    // When all steps are complete, mark migration as done
+    if (completedSteps >= 4)
+    {
+        LogMessage("[Migration 002] Successfully converted gametime to endtime and added starttime column");
+        MarkMigrationComplete("002_duel_timing_columns");
         completedSteps = 0;
     }
 }
@@ -5036,6 +5097,7 @@ Action Timer_CountDown(Handle timer, any arena_index)
                 g_iArenaStatus[arena_index] = AS_COUNTDOWN;
             } else if (g_iArenaCd[arena_index] <= 0) {
                 g_iArenaStatus[arena_index] = AS_FIGHT;
+                g_iArenaDuelStartTime[arena_index] = GetTime(); // Capture duel start time
                 char msg[64];
                 Format(msg, sizeof(msg), "FIGHT", g_iArenaCd[arena_index]);
                 PrintCenterText(red_f1, msg);
@@ -5103,6 +5165,7 @@ Action Timer_CountDown(Handle timer, any arena_index)
                 g_iArenaStatus[arena_index] = AS_COUNTDOWN;
             } else if (g_iArenaCd[arena_index] <= 0) {
                 g_iArenaStatus[arena_index] = AS_FIGHT;
+                g_iArenaDuelStartTime[arena_index] = GetTime(); // Capture duel start time
                 char msg[64];
                 Format(msg, sizeof(msg), "FIGHT", g_iArenaCd[arena_index]);
                 PrintCenterText(red_f1, msg);
@@ -5328,6 +5391,7 @@ Action Timer_StartDuel(Handle timer, any arena_index)
 
     g_iArenaScore[arena_index][SLOT_ONE] = 0;
     g_iArenaScore[arena_index][SLOT_TWO] = 0;
+    g_iArenaDuelStartTime[arena_index] = 0; // Reset duel start time
     ShowPlayerHud(g_iArenaQueue[arena_index][SLOT_ONE]);
     ShowPlayerHud(g_iArenaQueue[arena_index][SLOT_TWO]);
 
