@@ -229,7 +229,7 @@ TFClassType g_tfctPlayerClass[MAXPLAYERS + 1];
 
 // 2v2 System Variables
 bool g_bPlayer2v2Ready[MAXPLAYERS + 1];  // Player ready status for 2v2 matches
-int g_iPlayer2v2TeamPref[MAXPLAYERS + 1]; // Team preference for queued players
+
 
 // Class tracking for duels
 TFClassType g_tfctPlayerDuelClass[MAXPLAYERS + 1];
@@ -689,8 +689,7 @@ public void OnClientDisconnect(int client)
             g_alPlayerDuelClasses[client] = null;
         }
         
-        // Clear 2v2 team preference and ready status
-        g_iPlayer2v2TeamPref[client] = 0;
+        // Clear 2v2 ready status
         g_bPlayer2v2Ready[client] = false;
 
         if (g_bFourPersonArena[arena_index])
@@ -2166,53 +2165,65 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
     }
 
     // Show 2v2 selection menu if this is a 2v2 arena and no team preference is set
+    // Only show menu if there are available main slots (not all 4 slots filled)
     if (g_bFourPersonArena[arena_index] && playerPrefTeam == 0 && show2v2Menu)
     {
-        // Temporarily set arena to allow menu to access it
-        g_iPlayerArena[client] = arena_index;
-        Show2v2SelectionMenu(client, arena_index);
-        return;
+        // Check if all main slots are filled
+        bool allSlotsFilled = g_iArenaQueue[arena_index][SLOT_ONE] && 
+                             g_iArenaQueue[arena_index][SLOT_TWO] && 
+                             g_iArenaQueue[arena_index][SLOT_THREE] && 
+                             g_iArenaQueue[arena_index][SLOT_FOUR];
+        
+        if (!allSlotsFilled)
+        {
+            // Temporarily set arena to allow menu to access it
+            g_iPlayerArena[client] = arena_index;
+            Show2v2SelectionMenu(client, arena_index);
+            return;
+        }
+        // If all slots filled, continue to regular queue logic
     }
 
-    // Always respect team preference - allow more than 2 players per team for flexibility
+    // For 2v2 arenas, only respect team preference for active slots (team switching)
+    // Queued players just join the first available slot regardless of team
     int player_slot = SLOT_ONE;
-    if (playerPrefTeam == TEAM_RED)
+    if (g_bFourPersonArena[arena_index] && playerPrefTeam != 0)
     {
-        // Try main RED slots first
-        if (!g_iArenaQueue[arena_index][SLOT_ONE])
-            player_slot = SLOT_ONE;
-        else if (g_bFourPersonArena[arena_index] && !g_iArenaQueue[arena_index][SLOT_THREE])
-            player_slot = SLOT_THREE;
-        else
+        // This is team switching for active players only
+        if (playerPrefTeam == TEAM_RED)
         {
-            // Main RED slots full, put in queue but mark as RED preference
-            player_slot = SLOT_FOUR + 1;
-            while (g_iArenaQueue[arena_index][player_slot])
-                player_slot++;
-            // Store team preference for queue management
-            g_iPlayer2v2TeamPref[client] = TEAM_RED;
+            // Try main RED slots first
+            if (!g_iArenaQueue[arena_index][SLOT_ONE])
+                player_slot = SLOT_ONE;
+            else if (!g_iArenaQueue[arena_index][SLOT_THREE])
+                player_slot = SLOT_THREE;
+            else
+            {
+                // RED slots full, put in regular queue
+                player_slot = SLOT_FOUR + 1;
+                while (g_iArenaQueue[arena_index][player_slot])
+                    player_slot++;
+            }
         }
-    }
-    else if (playerPrefTeam == TEAM_BLU)
-    {
-        // Try main BLU slots first  
-        if (!g_iArenaQueue[arena_index][SLOT_TWO])
-            player_slot = SLOT_TWO;
-        else if (g_bFourPersonArena[arena_index] && !g_iArenaQueue[arena_index][SLOT_FOUR])
-            player_slot = SLOT_FOUR;
-        else
+        else if (playerPrefTeam == TEAM_BLU)
         {
-            // Main BLU slots full, put in queue but mark as BLU preference
-            player_slot = SLOT_FOUR + 1;
-            while (g_iArenaQueue[arena_index][player_slot])
-                player_slot++;
-            // Store team preference for queue management
-            g_iPlayer2v2TeamPref[client] = TEAM_BLU;
+            // Try main BLU slots first  
+            if (!g_iArenaQueue[arena_index][SLOT_TWO])
+                player_slot = SLOT_TWO;
+            else if (!g_iArenaQueue[arena_index][SLOT_FOUR])
+                player_slot = SLOT_FOUR;
+            else
+            {
+                // BLU slots full, put in regular queue
+                player_slot = SLOT_FOUR + 1;
+                while (g_iArenaQueue[arena_index][player_slot])
+                    player_slot++;
+            }
         }
     }
     else
     {
-        // No team preference, put in first available slot
+        // Regular queue assignment - find first available slot
         while (g_iArenaQueue[arena_index][player_slot])
             player_slot++;
     }
@@ -3610,6 +3621,12 @@ void Check2v2TeamBalance(int arena_index)
         {
             Update2v2ReadyStatus(arena_index);
         }
+        else if (g_iArenaStatus[arena_index] == AS_AFTERFIGHT || g_iArenaStatus[arena_index] == AS_FIGHT)
+        {
+            // Match just ended and players were promoted, transition to ready system
+            g_iArenaStatus[arena_index] = AS_IDLE;
+            Start2v2ReadySystem(arena_index);
+        }
     }
     else
     {
@@ -3624,25 +3641,24 @@ void Check2v2TeamBalance(int arena_index)
 
 void PromoteQueuedPlayers(int arena_index)
 {
+    bool promotionHappened = false;
+
     // Check if we can promote any queued players to main slots
     for (int slot = SLOT_ONE; slot <= SLOT_FOUR; slot++)
     {
         if (!g_iArenaQueue[arena_index][slot])
         {
-            // Empty main slot, look for queued player with matching team preference
-            int target_team = (slot == SLOT_ONE || slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
-            
-            // Search queue slots for matching team preference
+            // Empty main slot, promote first available queued player
             for (int queue_slot = SLOT_FOUR + 1; queue_slot <= MAXPLAYERS; queue_slot++)
             {
                 int queued_client = g_iArenaQueue[arena_index][queue_slot];
-                if (queued_client && g_iPlayer2v2TeamPref[queued_client] == target_team)
+                if (queued_client)
                 {
                     // Promote this player to main slot
                     g_iArenaQueue[arena_index][slot] = queued_client;
                     g_iArenaQueue[arena_index][queue_slot] = 0;
                     g_iPlayerSlot[queued_client] = slot;
-                    g_iPlayer2v2TeamPref[queued_client] = 0; // Clear preference, now in main slot
+                    promotionHappened = true;
                     
                     // Reset and notify
                     CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(queued_client));
@@ -3650,6 +3666,7 @@ void PromoteQueuedPlayers(int arena_index)
                     char name[MAX_NAME_LENGTH];
                     GetClientName(queued_client, name, sizeof(name));
                     char team_name[16];
+                    int target_team = (slot == SLOT_ONE || slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
                     Format(team_name, sizeof(team_name), (target_team == TEAM_RED) ? "RED" : "BLU");
                     PrintToChatArena(arena_index, "%s moved from queue to %s team", name, team_name);
                     
@@ -3659,8 +3676,11 @@ void PromoteQueuedPlayers(int arena_index)
         }
     }
     
-    // Check team balance after promotions
-    Check2v2TeamBalance(arena_index);
+    // Only check team balance if we actually promoted someone
+    if (promotionHappened)
+    {
+        Check2v2TeamBalance(arena_index);
+    }
 }
 
 void Handle2v2TeamSwitchFromMenu(int client, int arena_index, int target_team)
