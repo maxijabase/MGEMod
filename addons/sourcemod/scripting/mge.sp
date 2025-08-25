@@ -3277,7 +3277,6 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
                 // Switch arena to 1v1 (same logic as !1v1 command)
                 g_bFourPersonArena[arena_index] = false;
                 g_iArenaCdTime[arena_index] = DEFAULT_CDTIME;
-                CreateTimer(1.5, Timer_StartDuel, arena_index);
                 UpdateArenaName(arena_index);
                 
                 // Notify players about mode change (same as !1v1 command)
@@ -3288,6 +3287,9 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
                 if(g_iArenaQueue[arena_index][SLOT_TWO]) {
                     PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to 1v1 arena!");
                 }
+                
+                // Add the player to the arena after converting to 1v1
+                AddInQueue(client, arena_index, true, 0, false);
             }
             else if (StringToInt(info) == 2)
             {
