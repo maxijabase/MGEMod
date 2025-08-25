@@ -664,7 +664,6 @@ public void OnClientDisconnect(int client)
         int
             arena_index = g_iPlayerArena[client],
             player_slot = g_iPlayerSlot[client],
-            after_leaver_slot = player_slot + 1,
             foe_slot = (player_slot == SLOT_ONE || player_slot == SLOT_THREE) ? SLOT_TWO : SLOT_ONE,
             foe = g_iArenaQueue[arena_index][foe_slot];
 
@@ -692,94 +691,30 @@ public void OnClientDisconnect(int client)
         // Clear 2v2 ready status
         g_bPlayer2v2Ready[client] = false;
 
-        if (g_bFourPersonArena[arena_index])
+        // Bot cleanup logic (queue advancement is handled by RemoveFromQueue)
+        if (foe && IsFakeClient(foe))
         {
-            if (g_iArenaQueue[arena_index][SLOT_FOUR + 1])
-            {
-                int next_client = g_iArenaQueue[arena_index][SLOT_FOUR + 1];
-                g_iArenaQueue[arena_index][SLOT_FOUR + 1] = 0;
-                g_iArenaQueue[arena_index][player_slot] = next_client;
-                g_iPlayerSlot[next_client] = player_slot;
-                after_leaver_slot = SLOT_FOUR + 2;
-                char playername[MAX_NAME_LENGTH];
-                CreateTimer(2.0, Timer_StartDuel, arena_index);
-                GetClientName(next_client, playername, sizeof(playername));
-
-                if (!g_bNoStats && !g_bNoDisplayRating)
-                    MC_PrintToChatAll("%t", "JoinsArena", playername, g_iPlayerRating[next_client], g_sArenaName[arena_index]);
-                else
-                    MC_PrintToChatAll("%t", "JoinsArenaNoStats", playername, g_sArenaName[arena_index]);
-
-
-            } else {
-
-                if (foe && IsFakeClient(foe))
-                {
-                    ConVar cvar = FindConVar("tf_bot_quota");
-                    int quota = cvar.IntValue;
-                    ServerCommand("tf_bot_quota %d", quota - 1);
-                }
-
-                if (foe2 && IsFakeClient(foe2))
-                {
-                    ConVar cvar = FindConVar("tf_bot_quota");
-                    int quota = cvar.IntValue;
-                    ServerCommand("tf_bot_quota %d", quota - 1);
-                }
-
-                if (player_teammate && IsFakeClient(player_teammate))
-                {
-                    ConVar cvar = FindConVar("tf_bot_quota");
-                    int quota = cvar.IntValue;
-                    ServerCommand("tf_bot_quota %d", quota - 1);
-                }
-
-                g_iArenaStatus[arena_index] = AS_IDLE;
-                return;
-            }
-        }
-        else
-        {
-            if (g_iArenaQueue[arena_index][SLOT_TWO + 1])
-            {
-                int next_client = g_iArenaQueue[arena_index][SLOT_TWO + 1];
-                g_iArenaQueue[arena_index][SLOT_TWO + 1] = 0;
-                g_iArenaQueue[arena_index][player_slot] = next_client;
-                g_iPlayerSlot[next_client] = player_slot;
-                after_leaver_slot = SLOT_TWO + 2;
-                char playername[MAX_NAME_LENGTH];
-                CreateTimer(2.0, Timer_StartDuel, arena_index);
-                GetClientName(next_client, playername, sizeof(playername));
-
-                if (!g_bNoStats && !g_bNoDisplayRating)
-                    MC_PrintToChatAll("%t", "JoinsArena", playername, g_iPlayerRating[next_client], g_sArenaName[arena_index]);
-                else
-                    MC_PrintToChatAll("%t", "JoinsArenaNoStats", playername, g_sArenaName[arena_index]);
-
-
-            } else {
-                if (foe && IsFakeClient(foe))
-                {
-                    ConVar cvar = FindConVar("tf_bot_quota");
-                    int quota = cvar.IntValue;
-                    ServerCommand("tf_bot_quota %d", quota - 1);
-                }
-
-                g_iArenaStatus[arena_index] = AS_IDLE;
-                return;
-            }
+            ConVar cvar = FindConVar("tf_bot_quota");
+            int quota = cvar.IntValue;
+            ServerCommand("tf_bot_quota %d", quota - 1);
         }
 
-        if (g_iArenaQueue[arena_index][after_leaver_slot])
+        if (foe2 && IsFakeClient(foe2))
         {
-            while (g_iArenaQueue[arena_index][after_leaver_slot])
-            {
-                g_iArenaQueue[arena_index][after_leaver_slot - 1] = g_iArenaQueue[arena_index][after_leaver_slot];
-                g_iPlayerSlot[g_iArenaQueue[arena_index][after_leaver_slot]] -= 1;
-                after_leaver_slot++;
-            }
-            g_iArenaQueue[arena_index][after_leaver_slot - 1] = 0;
+            ConVar cvar = FindConVar("tf_bot_quota");
+            int quota = cvar.IntValue;
+            ServerCommand("tf_bot_quota %d", quota - 1);
         }
+
+        if (player_teammate && IsFakeClient(player_teammate))
+        {
+            ConVar cvar = FindConVar("tf_bot_quota");
+            int quota = cvar.IntValue;
+            ServerCommand("tf_bot_quota %d", quota - 1);
+        }
+
+        g_iArenaStatus[arena_index] = AS_IDLE;
+        return;
     }
 }
 
@@ -2124,11 +2059,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
         g_iArenaQueue[arena_index][after_leaver_slot - 1] = 0;
     }
     
-    // Promote any queued players after disconnection
-    if (arena_index && g_bFourPersonArena[arena_index])
-    {
-        PromoteQueuedPlayers(arena_index);
-    }
+
 }
 
 void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPrefTeam = 0, bool show2v2Menu = true)
@@ -2307,11 +2238,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
         }
     }
 
-    // Promote any queued players after adding to 2v2 arena
-    if (g_bFourPersonArena[arena_index])
-    {
-        PromoteQueuedPlayers(arena_index);
-    }
+
 
     return;
 }
@@ -3590,8 +3517,7 @@ void Handle2v2TeamSwitch(int client, int arena_index, int new_team)
     // Check if we have 2v2 team balance and can start/continue ready process
     Check2v2TeamBalance(arena_index);
     
-    // Check if we can promote any queued players
-    PromoteQueuedPlayers(arena_index);
+
 }
 
 void Check2v2TeamBalance(int arena_index)
@@ -3639,49 +3565,7 @@ void Check2v2TeamBalance(int arena_index)
     }
 }
 
-void PromoteQueuedPlayers(int arena_index)
-{
-    bool promotionHappened = false;
 
-    // Check if we can promote any queued players to main slots
-    for (int slot = SLOT_ONE; slot <= SLOT_FOUR; slot++)
-    {
-        if (!g_iArenaQueue[arena_index][slot])
-        {
-            // Empty main slot, promote first available queued player
-            for (int queue_slot = SLOT_FOUR + 1; queue_slot <= MAXPLAYERS; queue_slot++)
-            {
-                int queued_client = g_iArenaQueue[arena_index][queue_slot];
-                if (queued_client)
-                {
-                    // Promote this player to main slot
-                    g_iArenaQueue[arena_index][slot] = queued_client;
-                    g_iArenaQueue[arena_index][queue_slot] = 0;
-                    g_iPlayerSlot[queued_client] = slot;
-                    promotionHappened = true;
-                    
-                    // Reset and notify
-                    CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(queued_client));
-                    
-                    char name[MAX_NAME_LENGTH];
-                    GetClientName(queued_client, name, sizeof(name));
-                    char team_name[16];
-                    int target_team = (slot == SLOT_ONE || slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
-                    Format(team_name, sizeof(team_name), (target_team == TEAM_RED) ? "RED" : "BLU");
-                    PrintToChatArena(arena_index, "%s moved from queue to %s team", name, team_name);
-                    
-                    break; // Only promote one player per slot
-                }
-            }
-        }
-    }
-    
-    // Only check team balance if we actually promoted someone
-    if (promotionHappened)
-    {
-        Check2v2TeamBalance(arena_index);
-    }
-}
 
 void Handle2v2TeamSwitchFromMenu(int client, int arena_index, int target_team)
 {
