@@ -399,7 +399,10 @@ public void OnPluginStart()
     RegConsoleCmd("handicap", Command_Handicap, "Reduce your maximum HP. Type '!handicap off' to disable.");
     RegConsoleCmd("spec_next", Command_Spec);
     RegConsoleCmd("spec_prev", Command_Spec);
+    RegConsoleCmd("autoteam", Command_AutoTeam);
+    RegConsoleCmd("jointeam", Command_JoinTeam);
     RegConsoleCmd("joinclass", Command_JoinClass);
+    RegConsoleCmd("join_class", Command_JoinClass);
 
     RegAdminCmd("loc", Command_Loc, ADMFLAG_BAN, "Shows client origin and angle vectors");
     RegAdminCmd("botme", Command_AddBot, ADMFLAG_BAN, "Add bot to your arena");
@@ -511,7 +514,6 @@ public void OnMapStart()
         HookEvent("player_death", Event_PlayerDeath, EventHookMode_Pre);
         HookEvent("player_spawn", Event_PlayerSpawn, EventHookMode_Post);
         HookEvent("player_hurt", Event_PlayerHurt, EventHookMode_Pre);
-        HookEvent("player_team", Event_PlayerTeam, EventHookMode_Pre);
         HookEvent("teamplay_round_start", Event_RoundStart, EventHookMode_Post);
         HookEvent("teamplay_win_panel", Event_WinPanel, EventHookMode_Post);
 
@@ -550,7 +552,6 @@ public void OnMapEnd()
     UnhookEvent("player_death", Event_PlayerDeath, EventHookMode_Pre);
     UnhookEvent("player_spawn", Event_PlayerSpawn, EventHookMode_Post);
     UnhookEvent("player_hurt", Event_PlayerHurt, EventHookMode_Pre);
-    UnhookEvent("player_team", Event_PlayerTeam, EventHookMode_Pre);
     UnhookEvent("teamplay_round_start", Event_RoundStart, EventHookMode_Post);
     UnhookEvent("teamplay_win_panel", Event_WinPanel, EventHookMode_Post);
 
@@ -3922,6 +3923,71 @@ Action Command_Ready(int client, int args)
     return Plugin_Handled;
 }
 
+Action Command_AutoTeam(int client, int args)
+{
+    // Block autoteam command usage, and show add menu instead
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+    
+    if (TF2_GetClientTeam(client) == TFTeam_Spectator)
+    {
+        ShowMainMenu(client);
+    }
+    return Plugin_Stop;
+}
+
+Action Command_JoinTeam(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+    
+    // Get the team argument
+    char team[16];
+    GetCmdArg(1, team, sizeof(team));
+    
+    // Allow spectate command to pass through
+    if (!strcmp(team, "spectate"))
+    {
+        // Handle spectating in arenas - treat as !remove for any arena type
+        int arena_index = g_iPlayerArena[client];
+        if (arena_index > 0)
+        {
+            // For any arena (1v1 or 2v2), going to spec means they want to leave
+            MC_PrintToChat(client, "%t", "SpecRemove");
+            RemoveFromQueue(client, true);
+        }
+        
+        // Handle spectator HUD and target logic (moved from Event_PlayerTeam)
+        HideHud(client);
+        CreateTimer(1.0, Timer_ChangeSpecTarget, GetClientUserId(client));
+        
+        return Plugin_Continue;
+    }
+    else
+    {
+        // Block manual team joining for red/blue teams
+        TFTeam currentTeam = TF2_GetClientTeam(client);
+        
+        if (currentTeam == TFTeam_Spectator)
+        {
+            ShowMainMenu(client);
+        }
+        else
+        {
+            // Warn players who are already on a team that they can't manually switch
+            MC_PrintToChat(client, "You cannot manually join teams. Use !add to join an arena or !remove to leave.");
+            
+            // Spawn exploit prevention (moved from Event_PlayerTeam)
+            int arena_index = g_iPlayerArena[client];
+            if (arena_index == 0)
+            {
+                TF2_SetPlayerClass(client, view_as<TFClassType>(0));
+            }
+        }
+        return Plugin_Stop;
+    }
+}
+
 Action Command_JoinClass(int client, int args)
 {
     if (!IsValidClient(client))
@@ -3941,18 +4007,10 @@ Action Command_JoinClass(int client, int args)
         GetCmdArg(1, s_class, sizeof(s_class));
         TFClassType new_class = TF2_GetClass(s_class);
 
-        /*
-        // Work-around to enable heavy. See https://bugs.alliedmods.net/show_bug.cgi?id=5243
-        //if (!new_class && StrEqual(s_class, "heavyweapons") && g_tfctArenaAllowedClasses[arena_index][6])
-        //  new_class = TFClass_Heavy;
-        */
-        // ^ bro this bug was fixed in fucking 2013
         if (new_class == g_tfctPlayerClass[client])
         {
-            return Plugin_Handled; // no need to do anything, as nothing has changed
+            return Plugin_Handled;
         }
-
-
 
         if (arena_index == 0) // if client is on arena
         {
@@ -4075,8 +4133,6 @@ Action Command_JoinClass(int client, int args)
                             int killer_teammate;
                             int killer_team_slot = (killer_slot > 2) ? (killer_slot - 2) : killer_slot;
                             int client_team_slot = (g_iPlayerSlot[client] > 2) ? (g_iPlayerSlot[client] - 2) : g_iPlayerSlot[client];
-
-
 
                             if (g_bFourPersonArena[arena_index])
                             {
@@ -5601,43 +5657,6 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
     return Plugin_Continue;
 }
 
-Action Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast)
-{
-    int client = GetClientOfUserId(event.GetInt("userid"));
-
-    if (!client)
-        return Plugin_Continue;
-
-    int team = event.GetInt("team");
-
-    if (team == TEAM_SPEC)
-    {
-        HideHud(client);
-        CreateTimer(1.0, Timer_ChangeSpecTarget, GetClientUserId(client));
-        int arena_index = g_iPlayerArena[client];
-
-        if (arena_index && ((!g_bFourPersonArena[arena_index] && g_iPlayerSlot[client] <= SLOT_TWO) || (g_bFourPersonArena[arena_index] && g_iPlayerSlot[client] <= SLOT_FOUR)))
-        {
-            MC_PrintToChat(client, "%t", "SpecRemove");
-            RemoveFromQueue(client, true);
-        }
-    } else if (IsValidClient(client)) {  // this code fixing spawn exploit
-        int arena_index = g_iPlayerArena[client];
-
-        if (arena_index == 0)
-        {
-            TF2_SetPlayerClass(client, view_as<TFClassType>(0));
-        }
-        else if (g_bFourPersonArena[arena_index] && (team == TEAM_RED || team == TEAM_BLU))
-        {
-            // Handle team switching in 2v2 arenas
-            Handle2v2TeamSwitch(client, arena_index, team);
-        }
-    }
-
-    event.SetInt("silent", true);
-    return Plugin_Changed;
-}
 
 Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
@@ -6920,14 +6939,6 @@ int getTeammate(int myClientSlot, int arena_index)
 
 }
 
-/* isPlayerWaiting()
- *
- * Gets if a client is waiting
- *---------------------------------------------------------------------*/
-bool isPlayerWaiting(int myClient)
-{
-    return g_iPlayerWaiting[myClient];
-}
 
 /*  EndUlitduo(any arena_index, any winner_team)
 *
