@@ -5616,7 +5616,7 @@ Action Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast)
         CreateTimer(1.0, Timer_ChangeSpecTarget, GetClientUserId(client));
         int arena_index = g_iPlayerArena[client];
 
-        if (arena_index && ((!g_bFourPersonArena[arena_index] && g_iPlayerSlot[client] <= SLOT_TWO) || (g_bFourPersonArena[arena_index] && g_iPlayerSlot[client] <= SLOT_FOUR && !isPlayerWaiting(client))))
+        if (arena_index && ((!g_bFourPersonArena[arena_index] && g_iPlayerSlot[client] <= SLOT_TWO) || (g_bFourPersonArena[arena_index] && g_iPlayerSlot[client] <= SLOT_FOUR)))
         {
             MC_PrintToChat(client, "%t", "SpecRemove");
             RemoveFromQueue(client, true);
