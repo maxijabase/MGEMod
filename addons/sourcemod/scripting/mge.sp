@@ -46,7 +46,8 @@ enum
     AS_COUNTDOWN,
     AS_FIGHT,
     AS_AFTERFIGHT,
-    AS_REPORTED
+    AS_REPORTED,
+    AS_WAITING_READY
 };
 
 // for neutral cap points
@@ -225,6 +226,10 @@ int
     g_iPlayerHandicap       [MAXPLAYERS + 1];
 
 TFClassType g_tfctPlayerClass[MAXPLAYERS + 1];
+
+// 2v2 System Variables
+bool g_bPlayer2v2Ready[MAXPLAYERS + 1];  // Player ready status for 2v2 matches
+int g_iPlayer2v2TeamPref[MAXPLAYERS + 1]; // Team preference for queued players
 
 // Class tracking for duels
 TFClassType g_tfctPlayerDuelClass[MAXPLAYERS + 1];
@@ -405,6 +410,10 @@ public void OnPluginStart()
     RegConsoleCmd("2v2", Command_TwoVsTwo, "Change arena to 2v2");
     RegAdminCmd("koth", Command_Koth, ADMFLAG_BAN, "Change arena to KOTH Mode");
     RegAdminCmd("mge", Command_Mge, ADMFLAG_BAN, "Change arena to MGE Mode");
+    
+    // 2v2 Ready System Commands
+    RegConsoleCmd("ready", Command_Ready, "Mark yourself as ready for 2v2 match");
+    RegConsoleCmd("r", Command_Ready, "Mark yourself as ready for 2v2 match");
 
     AddCommandListener(Command_DropItem, "dropitem");
 
@@ -678,6 +687,10 @@ public void OnClientDisconnect(int client)
             delete g_alPlayerDuelClasses[client];
             g_alPlayerDuelClasses[client] = null;
         }
+        
+        // Clear 2v2 team preference and ready status
+        g_iPlayer2v2TeamPref[client] = 0;
+        g_bPlayer2v2Ready[client] = false;
 
         if (g_bFourPersonArena[arena_index])
         {
@@ -1179,13 +1192,13 @@ Action OnTouchHoop(int entity, int other)
             {
                 RemoveFromQueue(foe, false);
                 RemoveFromQueue(foe_teammate, false);
-                AddInQueue(foe, arena_index, false);
-                AddInQueue(foe_teammate, arena_index, false);
+                AddInQueue(foe, arena_index, false, 0, false);
+                AddInQueue(foe_teammate, arena_index, false, 0, false);
             }
             else if (g_iArenaQueue[arena_index][SLOT_TWO + 1])
             {
                 RemoveFromQueue(foe, false);
-                AddInQueue(foe, arena_index, false);
+                AddInQueue(foe, arena_index, false, 0, false);
             } else {
                 CreateTimer(3.0, Timer_StartDuel, arena_index);
             }
@@ -2110,46 +2123,95 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
         }
         g_iArenaQueue[arena_index][after_leaver_slot - 1] = 0;
     }
+    
+    // Promote any queued players after disconnection
+    if (arena_index && g_bFourPersonArena[arena_index])
+    {
+        PromoteQueuedPlayers(arena_index);
+    }
 }
 
-void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPrefTeam = 0)
+void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPrefTeam = 0, bool show2v2Menu = true)
 {
     if (!IsValidClient(client))
         return;
 
+    // Handle case where player is already in an arena
     if (g_iPlayerArena[client])
     {
-        PrintToChatAll("client <%N> is already on arena %d", client, arena_index);
+        if (g_iPlayerArena[client] == arena_index)
+        {
+            // Player is re-selecting the same arena
+            if (g_bFourPersonArena[arena_index] && playerPrefTeam == 0 && show2v2Menu)
+            {
+                // Show 2v2 menu for team management
+                Show2v2SelectionMenu(client, arena_index);
+                return;
+            }
+            else if (show2v2Menu && playerPrefTeam == 0)
+            {
+                // Regular re-selection with no specific action, just show status
+                MC_PrintToChat(client, "You are already in %s", g_sArenaName[arena_index]);
+                return;
+            }
+            // If show2v2Menu=false or playerPrefTeam!=0, this is an intentional action
+            // (like converting to 1v1 or switching teams), so continue processing
+        }
+        else
+        {
+            // Player is switching to a different arena, remove from current one
+            RemoveFromQueue(client, true);
+        }
     }
 
-    //Set the player to the preffered team if there is room, otherwise just add him in wherever there is a slot
+    // Show 2v2 selection menu if this is a 2v2 arena and no team preference is set
+    if (g_bFourPersonArena[arena_index] && playerPrefTeam == 0 && show2v2Menu)
+    {
+        // Temporarily set arena to allow menu to access it
+        g_iPlayerArena[client] = arena_index;
+        Show2v2SelectionMenu(client, arena_index);
+        return;
+    }
+
+    // Always respect team preference - allow more than 2 players per team for flexibility
     int player_slot = SLOT_ONE;
     if (playerPrefTeam == TEAM_RED)
     {
+        // Try main RED slots first
         if (!g_iArenaQueue[arena_index][SLOT_ONE])
             player_slot = SLOT_ONE;
         else if (g_bFourPersonArena[arena_index] && !g_iArenaQueue[arena_index][SLOT_THREE])
             player_slot = SLOT_THREE;
         else
         {
+            // Main RED slots full, put in queue but mark as RED preference
+            player_slot = SLOT_FOUR + 1;
             while (g_iArenaQueue[arena_index][player_slot])
                 player_slot++;
+            // Store team preference for queue management
+            g_iPlayer2v2TeamPref[client] = TEAM_RED;
         }
     }
     else if (playerPrefTeam == TEAM_BLU)
     {
+        // Try main BLU slots first  
         if (!g_iArenaQueue[arena_index][SLOT_TWO])
             player_slot = SLOT_TWO;
         else if (g_bFourPersonArena[arena_index] && !g_iArenaQueue[arena_index][SLOT_FOUR])
             player_slot = SLOT_FOUR;
         else
         {
+            // Main BLU slots full, put in queue but mark as BLU preference
+            player_slot = SLOT_FOUR + 1;
             while (g_iArenaQueue[arena_index][player_slot])
                 player_slot++;
+            // Store team preference for queue management
+            g_iPlayer2v2TeamPref[client] = TEAM_BLU;
         }
     }
     else
     {
+        // No team preference, put in first available slot
         while (g_iArenaQueue[arena_index][player_slot])
             player_slot++;
     }
@@ -2176,9 +2238,24 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             else
                 MC_PrintToChatAll("%t", "JoinsArenaNoStats", name, g_sArenaName[arena_index]);
 
-            if (g_iArenaQueue[arena_index][SLOT_ONE] && g_iArenaQueue[arena_index][SLOT_TWO] && g_iArenaQueue[arena_index][SLOT_THREE] && g_iArenaQueue[arena_index][SLOT_FOUR])
+            // Check if we have exactly 2 players per team for 2v2 match
+            int red_count = 0;
+            int blu_count = 0;
+            for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
             {
-                CreateTimer(1.5, Timer_StartDuel, arena_index);
+                if (g_iArenaQueue[arena_index][i])
+                {
+                    if (i == SLOT_ONE || i == SLOT_THREE)
+                        red_count++;
+                    else
+                        blu_count++;
+                }
+            }
+            
+            if (red_count == 2 && blu_count == 2)
+            {
+                // Transition to ready waiting state instead of immediately starting
+                Start2v2ReadySystem(arena_index);
             }
             else
                 CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
@@ -2216,6 +2293,12 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             else
                 MC_PrintToChat(client, "%t", "InLine", player_slot - SLOT_TWO);
         }
+    }
+
+    // Promote any queued players after adding to 2v2 arena
+    if (g_bFourPersonArena[arena_index])
+    {
+        PromoteQueuedPlayers(arena_index);
     }
 
     return;
@@ -2874,30 +2957,27 @@ int Menu_Main(Menu menu, MenuAction action, int param1, int param2)
 
             if (arena_index > 0 && arena_index <= g_iArenaCount)
             {
-                if (arena_index == g_iPlayerArena[client])
+                //checking rating (but allow re-selection of same arena)
+                if (arena_index != g_iPlayerArena[client])
                 {
-                    //show warn msg
-                    ShowMainMenu(client, false);
-                    return 0;
+                    int playerrating = g_iPlayerRating[client];
+                    int minrating = g_iArenaMinRating[arena_index];
+                    int maxrating = g_iArenaMaxRating[arena_index];
+
+                    if (minrating > 0 && playerrating < minrating)
+                    {
+                        MC_PrintToChat(client, "%t", "LowRating", playerrating, minrating);
+                        ShowMainMenu(client, false);
+                        return 0;
+                    } else if (maxrating > 0 && playerrating > maxrating) {
+                        MC_PrintToChat(client, "%t", "HighRating", playerrating, maxrating);
+                        ShowMainMenu(client, false);
+                        return 0;
+                    }
                 }
 
-                //checking rating
-                int playerrating = g_iPlayerRating[client];
-                int minrating = g_iArenaMinRating[arena_index];
-                int maxrating = g_iArenaMaxRating[arena_index];
-
-                if (minrating > 0 && playerrating < minrating)
-                {
-                    MC_PrintToChat(client, "%t", "LowRating", playerrating, minrating);
-                    ShowMainMenu(client, false);
-                    return 0;
-                } else if (maxrating > 0 && playerrating > maxrating) {
-                    MC_PrintToChat(client, "%t", "HighRating", playerrating, maxrating);
-                    ShowMainMenu(client, false);
-                    return 0;
-                }
-
-                if (g_iPlayerArena[client])
+                // Always call AddInQueue - it handles re-selection logic internally
+                if (g_iPlayerArena[client] && arena_index != g_iPlayerArena[client])
                     RemoveFromQueue(client, true);
 
                 AddInQueue(client, arena_index);
@@ -3048,6 +3128,567 @@ int Menu_Top5(Menu menu, MenuAction action, int param1, int param2)
 
     return 0;
 }
+
+// ====[ 2V2 SELECTION MENU ]============================================
+void Show2v2SelectionMenu(int client, int arena_index)
+{
+    if (!IsValidClient(client))
+        return;
+
+    char title[128];
+    char menu_item[128];
+
+    Menu menu = new Menu(Menu_2v2Selection);
+
+    // Check if player is already in this arena
+    int current_slot = g_iPlayerSlot[client];
+    bool already_in_arena = (g_iPlayerArena[client] == arena_index && current_slot >= SLOT_ONE && current_slot <= SLOT_FOUR);
+    
+    if (already_in_arena)
+    {
+        char current_team[16];
+        Format(current_team, sizeof(current_team), (current_slot == SLOT_ONE || current_slot == SLOT_THREE) ? "RED" : "BLU");
+        Format(title, sizeof(title), "2v2 Arena Management (Currently on %s team):", current_team);
+    }
+    else
+    {
+        Format(title, sizeof(title), "You selected a 2v2 arena. What would you like to do?");
+    }
+    menu.SetTitle(title);
+
+    // Store arena index in menu data
+    char arena_data[8];
+    IntToString(arena_index, arena_data, sizeof(arena_data));
+
+    // Count current team members
+    int red_count = 0;
+    int blu_count = 0;
+    
+    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
+    {
+        if (g_iArenaQueue[arena_index][i])
+        {
+            if (i == SLOT_ONE || i == SLOT_THREE)
+                red_count++;
+            else
+                blu_count++;
+        }
+    }
+    
+    int total_players = red_count + blu_count;
+
+    // Option 1: Join normally and switch arena to 1v1 (only if logical)
+    bool can_convert_to_1v1 = false;
+    char disable_reason[64];
+    
+    if (total_players <= 1)
+    {
+        // 0-1 players: Can convert (waiting for opponent)
+        can_convert_to_1v1 = true;
+    }
+    else if (total_players == 2 && red_count == 1 && blu_count == 1)
+    {
+        // Exactly 2 players on opposite teams: Perfect for 1v1
+        can_convert_to_1v1 = true;
+    }
+    else if (total_players == 2)
+    {
+        // 2 players on same team: Doesn't make sense for 1v1
+        Format(disable_reason, sizeof(disable_reason), "disabled - both players on same team");
+    }
+    else
+    {
+        // 3+ players: Too many for 1v1
+        Format(disable_reason, sizeof(disable_reason), "disabled - %d players in arena", total_players);
+    }
+    
+    if (can_convert_to_1v1)
+    {
+        Format(menu_item, sizeof(menu_item), "Join normally and switch arena to 1v1");
+        menu.AddItem("1", menu_item);
+    }
+    else
+    {
+        Format(menu_item, sizeof(menu_item), "Switch to 1v1 (%s)", disable_reason);
+        menu.AddItem("1", menu_item, ITEMDRAW_DISABLED);
+    }
+
+    // Option 2: Join RED team
+    Format(menu_item, sizeof(menu_item), "Join RED [%d]", red_count);
+    menu.AddItem("2", menu_item);
+
+    // Option 3: Join BLU team
+    Format(menu_item, sizeof(menu_item), "Join BLU [%d]", blu_count);
+    menu.AddItem("3", menu_item);
+
+    menu.ExitButton = true;
+    menu.Display(client, 0);
+}
+
+int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
+{
+    switch (action)
+    {
+        case MenuAction_Select:
+        {
+            int client = param1;
+            char info[32];
+            menu.GetItem(param2, info, sizeof(info));
+            
+            // Get arena index from stored data or player context
+            int arena_index = g_iPlayerArena[client]; // Should be set when showing menu
+            
+            if (StringToInt(info) == 1)
+            {
+                // Safety check: Only allow 1v1 conversion if logical
+                int red_count = 0, blu_count = 0;
+                for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
+                {
+                    if (g_iArenaQueue[arena_index][i])
+                    {
+                        if (i == SLOT_ONE || i == SLOT_THREE)
+                            red_count++;
+                        else
+                            blu_count++;
+                    }
+                }
+                
+                int total_players = red_count + blu_count;
+                bool can_convert = false;
+                
+                if (total_players <= 1)
+                {
+                    can_convert = true; // Waiting for opponent
+                }
+                else if (total_players == 2 && red_count == 1 && blu_count == 1)
+                {
+                    can_convert = true; // Perfect 1v1 setup
+                }
+                
+                if (!can_convert)
+                {
+                    if (total_players == 2)
+                        PrintToChat(client, "Cannot convert to 1v1 - both players on same team");
+                    else
+                        PrintToChat(client, "Cannot convert to 1v1 - too many players (%d)", total_players);
+                    return 0;
+                }
+                
+                // Switch arena to 1v1 (same logic as !1v1 command)
+                g_bFourPersonArena[arena_index] = false;
+                g_iArenaCdTime[arena_index] = DEFAULT_CDTIME;
+                CreateTimer(1.5, Timer_StartDuel, arena_index);
+                UpdateArenaName(arena_index);
+                
+                // Notify players about mode change (same as !1v1 command)
+                if(g_iArenaQueue[arena_index][SLOT_ONE]) {
+                    PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to 1v1 arena!");
+                }
+                
+                if(g_iArenaQueue[arena_index][SLOT_TWO]) {
+                    PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to 1v1 arena!");
+                }
+            }
+            else if (StringToInt(info) == 2)
+            {
+                // Join RED team
+                Handle2v2TeamSwitchFromMenu(client, arena_index, TEAM_RED);
+            }
+            else if (StringToInt(info) == 3)
+            {
+                // Join BLU team
+                Handle2v2TeamSwitchFromMenu(client, arena_index, TEAM_BLU);
+            }
+        }
+        case MenuAction_Cancel:
+        {
+            // Player cancelled - only clear arena assignment if they weren't in an arena before
+            int client = param1;
+            int current_slot = g_iPlayerSlot[client];
+            
+            // Only clear arena assignment if player wasn't actually placed in a slot yet
+            // (This handles the case where we temporarily set arena during menu display)
+            if (g_iPlayerArena[client] && (current_slot < SLOT_ONE || current_slot > SLOT_FOUR))
+            {
+                g_iPlayerArena[client] = 0;
+                g_iPlayerSlot[client] = 0;
+            }
+            // If player was already in arena slots, leave them there
+        }
+        case MenuAction_End:
+        {
+            delete menu;
+        }
+    }
+
+    return 0;
+}
+
+// ====[ 2V2 READY SYSTEM ]==============================================
+void Start2v2ReadySystem(int arena_index)
+{
+    // Reset all players' ready status
+    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
+    {
+        int client = g_iArenaQueue[arena_index][i];
+        if (client)
+        {
+            g_bPlayer2v2Ready[client] = false;
+        }
+    }
+
+    // Set arena status to waiting for ready
+    g_iArenaStatus[arena_index] = AS_WAITING_READY;
+
+    // Reset all players and show ready menu
+    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
+    {
+        int client = g_iArenaQueue[arena_index][i];
+        if (client)
+        {
+            CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
+            CreateTimer(0.5, Timer_ShowReadyMenu, GetClientUserId(client));
+        }
+    }
+
+    // Notify players about ready state
+    PrintToChatArena(arena_index, "All 4 players joined! Please ready up to start the match.");
+    Update2v2ReadyStatus(arena_index);
+}
+
+void Show2v2ReadyMenu(int client)
+{
+    if (!IsValidClient(client))
+        return;
+
+    int arena_index = g_iPlayerArena[client];
+    if (!arena_index || !g_bFourPersonArena[arena_index] || g_iArenaStatus[arena_index] != AS_WAITING_READY)
+        return;
+
+    char title[128];
+    Menu menu = new Menu(Menu_2v2Ready);
+
+    Format(title, sizeof(title), "Ready for 2v2 match?");
+    menu.SetTitle(title);
+
+    menu.AddItem("1", "Yes, I'm ready!");
+    menu.AddItem("0", "No, not ready");
+
+    menu.ExitButton = true;
+    menu.Display(client, 0);
+}
+
+int Menu_2v2Ready(Menu menu, MenuAction action, int param1, int param2)
+{
+    switch (action)
+    {
+        case MenuAction_Select:
+        {
+            int client = param1;
+            char info[32];
+            menu.GetItem(param2, info, sizeof(info));
+            
+            int arena_index = g_iPlayerArena[client];
+            if (!arena_index || !g_bFourPersonArena[arena_index] || g_iArenaStatus[arena_index] != AS_WAITING_READY)
+                return 0;
+
+            bool ready = StringToInt(info) == 1;
+            g_bPlayer2v2Ready[client] = ready;
+
+            char name[MAX_NAME_LENGTH];
+            GetClientName(client, name, sizeof(name));
+            
+            if (ready)
+            {
+                PrintToChatArena(arena_index, "%s is ready!", name);
+            }
+            else
+            {
+                PrintToChatArena(arena_index, "%s is not ready.", name);
+            }
+
+            Update2v2ReadyStatus(arena_index);
+        }
+        case MenuAction_End:
+        {
+            delete menu;
+        }
+    }
+
+    return 0;
+}
+
+void Update2v2ReadyStatus(int arena_index)
+{
+    int ready_count = 0;
+    int total_players = 0;
+    
+    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
+    {
+        int client = g_iArenaQueue[arena_index][i];
+        if (client)
+        {
+            total_players++;
+            if (g_bPlayer2v2Ready[client])
+                ready_count++;
+        }
+    }
+
+    // Show progress to all players in arena
+    if (total_players == 4)
+    {
+        PrintToChatArena(arena_index, "Ready status: %d/4 players ready", ready_count);
+        
+        if (ready_count == 4)
+        {
+            // All players ready, start the match
+            PrintToChatArena(arena_index, "All players ready! Starting match...");
+            CreateTimer(1.5, Timer_StartDuel, arena_index);
+        }
+    }
+}
+
+void PrintToChatArena(int arena_index, const char[] message, any ...)
+{
+    char buffer[256];
+    VFormat(buffer, sizeof(buffer), message, 3);
+    
+    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
+    {
+        int client = g_iArenaQueue[arena_index][i];
+        if (client)
+        {
+            PrintToChat(client, buffer);
+        }
+    }
+    
+    // Also show to spectators in this arena
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsValidClient(i) && GetClientTeam(i) == TEAM_SPEC && 
+            g_iPlayerSpecTarget[i] > 0 && g_iPlayerArena[g_iPlayerSpecTarget[i]] == arena_index)
+        {
+            PrintToChat(i, buffer);
+        }
+    }
+}
+
+Action Timer_ShowReadyMenu(Handle timer, int userid)
+{
+    int client = GetClientOfUserId(userid);
+    if (client)
+    {
+        Show2v2ReadyMenu(client);
+    }
+    return Plugin_Continue;
+}
+
+Action Timer_Restart2v2Ready(Handle timer, any arena_index)
+{
+    // Check if we still have 4 players in the arena
+    int player_count = 0;
+    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
+    {
+        if (g_iArenaQueue[arena_index][i])
+            player_count++;
+    }
+
+    if (player_count == 4)
+    {
+        // Reset scores and return to ready state
+        g_iArenaScore[arena_index][SLOT_ONE] = 0;
+        g_iArenaScore[arena_index][SLOT_TWO] = 0;
+        Start2v2ReadySystem(arena_index);
+        PrintToChatArena(arena_index, "Match finished! Please ready up for the next round.");
+    }
+    else
+    {
+        // Not enough players, revert to normal behavior
+        g_iArenaStatus[arena_index] = AS_IDLE;
+        ResetArena(arena_index);
+    }
+
+    return Plugin_Continue;
+}
+
+void Handle2v2TeamSwitch(int client, int arena_index, int new_team)
+{
+    int current_slot = g_iPlayerSlot[client];
+    
+    // Only handle switching for players in active slots
+    if (current_slot < SLOT_ONE || current_slot > SLOT_FOUR)
+        return;
+        
+    // Determine current team based on slot
+    int current_team = (current_slot == SLOT_ONE || current_slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
+    
+    // If already on the target team, do nothing
+    if (current_team == new_team)
+        return;
+        
+    // Find available slot on new team
+    int new_slot = 0;
+    if (new_team == TEAM_RED)
+    {
+        if (!g_iArenaQueue[arena_index][SLOT_ONE])
+            new_slot = SLOT_ONE;
+        else if (!g_iArenaQueue[arena_index][SLOT_THREE])
+            new_slot = SLOT_THREE;
+    }
+    else if (new_team == TEAM_BLU)
+    {
+        if (!g_iArenaQueue[arena_index][SLOT_TWO])
+            new_slot = SLOT_TWO;
+        else if (!g_iArenaQueue[arena_index][SLOT_FOUR])
+            new_slot = SLOT_FOUR;
+    }
+    
+    // If no slot available on target team, prevent switch
+    if (new_slot == 0)
+    {
+        char team_name[16];
+        Format(team_name, sizeof(team_name), (new_team == TEAM_RED) ? "RED" : "BLU");
+        PrintToChat(client, "Cannot switch to %s team - no available slots!", team_name);
+        return;
+    }
+    
+    // Clear old slot and assign new slot
+    g_iArenaQueue[arena_index][current_slot] = 0;
+    g_iArenaQueue[arena_index][new_slot] = client;
+    g_iPlayerSlot[client] = new_slot;
+    
+    // Reset ready status if in waiting phase
+    if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
+    {
+        g_bPlayer2v2Ready[client] = false;
+    }
+    
+    // Reset player to spawn on new team
+    CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
+    
+    char name[MAX_NAME_LENGTH];
+    char team_name[16];
+    GetClientName(client, name, sizeof(name));
+    Format(team_name, sizeof(team_name), (new_team == TEAM_RED) ? "RED" : "BLU");
+    
+    PrintToChatArena(arena_index, "%s switched to %s team", name, team_name);
+    
+    // Check if we have 2v2 team balance and can start/continue ready process
+    Check2v2TeamBalance(arena_index);
+    
+    // Check if we can promote any queued players
+    PromoteQueuedPlayers(arena_index);
+}
+
+void Check2v2TeamBalance(int arena_index)
+{
+    int red_count = 0;
+    int blu_count = 0;
+    
+    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
+    {
+        if (g_iArenaQueue[arena_index][i])
+        {
+            if (i == SLOT_ONE || i == SLOT_THREE)
+                red_count++;
+            else
+                blu_count++;
+        }
+    }
+    
+    if (red_count == 2 && blu_count == 2)
+    {
+        // Perfect 2v2 balance
+        if (g_iArenaStatus[arena_index] == AS_IDLE)
+        {
+            Start2v2ReadySystem(arena_index);
+        }
+        else if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
+        {
+            Update2v2ReadyStatus(arena_index);
+        }
+    }
+    else
+    {
+        // Not balanced, inform players
+        if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
+        {
+            g_iArenaStatus[arena_index] = AS_IDLE;
+            PrintToChatArena(arena_index, "Team balance lost (RED: %d, BLU: %d). Need exactly 2 players per team.", red_count, blu_count);
+        }
+    }
+}
+
+void PromoteQueuedPlayers(int arena_index)
+{
+    // Check if we can promote any queued players to main slots
+    for (int slot = SLOT_ONE; slot <= SLOT_FOUR; slot++)
+    {
+        if (!g_iArenaQueue[arena_index][slot])
+        {
+            // Empty main slot, look for queued player with matching team preference
+            int target_team = (slot == SLOT_ONE || slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
+            
+            // Search queue slots for matching team preference
+            for (int queue_slot = SLOT_FOUR + 1; queue_slot <= MAXPLAYERS; queue_slot++)
+            {
+                int queued_client = g_iArenaQueue[arena_index][queue_slot];
+                if (queued_client && g_iPlayer2v2TeamPref[queued_client] == target_team)
+                {
+                    // Promote this player to main slot
+                    g_iArenaQueue[arena_index][slot] = queued_client;
+                    g_iArenaQueue[arena_index][queue_slot] = 0;
+                    g_iPlayerSlot[queued_client] = slot;
+                    g_iPlayer2v2TeamPref[queued_client] = 0; // Clear preference, now in main slot
+                    
+                    // Reset and notify
+                    CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(queued_client));
+                    
+                    char name[MAX_NAME_LENGTH];
+                    GetClientName(queued_client, name, sizeof(name));
+                    char team_name[16];
+                    Format(team_name, sizeof(team_name), (target_team == TEAM_RED) ? "RED" : "BLU");
+                    PrintToChatArena(arena_index, "%s moved from queue to %s team", name, team_name);
+                    
+                    break; // Only promote one player per slot
+                }
+            }
+        }
+    }
+    
+    // Check team balance after promotions
+    Check2v2TeamBalance(arena_index);
+}
+
+void Handle2v2TeamSwitchFromMenu(int client, int arena_index, int target_team)
+{
+    int current_slot = g_iPlayerSlot[client];
+    
+    // Check if player is already in the arena
+    if (current_slot >= SLOT_ONE && current_slot <= SLOT_FOUR)
+    {
+        // Player is already in the arena, handle team switching
+        int current_team = (current_slot == SLOT_ONE || current_slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
+        
+        if (current_team == target_team)
+        {
+            // Player is already on the selected team, just show confirmation
+            char team_name[16];
+            Format(team_name, sizeof(team_name), (target_team == TEAM_RED) ? "RED" : "BLU");
+            PrintToChat(client, "You are already on the %s team!", team_name);
+            return;
+        }
+        
+        // Use the existing team switch handler
+        Handle2v2TeamSwitch(client, arena_index, target_team);
+    }
+    else
+    {
+        // Player is not in arena yet, add them with team preference
+        AddInQueue(client, arena_index, true, target_team, false);
+    }
+}
+
 // ====[ ENDIF ]====================================================
 Action BoostVectors(Handle timer, int userid)
 {
@@ -3145,10 +3786,9 @@ Action Command_Menu(int client, int args)
         int iArg = StringToInt(sArg);
         if (iArg > 0 && iArg <= g_iArenaCount)
         {
-            if (g_iPlayerArena[client] == iArg)
-                return Plugin_Handled;
-
-            if (g_iPlayerArena[client])
+            // Always call AddInQueue - it will handle re-selection logic internally
+            // This allows 2v2 menu to show when re-selecting same arena
+            if (g_iPlayerArena[client] && g_iPlayerArena[client] != iArg)
                 RemoveFromQueue(client, true);
 
             AddInQueue(client, iArg, true, playerPrefTeam);
@@ -3234,6 +3874,49 @@ Action Command_Remove(int client, int args)
         return Plugin_Continue;
 
     RemoveFromQueue(client, true);
+    return Plugin_Handled;
+}
+
+Action Command_Ready(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+
+    int arena_index = g_iPlayerArena[client];
+    if (!arena_index)
+    {
+        PrintToChat(client, "You are not in an arena!");
+        return Plugin_Handled;
+    }
+
+    if (!g_bFourPersonArena[arena_index])
+    {
+        PrintToChat(client, "Ready command is only available in 2v2 arenas!");
+        return Plugin_Handled;
+    }
+
+    if (g_iArenaStatus[arena_index] != AS_WAITING_READY)
+    {
+        PrintToChat(client, "Arena is not waiting for ready confirmation!");
+        return Plugin_Handled;
+    }
+
+    // Toggle ready status
+    g_bPlayer2v2Ready[client] = !g_bPlayer2v2Ready[client];
+
+    char name[MAX_NAME_LENGTH];
+    GetClientName(client, name, sizeof(name));
+    
+    if (g_bPlayer2v2Ready[client])
+    {
+        PrintToChatArena(arena_index, "%s is ready!", name);
+    }
+    else
+    {
+        PrintToChatArena(arena_index, "%s is not ready.", name);
+    }
+
+    Update2v2ReadyStatus(arena_index);
     return Plugin_Handled;
 }
 
@@ -3331,13 +4014,42 @@ Action Command_JoinClass(int client, int args)
 
             if (g_iPlayerSlot[client] == SLOT_ONE || g_iPlayerSlot[client] == SLOT_TWO || (g_bFourPersonArena[arena_index] && (g_iPlayerSlot[client] == SLOT_FOUR || g_iPlayerSlot[client] == SLOT_THREE)))
             {
-                // Check if arena has class change disabled and fight has started
-                // Allow class changes if score is still 0-0, even during fight
-                if (!g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] == AS_FIGHT && 
-                    (g_iArenaScore[arena_index][SLOT_ONE] != 0 || g_iArenaScore[arena_index][SLOT_TWO] != 0))
+                // Special 2v2 class change rules
+                if (g_bFourPersonArena[arena_index])
                 {
-                    MC_PrintToChat(client, "Class changes are disabled during fights in this arena!");
-                    return Plugin_Handled;
+                    if (!g_bArenaClassChange[arena_index])
+                    {
+                        // Class changes only allowed during waiting phase
+                        if (g_iArenaStatus[arena_index] != AS_WAITING_READY && g_iArenaStatus[arena_index] != AS_IDLE)
+                        {
+                            MC_PrintToChat(client, "Class changes are only allowed while waiting for 2v2 match to start!");
+                            return Plugin_Handled;
+                        }
+                    }
+                    else
+                    {
+                        // Class changes allowed during countdown, but slay during fight
+                        if (g_iArenaStatus[arena_index] == AS_FIGHT)
+                        {
+                            MC_PrintToChat(client, "Class change during fight! You will be slayed and respawn next round.");
+                            ForcePlayerSuicide(client);
+                            TF2_SetPlayerClass(client, new_class);
+                            g_tfctPlayerClass[client] = new_class;
+                            return Plugin_Handled;
+                        }
+                    }
+                }
+                else
+                {
+                    // Original logic for 1v1 arenas
+                    // Check if arena has class change disabled and fight has started
+                    // Allow class changes if score is still 0-0, even during fight
+                    if (!g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] == AS_FIGHT && 
+                        (g_iArenaScore[arena_index][SLOT_ONE] != 0 || g_iArenaScore[arena_index][SLOT_TWO] != 0))
+                    {
+                        MC_PrintToChat(client, "Class changes are disabled during fights in this arena!");
+                        return Plugin_Handled;
+                    }
                 }
                 
                 if (g_iArenaStatus[arena_index] != AS_FIGHT || g_bArenaMGE[arena_index] || g_bArenaEndif[arena_index] || g_bArenaKoth[arena_index])
@@ -3434,19 +4146,27 @@ Action Command_JoinClass(int client, int args)
                                 if (g_bFourPersonArena[arena_index] && g_iArenaQueue[arena_index][SLOT_FOUR + 1])
                                 {
                                     RemoveFromQueue(client, false);
-                                    AddInQueue(client, arena_index, false);
+                                    AddInQueue(client, arena_index, false, 0, false);
 
                                     RemoveFromQueue(client_teammate, false);
-                                    AddInQueue(client_teammate, arena_index, false);
+                                    AddInQueue(client_teammate, arena_index, false, 0, false);
                                 }
                                 else if (g_iArenaQueue[arena_index][SLOT_TWO + 1])
                                 {
                                     RemoveFromQueue(client, false);
-                                    AddInQueue(client, arena_index, false);
+                                    AddInQueue(client, arena_index, false, 0, false);
                                 }
                                 else
                                 {
-                                    CreateTimer(3.0, Timer_StartDuel, arena_index);
+                                    // For 2v2 arenas, return to ready state instead of restarting immediately
+                                    if (g_bFourPersonArena[arena_index])
+                                    {
+                                        CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
+                                    }
+                                    else
+                                    {
+                                        CreateTimer(3.0, Timer_StartDuel, arena_index);
+                                    }
                                 }
                             }
 
@@ -4719,7 +5439,7 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
             if (g_iArenaQueue[arena_index][SLOT_TWO + 1])
             {
                 RemoveFromQueue(victim, false, true);
-                AddInQueue(victim, arena_index, false);
+                AddInQueue(victim, arena_index, false, 0, false);
             } else {
                 CreateTimer(3.0, Timer_StartDuel, arena_index);
             }
@@ -4730,16 +5450,24 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
             {
                 RemoveFromQueue(victim_teammate, false, true);
                 RemoveFromQueue(victim, false, true);
-                AddInQueue(victim_teammate, arena_index, false);
-                AddInQueue(victim, arena_index, false);
+                AddInQueue(victim_teammate, arena_index, false, 0, false);
+                AddInQueue(victim, arena_index, false, 0, false);
             }
             else if (g_iArenaQueue[arena_index][SLOT_FOUR + 1])
             {
                 RemoveFromQueue(victim, false, true);
-                AddInQueue(victim, arena_index, false);
+                AddInQueue(victim, arena_index, false, 0, false);
             }
             else {
-                CreateTimer(3.0, Timer_StartDuel, arena_index);
+                // For 2v2 arenas, return to ready state instead of restarting immediately
+                if (g_bFourPersonArena[arena_index])
+                {
+                    CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
+                }
+                else
+                {
+                    CreateTimer(3.0, Timer_StartDuel, arena_index);
+                }
             }
         }
     }
@@ -4897,6 +5625,11 @@ Action Event_PlayerTeam(Event event, const char[] name, bool dontBroadcast)
         if (arena_index == 0)
         {
             TF2_SetPlayerClass(client, view_as<TFClassType>(0));
+        }
+        else if (g_bFourPersonArena[arena_index] && (team == TEAM_RED || team == TEAM_BLU))
+        {
+            // Handle team switching in 2v2 arenas
+            Handle2v2TeamSwitch(client, arena_index, team);
         }
     }
 
@@ -6257,15 +6990,23 @@ void EndKoth(any arena_index, any winner_team)
         {
             RemoveFromQueue(foe, false);
             RemoveFromQueue(foe_teammate, false);
-            AddInQueue(foe, arena_index, false);
-            AddInQueue(foe_teammate, arena_index, false);
+            AddInQueue(foe, arena_index, false, 0, false);
+            AddInQueue(foe_teammate, arena_index, false, 0, false);
         }
         else if (g_iArenaQueue[arena_index][SLOT_TWO + 1])
         {
             RemoveFromQueue(foe, false);
-            AddInQueue(foe, arena_index, false);
+            AddInQueue(foe, arena_index, false, 0, false);
         } else {
-            CreateTimer(3.0, Timer_StartDuel, arena_index);
+            // For 2v2 arenas, return to ready state instead of restarting immediately
+            if (g_bFourPersonArena[arena_index])
+            {
+                CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
+            }
+            else
+            {
+                CreateTimer(3.0, Timer_StartDuel, arena_index);
+            }
         }
     } else {
         ResetArena(arena_index);
