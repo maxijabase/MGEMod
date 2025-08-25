@@ -1950,7 +1950,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 g_iPlayerSlot[next_client] = player_slot;
                 after_leaver_slot = SLOT_FOUR + 2;
                 char playername[MAX_NAME_LENGTH];
-                CreateTimer(2.0, Timer_StartDuel, arena_index);
+                CreateTimer(2.0, Timer_Restart2v2Ready, arena_index);
                 GetClientName(next_client, playername, sizeof(playername));
 
                 if (!g_bNoStats && !g_bNoDisplayRating)
