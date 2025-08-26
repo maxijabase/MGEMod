@@ -13,7 +13,7 @@
 #include <sdkhooks>
 #include <morecolors>
 // ====[ CONSTANTS ]===================================================
-#define PL_VERSION "3.1.0"
+#define PL_VERSION "3.1.0-beta"
 #define MAXARENAS 63
 #define MAXSPAWNS 15
 #define HUDFADEOUTTIME 120.0
@@ -3844,11 +3844,11 @@ Action Command_JoinTeam(int client, int args)
 {
     if (!IsValidClient(client))
         return Plugin_Continue;
-    
+
     // Get the team argument
     char team[16];
     GetCmdArg(1, team, sizeof(team));
-    
+
     // Allow spectate command to pass through
     if (!strcmp(team, "spectate"))
     {
@@ -3860,18 +3860,38 @@ Action Command_JoinTeam(int client, int args)
             MC_PrintToChat(client, "%t", "SpecRemove");
             RemoveFromQueue(client, true);
         }
-        
+
         // Handle spectator HUD and target logic (moved from Event_PlayerTeam)
         HideHud(client);
         CreateTimer(1.0, Timer_ChangeSpecTarget, GetClientUserId(client));
-        
+
         return Plugin_Continue;
     }
     else
     {
-        // Block manual team joining for red/blue teams
+        // Check if player is in a 2v2 arena and trying to switch teams
+        int arena_index = g_iPlayerArena[client];
         TFTeam currentTeam = TF2_GetClientTeam(client);
-        
+
+        if (arena_index > 0 && g_bFourPersonArena[arena_index] &&
+            currentTeam != TFTeam_Spectator && currentTeam != TFTeam_Unassigned)
+        {
+            // Player is in a 2v2 arena - allow team switching
+            int target_team = 0;
+            if (!strcmp(team, "red"))
+                target_team = TEAM_RED;
+            else if (!strcmp(team, "blue") || !strcmp(team, "blu"))
+                target_team = TEAM_BLU;
+
+            if (target_team != 0)
+            {
+                // Use existing 2v2 team switch logic
+                Handle2v2TeamSwitch(client, arena_index, target_team);
+                return Plugin_Stop;
+            }
+        }
+
+        // Block manual team joining for red/blue teams (default behavior)
         if (currentTeam == TFTeam_Spectator)
         {
             ShowMainMenu(client);
@@ -3880,9 +3900,8 @@ Action Command_JoinTeam(int client, int args)
         {
             // Warn players who are already on a team that they can't manually switch
             MC_PrintToChat(client, "You cannot manually join teams. Use !add to join an arena or !remove to leave.");
-            
+
             // Spawn exploit prevention (moved from Event_PlayerTeam)
-            int arena_index = g_iPlayerArena[client];
             if (arena_index == 0)
             {
                 TF2_SetPlayerClass(client, view_as<TFClassType>(0));
