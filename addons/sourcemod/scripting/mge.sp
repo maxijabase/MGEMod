@@ -3160,7 +3160,7 @@ void Show2v2SelectionMenu(int client, int arena_index)
     Format(menu_item, sizeof(menu_item), "Join BLU [%d]", blu_count);
     menu.AddItem("3", menu_item);
 
-    menu.ExitButton = true;
+    menu.ExitBackButton = true;
     menu.Display(client, 0);
 }
 
@@ -3254,7 +3254,11 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
                 g_iPlayerArena[client] = 0;
                 g_iPlayerSlot[client] = 0;
             }
-            // If player was already in arena slots, leave them there
+
+            if (param2 == MenuCancel_ExitBack)
+            {
+                ShowMainMenu(client);
+            }
         }
         case MenuAction_End:
         {
