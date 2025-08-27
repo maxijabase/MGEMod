@@ -3120,25 +3120,46 @@ void Show2v2SelectionMenu(int client, int arena_index)
     bool can_convert_to_1v1 = false;
     char disable_reason[64];
     
-    if (total_players <= 1)
+    if (already_in_arena)
     {
-        // 0-1 players: Can convert (waiting for opponent)
-        can_convert_to_1v1 = true;
-    }
-    else if (total_players == 2 && red_count == 1 && blu_count == 1)
-    {
-        // Exactly 2 players on opposite teams: Perfect for 1v1
-        can_convert_to_1v1 = true;
-    }
-    else if (total_players == 2)
-    {
-        // 2 players on same team: Doesn't make sense for 1v1
-        Format(disable_reason, sizeof(disable_reason), "disabled - both players on same team");
+        // Player is already in arena - use existing logic
+        if (total_players <= 1)
+        {
+            // 0-1 players: Can convert (waiting for opponent)
+            can_convert_to_1v1 = true;
+        }
+        else if (total_players == 2 && red_count == 1 && blu_count == 1)
+        {
+            // Exactly 2 players on opposite teams: Perfect for 1v1
+            can_convert_to_1v1 = true;
+        }
+        else if (total_players == 2)
+        {
+            // 2 players on same team: Doesn't make sense for 1v1
+            Format(disable_reason, sizeof(disable_reason), "disabled - both players on same team");
+        }
+        else
+        {
+            // 3+ players: Too many for 1v1
+            Format(disable_reason, sizeof(disable_reason), "disabled - %d players in arena", total_players);
+        }
     }
     else
     {
-        // 3+ players: Too many for 1v1
-        Format(disable_reason, sizeof(disable_reason), "disabled - %d players in arena", total_players);
+        // Player is NOT in arena - allow 1v1 conversion if arena is empty or has exactly 1 player
+        if (total_players == 0)
+        {
+            can_convert_to_1v1 = true;
+        }
+        else if (total_players == 1)
+        {
+            // 1 player in arena: Perfect for joining and converting to 1v1
+            can_convert_to_1v1 = true;
+        }
+        else
+        {
+            Format(disable_reason, sizeof(disable_reason), "disabled - arena not empty", total_players);
+        }
     }
     
     if (can_convert_to_1v1)
@@ -3195,27 +3216,59 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
                 int total_players = red_count + blu_count;
                 bool can_convert = false;
                 
-                if (total_players <= 1)
+                // Check if player is already in this arena
+                int current_slot = g_iPlayerSlot[client];
+                bool already_in_arena = (g_iPlayerArena[client] == arena_index && current_slot >= SLOT_ONE && current_slot <= SLOT_FOUR);
+                
+                if (already_in_arena)
                 {
-                    can_convert = true; // Waiting for opponent
+                    // Player is already in arena - use existing logic
+                    if (total_players <= 1)
+                    {
+                        can_convert = true; // Waiting for opponent
+                    }
+                    else if (total_players == 2 && red_count == 1 && blu_count == 1)
+                    {
+                        can_convert = true; // Perfect 1v1 setup
+                    }
                 }
-                else if (total_players == 2 && red_count == 1 && blu_count == 1)
+                else
                 {
-                    can_convert = true; // Perfect 1v1 setup
+                    // Player is NOT in arena - allow 1v1 conversion if arena is empty or has exactly 1 player
+                    if (total_players == 0)
+                    {
+                        can_convert = true;
+                    }
+                    else if (total_players == 1)
+                    {
+                        // 1 player in arena: Perfect for joining and converting to 1v1
+                        can_convert = true;
+                    }
                 }
                 
                 if (!can_convert)
                 {
-                    if (total_players == 2)
-                        PrintToChat(client, "Cannot convert to 1v1 - both players on same team");
+                    if (already_in_arena)
+                    {
+                        if (total_players == 2)
+                            PrintToChat(client, "Cannot convert to 1v1 - both players on same team");
+                        else
+                            PrintToChat(client, "Cannot convert to 1v1 - too many players (%d)", total_players);
+                    }
                     else
-                        PrintToChat(client, "Cannot convert to 1v1 - too many players (%d)", total_players);
+                    {
+                        if (total_players == 1)
+                            PrintToChat(client, "Cannot convert to 1v1 - arena has 1 player but you are not in arena");
+                        else
+                            PrintToChat(client, "Cannot convert to 1v1 - arena not empty (%d players)", total_players);
+                    }
                     return 0;
                 }
                 
                 // Switch arena to 1v1 (same logic as !1v1 command)
                 g_bFourPersonArena[arena_index] = false;
                 g_iArenaCdTime[arena_index] = DEFAULT_CDTIME;
+                CreateTimer(1.5, Timer_StartDuel, arena_index);
                 UpdateArenaName(arena_index);
                 
                 // Notify players about mode change (same as !1v1 command)
@@ -3227,8 +3280,16 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
                     PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to 1v1 arena!");
                 }
                 
-                // Add the player to the arena after converting to 1v1
-                AddInQueue(client, arena_index, true, 0, false);
+                // If player is not already in the arena, add them
+                if (g_iPlayerArena[client] != arena_index || g_iPlayerSlot[client] < SLOT_ONE || g_iPlayerSlot[client] > SLOT_FOUR)
+                {
+                    AddInQueue(client, arena_index, true, 0, false);
+                }
+                else
+                {
+                    // Player is already in arena, just reset them for 1v1 mode
+                    CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
+                }
             }
             else if (StringToInt(info) == 2)
             {
