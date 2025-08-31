@@ -403,6 +403,7 @@ public void OnPluginStart()
     RegConsoleCmd("jointeam", Command_JoinTeam);
     RegConsoleCmd("joinclass", Command_JoinClass);
     RegConsoleCmd("join_class", Command_JoinClass);
+    RegConsoleCmd("eureka_teleport", Command_EurekaTeleport);
 
     RegAdminCmd("loc", Command_Loc, ADMFLAG_BAN, "Shows client origin and angle vectors");
     RegAdminCmd("botme", Command_AddBot, ADMFLAG_BAN, "Add bot to your arena");
@@ -4344,6 +4345,11 @@ Action Command_Spec(int client, int args)
 
     CreateTimer(0.1, Timer_ChangeSpecTarget, GetClientUserId(client));
     return Plugin_Continue;
+}
+
+Action Command_EurekaTeleport(int client, int args)
+{
+    return Plugin_Handled;
 }
 
 Action Command_AddBot(int client, int args)
