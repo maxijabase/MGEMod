@@ -3266,18 +3266,10 @@ Action Command_JoinClass(int client, int args)
         GetCmdArg(1, s_class, sizeof(s_class));
         TFClassType new_class = TF2_GetClass(s_class);
 
-        /*
-        // Work-around to enable heavy. See https://bugs.alliedmods.net/show_bug.cgi?id=5243
-        //if (!new_class && StrEqual(s_class, "heavyweapons") && g_tfctArenaAllowedClasses[arena_index][6])
-        //  new_class = TFClass_Heavy;
-        */
-        // ^ bro this bug was fixed in fucking 2013
         if (new_class == g_tfctPlayerClass[client])
         {
             return Plugin_Handled; // no need to do anything, as nothing has changed
         }
-
-
 
         if (arena_index == 0) // if client is on arena
         {
