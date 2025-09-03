@@ -708,12 +708,7 @@ public void OnClientDisconnect(int client)
                 CreateTimer(2.0, Timer_StartDuel, arena_index);
                 GetClientName(next_client, playername, sizeof(playername));
 
-                if (!g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client])
-                    MC_PrintToChatAll("%t", "JoinsArena", playername, g_iPlayerRating[next_client], g_sArenaName[arena_index]);
-                else
-                    MC_PrintToChatAll("%t", "JoinsArenaNoStats", playername, g_sArenaName[arena_index]);
-
-
+                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
             } else {
 
                 if (foe && IsFakeClient(foe))
@@ -754,12 +749,7 @@ public void OnClientDisconnect(int client)
                 CreateTimer(2.0, Timer_StartDuel, arena_index);
                 GetClientName(next_client, playername, sizeof(playername));
 
-                if (!g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client])
-                    MC_PrintToChatAll("%t", "JoinsArena", playername, g_iPlayerRating[next_client], g_sArenaName[arena_index]);
-                else
-                    MC_PrintToChatAll("%t", "JoinsArenaNoStats", playername, g_sArenaName[arena_index]);
-
-
+                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
             } else {
                 if (foe && IsFakeClient(foe))
                 {
@@ -1894,6 +1884,20 @@ void HideHud(int client)
     ClearSyncHud(client, hm_HP);
 }
 
+void SendArenaJoinMessage(const char[] playername, int player_rating, const char[] arena_name, bool show_elo)
+{
+    for (int i = 1; i <= MaxClients; ++i)
+    {
+        if (!IsClientInGame(i))
+            continue;
+            
+        if (show_elo && g_bShowElo[i])
+            MC_PrintToChat(i, "%t", "JoinsArena", playername, player_rating, arena_name);
+        else
+            MC_PrintToChat(i, "%t", "JoinsArenaNoStats", playername, arena_name);
+    }
+}
+
 // ====[ QUEUE ]====================================================
 void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
 {
@@ -2021,12 +2025,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 CreateTimer(2.0, Timer_StartDuel, arena_index);
                 GetClientName(next_client, playername, sizeof(playername));
 
-                if (!g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client])
-                    MC_PrintToChatAll("%t", "JoinsArena", playername, g_iPlayerRating[next_client], g_sArenaName[arena_index]);
-                else
-                    MC_PrintToChatAll("%t", "JoinsArenaNoStats", playername, g_sArenaName[arena_index]);
-
-
+                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
             } else {
                 if (foe && IsFakeClient(foe))
                 {
@@ -2097,12 +2096,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 CreateTimer(2.0, Timer_StartDuel, arena_index);
                 GetClientName(next_client, playername, sizeof(playername));
 
-                if (!g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client])
-                    MC_PrintToChatAll("%t", "JoinsArena", playername, g_iPlayerRating[next_client], g_sArenaName[arena_index]);
-                else
-                    MC_PrintToChatAll("%t", "JoinsArenaNoStats", playername, g_sArenaName[arena_index]);
-
-
+                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
             } else {
                 if (foe && IsFakeClient(foe))
                 {
@@ -2187,10 +2181,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             char name[MAX_NAME_LENGTH];
             GetClientName(client, name, sizeof(name));
 
-            if (!g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client])
-                MC_PrintToChatAll("%t", "JoinsArena", name, g_iPlayerRating[client], g_sArenaName[arena_index]);
-            else
-                MC_PrintToChatAll("%t", "JoinsArenaNoStats", name, g_sArenaName[arena_index]);
+            SendArenaJoinMessage(name, g_iPlayerRating[client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client]);
 
             if (g_iArenaQueue[arena_index][SLOT_ONE] && g_iArenaQueue[arena_index][SLOT_TWO] && g_iArenaQueue[arena_index][SLOT_THREE] && g_iArenaQueue[arena_index][SLOT_FOUR])
             {
@@ -2214,10 +2205,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             char name[MAX_NAME_LENGTH];
             GetClientName(client, name, sizeof(name));
 
-            if (!g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client])
-                MC_PrintToChatAll("%t", "JoinsArena", name, g_iPlayerRating[client], g_sArenaName[arena_index]);
-            else
-                MC_PrintToChatAll("%t", "JoinsArenaNoStats", name, g_sArenaName[arena_index]);
+            SendArenaJoinMessage(name, g_iPlayerRating[client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client]);
 
             if (g_iArenaQueue[arena_index][SLOT_ONE] && g_iArenaQueue[arena_index][SLOT_TWO])
             {
