@@ -3823,6 +3823,18 @@ void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] new
 
 }
 
+void CloseClientMenu(int client)
+{
+    if (!IsValidClient(client))
+        return;
+
+    if (GetClientMenu(client, null) != MenuSource_None)
+    {
+        InternalShowMenu(client, "\10", 1);
+        CancelClientMenu(client, true, null);
+    }
+}
+
 // ====[ COMMANDS ]====================================================
 Action Command_Menu(int client, int args)
 {
@@ -3853,6 +3865,7 @@ Action Command_Menu(int client, int args)
         if (iArg > 0 && iArg <= g_iArenaCount)
         {
             // Always call AddInQueue - it will handle re-selection logic internally
+            CloseClientMenu(client);
             AddInQueue(client, iArg, true, playerPrefTeam);
             return Plugin_Handled;
         }
@@ -3873,11 +3886,10 @@ Action Command_Menu(int client, int args)
         // If there was only one string match, and it was a valid match, place the player in that arena if they aren't already in it.
         if (found_arena > 0 && found_arena <= g_iArenaCount && found_arena != g_iPlayerArena[client])
         {
+            CloseClientMenu(client);
             AddInQueue(client, found_arena, true, playerPrefTeam);
             return Plugin_Handled;
         }
-
-
     }
 
     // Couldn't find a matching arena for the argument.
@@ -4595,6 +4607,7 @@ Action Command_First(int client, int args)
         {
             if (g_iArenaQueue[i][SLOT_ONE])
             {
+                CloseClientMenu(client);
                 AddInQueue(client, i, true);
                 return Plugin_Handled;
             }
@@ -4608,6 +4621,7 @@ Action Command_First(int client, int args)
         {
             if (!g_iArenaQueue[i][SLOT_TWO] && g_iPlayerArena[client] != i)
             {
+                CloseClientMenu(client);
                 AddInQueue(client, i, true);
                 return Plugin_Handled;
             }
