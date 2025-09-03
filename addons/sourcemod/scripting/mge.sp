@@ -730,6 +730,13 @@ public void OnClientDisconnect(int client)
             ServerCommand("tf_bot_quota %d", quota - 1);
         }
 
+        // Ensure any 2v2 waiting/spec players are restored on disconnect
+        if (g_bFourPersonArena[arena_index])
+        {
+            Restore2v2WaitingSpectators(arena_index);
+            CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
+        }
+
         g_iArenaStatus[arena_index] = AS_IDLE;
         return;
     }
@@ -1351,6 +1358,10 @@ int StartCountDown(int arena_index)
             CreateTimer(0.1, Timer_CountDown, arena_index, TIMER_FLAG_NO_MAPCHANGE);
             return 1;
         } else {
+            if (g_bFourPersonArena[arena_index])
+            {
+                Restore2v2WaitingSpectators(arena_index);
+            }
             g_iArenaStatus[arena_index] = AS_IDLE;
             return 0;
         }
@@ -1405,6 +1416,10 @@ int StartCountDown(int arena_index)
         }
         else
         {
+            if (g_bFourPersonArena[arena_index])
+            {
+                Restore2v2WaitingSpectators(arena_index);
+            }
             g_iArenaStatus[arena_index] = AS_IDLE;
             return 0;
         }
@@ -1991,6 +2006,12 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                     ConVar cvar = FindConVar("tf_bot_quota");
                     int quota = cvar.IntValue;
                     ServerCommand("tf_bot_quota %d", quota - 1);
+                }
+
+                if (g_bFourPersonArena[arena_index])
+                {
+                    Restore2v2WaitingSpectators(arena_index);
+                    CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
                 }
 
                 g_iArenaStatus[arena_index] = AS_IDLE;
@@ -3536,6 +3557,8 @@ Action Timer_Restart2v2Ready(Handle timer, any arena_index)
         // Reset scores and return to ready state
         g_iArenaScore[arena_index][SLOT_ONE] = 0;
         g_iArenaScore[arena_index][SLOT_TWO] = 0;
+        // Ensure any players that were placed into spectator (waiting) are restored
+        Restore2v2WaitingSpectators(arena_index);
         Start2v2ReadySystem(arena_index);
         PrintToChatArena(arena_index, "Match finished! Please ready up for the next round.");
     }
@@ -3543,6 +3566,8 @@ Action Timer_Restart2v2Ready(Handle timer, any arena_index)
     {
         // Not enough players, revert to normal behavior
         g_iArenaStatus[arena_index] = AS_IDLE;
+        // Still restore any parked spectators in case teams refill
+        Restore2v2WaitingSpectators(arena_index);
         ResetArena(arena_index);
     }
 
@@ -3648,6 +3673,11 @@ void Check2v2TeamBalance(int arena_index)
         {
             // Match just ended and players were promoted, transition to ready system
             g_iArenaStatus[arena_index] = AS_IDLE;
+            // Restore any waiting/spec players before readying again
+            if (g_bFourPersonArena[arena_index])
+            {
+                Restore2v2WaitingSpectators(arena_index);
+            }
             Start2v2ReadySystem(arena_index);
         }
     }
@@ -3657,6 +3687,10 @@ void Check2v2TeamBalance(int arena_index)
         if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
         {
             g_iArenaStatus[arena_index] = AS_IDLE;
+            if (g_bFourPersonArena[arena_index])
+            {
+                Restore2v2WaitingSpectators(arena_index);
+            }
             PrintToChatArena(arena_index, "Team balance lost (RED: %d, BLU: %d). Need exactly 2 players per team.", red_count, blu_count);
         }
     }
@@ -6018,6 +6052,10 @@ Action Timer_CountDown(Handle timer, any arena_index)
             CreateTimer(1.0, Timer_CountDown, arena_index, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
             return Plugin_Stop;
         } else {
+            if (g_bFourPersonArena[arena_index])
+            {
+                Restore2v2WaitingSpectators(arena_index);
+            }
             g_iArenaStatus[arena_index] = AS_IDLE;
             g_iArenaCd[arena_index] = 0;
             return Plugin_Stop;
@@ -7181,6 +7219,34 @@ void ResetArena(int arena_index)
             {
                 SetEntPropFloat(medigunIndex, Prop_Send, "m_flChargeLevel", 0.0);
             }
+        }
+    }
+}
+
+// Restores any 2v2 participants who were moved to spectator while waiting for their teammate
+// to finish the round. Ensures they are back on the correct team, clears waiting flag, and
+// schedules a reset to spawn them properly.
+void Restore2v2WaitingSpectators(int arena_index)
+{
+    if (!g_bFourPersonArena[arena_index])
+        return;
+
+    for (int slot = SLOT_ONE; slot <= SLOT_FOUR; slot++)
+    {
+        int client = g_iArenaQueue[arena_index][slot];
+        if (!IsValidClient(client))
+            continue;
+
+        bool isSpec = (GetClientTeam(client) == TEAM_SPEC);
+        if (g_iPlayerWaiting[client] || isSpec)
+        {
+            int targetTeam = (slot == SLOT_ONE || slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
+            if (GetClientTeam(client) != targetTeam)
+            {
+                ChangeClientTeam(client, targetTeam);
+            }
+            g_iPlayerWaiting[client] = false;
+            CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
         }
     }
 }
