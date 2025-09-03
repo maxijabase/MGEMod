@@ -169,6 +169,10 @@
 	{
 		"en"			"[MGE] hud\t - Toggle text hud overlay."
 	}
+	"Cmd_Elo"
+	{
+		"en"			"[MGE] elo\t - Toggle ELO display."
+	}
 	"Cmd_Handicap"
 	{
 		"en"			"[MGE] handicap - Reduce your maximum HP. Type '!handicap off' to disable."

@@ -12,6 +12,7 @@
 #include <tf2_stocks>
 #include <sdkhooks>
 #include <morecolors>
+#include <clientprefs>
 // ====[ CONSTANTS ]===================================================
 #define PL_VERSION "3.1.0-beta2"
 #define MAXARENAS 63
@@ -79,6 +80,9 @@ Handle
     hm_KothTimerBLU,
     hm_KothTimerRED,
     hm_KothCap;
+
+// Cookie Handles
+Handle g_hShowEloCookie;
 
 // Global Variables
 char g_sMapName[256];
@@ -208,6 +212,7 @@ bool
     g_bPlayerHasIntel       [MAXPLAYERS + 1],
     g_bHitBlip              [MAXPLAYERS + 1],
     g_bShowHud              [MAXPLAYERS + 1] = { true, ... },
+    g_bShowElo              [MAXPLAYERS + 1] = { true, ... },
     g_iPlayerWaiting        [MAXPLAYERS + 1],
     g_bCanPlayerSwap        [MAXPLAYERS + 1],
     g_bCanPlayerGetIntel    [MAXPLAYERS + 1];
@@ -314,6 +319,9 @@ public void OnPluginStart()
     LoadTranslations("common.phrases");
     LoadTranslations("mgemod.phrases");
 
+    // Initialize cookies
+    g_hShowEloCookie = RegClientCookie("mgemod_showelo", "MGEMod ELO display preference", CookieAccess_Private);
+
     //ConVars
     CreateConVar("sm_mgemod_version", PL_VERSION, "MGEMod version", FCVAR_SPONLY | FCVAR_NOTIFY);
     gcvar_fragLimit = CreateConVar("mgemod_fraglimit", "3", "Default frag limit in duel", FCVAR_NONE, true, 1.0);
@@ -392,6 +400,7 @@ public void OnPluginStart()
     RegConsoleCmd("hitblip", Command_ToogleHitblip, "Toggle hitblip!");
     RegConsoleCmd("hud", Command_ToggleHud, "Toggle text hud.");
     RegConsoleCmd("hidehud", Command_ToggleHud, "Toggle text hud. (alias)");
+    RegConsoleCmd("elo", Command_ToggleElo, "Toggle ELO display.");
     RegConsoleCmd("rank", Command_Rank, "Usage: rank <player name>. Show that player's rank.");
     RegConsoleCmd("stats", Command_Rank, "Alias for \"rank\".");
     RegConsoleCmd("mgehelp", Command_Help);
@@ -626,6 +635,13 @@ public void OnClientPostAdminCheck(int client)
         g_bHitBlip[client] = false;
         g_bShowHud[client] = true;
         g_bPlayerRestoringAmmo[client] = false;
+        g_bShowElo[client] = true;
+        
+        // Load ELO display preference from cookie
+        char cookieValue[8];
+        GetClientCookie(client, g_hShowEloCookie, cookieValue, sizeof(cookieValue));
+        if (strlen(cookieValue) > 0)
+            g_bShowElo[client] = (StringToInt(cookieValue) == 1);
         
         // Initialize class tracking ArrayList
         if (g_alPlayerDuelClasses[client] != null)
@@ -700,6 +716,29 @@ public void OnClientDisconnect(int client)
             ServerCommand("tf_bot_quota %d", quota - 1);
         }
 
+        if (g_bFourPersonArena[arena_index])
+        {
+            if (g_iArenaQueue[arena_index][SLOT_FOUR + 1])
+            {
+                int next_client = g_iArenaQueue[arena_index][SLOT_FOUR + 1];
+                g_iArenaQueue[arena_index][SLOT_FOUR + 1] = 0;
+                g_iArenaQueue[arena_index][player_slot] = next_client;
+                g_iPlayerSlot[next_client] = player_slot;
+                after_leaver_slot = SLOT_FOUR + 2;
+                char playername[MAX_NAME_LENGTH];
+                CreateTimer(2.0, Timer_StartDuel, arena_index);
+                GetClientName(next_client, playername, sizeof(playername));
+
+                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
+            } else {
+
+                if (foe && IsFakeClient(foe))
+                {
+                    ConVar cvar = FindConVar("tf_bot_quota");
+                    int quota = cvar.IntValue;
+                    ServerCommand("tf_bot_quota %d", quota - 1);
+                }
+
         if (foe2 && IsFakeClient(foe2))
         {
             ConVar cvar = FindConVar("tf_bot_quota");
@@ -716,6 +755,47 @@ public void OnClientDisconnect(int client)
 
         g_iArenaStatus[arena_index] = AS_IDLE;
         return;
+                g_iArenaStatus[arena_index] = AS_IDLE;
+                return;
+            }
+        }
+        else
+        {
+            if (g_iArenaQueue[arena_index][SLOT_TWO + 1])
+            {
+                int next_client = g_iArenaQueue[arena_index][SLOT_TWO + 1];
+                g_iArenaQueue[arena_index][SLOT_TWO + 1] = 0;
+                g_iArenaQueue[arena_index][player_slot] = next_client;
+                g_iPlayerSlot[next_client] = player_slot;
+                after_leaver_slot = SLOT_TWO + 2;
+                char playername[MAX_NAME_LENGTH];
+                CreateTimer(2.0, Timer_StartDuel, arena_index);
+                GetClientName(next_client, playername, sizeof(playername));
+
+                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
+            } else {
+                if (foe && IsFakeClient(foe))
+                {
+                    ConVar cvar = FindConVar("tf_bot_quota");
+                    int quota = cvar.IntValue;
+                    ServerCommand("tf_bot_quota %d", quota - 1);
+                }
+
+                g_iArenaStatus[arena_index] = AS_IDLE;
+                return;
+            }
+        }
+
+        if (g_iArenaQueue[arena_index][after_leaver_slot])
+        {
+            while (g_iArenaQueue[arena_index][after_leaver_slot])
+            {
+                g_iArenaQueue[arena_index][after_leaver_slot - 1] = g_iArenaQueue[arena_index][after_leaver_slot];
+                g_iPlayerSlot[g_iArenaQueue[arena_index][after_leaver_slot]] -= 1;
+                after_leaver_slot++;
+            }
+            g_iArenaQueue[arena_index][after_leaver_slot - 1] = 0;
+        }
     }
 }
 
@@ -1608,14 +1688,14 @@ void ShowPlayerHud(int client)
         {
             if (red_f2)
             {
-                if (g_bNoStats || g_bNoDisplayRating)
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                     Format(report, sizeof(report), "%s\n%N and %N : %d", report, red_f1, red_f2, g_iArenaScore[arena_index][SLOT_ONE]);
                 else
                     Format(report, sizeof(report), "%s\n%N and %N (%d): %d", report, red_f1, red_f2, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
             }
             else
             {
-                if (g_bNoStats || g_bNoDisplayRating)
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                     Format(report, sizeof(report), "%s\n%N : %d", report, red_f1, g_iArenaScore[arena_index][SLOT_ONE]);
                 else
                     Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f1, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
@@ -1627,14 +1707,14 @@ void ShowPlayerHud(int client)
         {
             if (blu_f2)
             {
-                if (g_bNoStats || g_bNoDisplayRating)
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                     Format(report, sizeof(report), "%s\n%N and %N : %d", report, blu_f1, blu_f2, g_iArenaScore[arena_index][SLOT_TWO]);
                 else
                     Format(report, sizeof(report), "%s\n%N and %N (%d): %d", report, blu_f1, blu_f2, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
             }
             else
             {
-                if (g_bNoStats || g_bNoDisplayRating)
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                     Format(report, sizeof(report), "%s\n%N : %d", report, blu_f1, g_iArenaScore[arena_index][SLOT_TWO]);
                 else
                     Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f1, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
@@ -1646,7 +1726,7 @@ void ShowPlayerHud(int client)
     {
         if (red_f1)
         {
-            if (g_bNoStats || g_bNoDisplayRating)
+            if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                 Format(report, sizeof(report), "%s\n%N : %d", report, red_f1, g_iArenaScore[arena_index][SLOT_ONE]);
             else
                 Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f1, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
@@ -1654,7 +1734,7 @@ void ShowPlayerHud(int client)
 
         if (blu_f1)
         {
-            if (g_bNoStats || g_bNoDisplayRating)
+            if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                 Format(report, sizeof(report), "%s\n%N : %d", report, blu_f1, g_iArenaScore[arena_index][SLOT_TWO]);
             else
                 Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f1, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
@@ -1746,14 +1826,14 @@ void ShowSpecHudToClient(int client)
         {
             if (red_f2)
             {
-                if (g_bNoStats || g_bNoDisplayRating)
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                     Format(report, sizeof(report), "%s\n%N and %N : %d", report, red_f1, red_f2, g_iArenaScore[arena_index][SLOT_ONE]);
                 else
                     Format(report, sizeof(report), "%s\n%N and %N (%d): %d", report, red_f1, red_f2, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
             }
             else
             {
-                if (g_bNoStats || g_bNoDisplayRating)
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                     Format(report, sizeof(report), "%s\n%N : %d", report, red_f1, g_iArenaScore[arena_index][SLOT_ONE]);
                 else
                     Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f1, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
@@ -1765,14 +1845,14 @@ void ShowSpecHudToClient(int client)
         {
             if (blu_f2)
             {
-                if (g_bNoStats || g_bNoDisplayRating)
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                     Format(report, sizeof(report), "%s\n%N and %N : %d", report, blu_f1, blu_f2, g_iArenaScore[arena_index][SLOT_TWO]);
                 else
                     Format(report, sizeof(report), "%s\n%N and %N (%d): %d", report, blu_f1, blu_f2, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
             }
             else
             {
-                if (g_bNoStats || g_bNoDisplayRating)
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                     Format(report, sizeof(report), "%s\n%N : %d", report, blu_f1, g_iArenaScore[arena_index][SLOT_TWO]);
                 else
                     Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f1, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
@@ -1784,7 +1864,7 @@ void ShowSpecHudToClient(int client)
     {
         if (red_f1)
         {
-            if (g_bNoStats || g_bNoDisplayRating)
+            if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                 Format(report, sizeof(report), "%s\n%N : %d", report, red_f1, g_iArenaScore[arena_index][SLOT_ONE]);
             else
                 Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f1, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
@@ -1792,7 +1872,7 @@ void ShowSpecHudToClient(int client)
 
         if (blu_f1)
         {
-            if (g_bNoStats || g_bNoDisplayRating)
+            if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                 Format(report, sizeof(report), "%s\n%N : %d", report, blu_f1, g_iArenaScore[arena_index][SLOT_TWO]);
             else
                 Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f1, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
@@ -1825,6 +1905,20 @@ void HideHud(int client)
 
     ClearSyncHud(client, hm_Score);
     ClearSyncHud(client, hm_HP);
+}
+
+void SendArenaJoinMessage(const char[] playername, int player_rating, const char[] arena_name, bool show_elo)
+{
+    for (int i = 1; i <= MaxClients; ++i)
+    {
+        if (!IsClientInGame(i))
+            continue;
+            
+        if (show_elo && g_bShowElo[i])
+            MC_PrintToChat(i, "%t", "JoinsArena", playername, player_rating, arena_name);
+        else
+            MC_PrintToChat(i, "%t", "JoinsArenaNoStats", playername, arena_name);
+    }
 }
 
 // ====[ QUEUE ]====================================================
@@ -1954,12 +2048,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 CreateTimer(2.0, Timer_Restart2v2Ready, arena_index);
                 GetClientName(next_client, playername, sizeof(playername));
 
-                if (!g_bNoStats && !g_bNoDisplayRating)
-                    MC_PrintToChatAll("%t", "JoinsArena", playername, g_iPlayerRating[next_client], g_sArenaName[arena_index]);
-                else
-                    MC_PrintToChatAll("%t", "JoinsArenaNoStats", playername, g_sArenaName[arena_index]);
-
-
+                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
             } else {
                 if (foe && IsFakeClient(foe))
                 {
@@ -2030,12 +2119,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 CreateTimer(2.0, Timer_StartDuel, arena_index);
                 GetClientName(next_client, playername, sizeof(playername));
 
-                if (!g_bNoStats && !g_bNoDisplayRating)
-                    MC_PrintToChatAll("%t", "JoinsArena", playername, g_iPlayerRating[next_client], g_sArenaName[arena_index]);
-                else
-                    MC_PrintToChatAll("%t", "JoinsArenaNoStats", playername, g_sArenaName[arena_index]);
-
-
+                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
             } else {
                 if (foe && IsFakeClient(foe))
                 {
@@ -2177,10 +2261,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             char name[MAX_NAME_LENGTH];
             GetClientName(client, name, sizeof(name));
 
-            if (!g_bNoStats && !g_bNoDisplayRating)
-                MC_PrintToChatAll("%t", "JoinsArena", name, g_iPlayerRating[client], g_sArenaName[arena_index]);
-            else
-                MC_PrintToChatAll("%t", "JoinsArenaNoStats", name, g_sArenaName[arena_index]);
+            SendArenaJoinMessage(name, g_iPlayerRating[client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client]);
 
             // Check if we have exactly 2 players per team for 2v2 match
             int red_count = 0;
@@ -2219,10 +2300,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             char name[MAX_NAME_LENGTH];
             GetClientName(client, name, sizeof(name));
 
-            if (!g_bNoStats && !g_bNoDisplayRating)
-                MC_PrintToChatAll("%t", "JoinsArena", name, g_iPlayerRating[client], g_sArenaName[arena_index]);
-            else
-                MC_PrintToChatAll("%t", "JoinsArenaNoStats", name, g_sArenaName[arena_index]);
+            SendArenaJoinMessage(name, g_iPlayerRating[client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client]);
 
             if (g_iArenaQueue[arena_index][SLOT_ONE] && g_iArenaQueue[arena_index][SLOT_TWO])
             {
@@ -2270,10 +2348,10 @@ void CalcELO(int winner, int loser)
     g_DB.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
     g_DB.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
 
-    if (IsValidClient(winner) && !g_bNoDisplayRating)
+    if (IsValidClient(winner) && !g_bNoDisplayRating && g_bShowElo[winner])
         MC_PrintToChat(winner, "%t", "GainedPoints", winnerscore);
 
-    if (IsValidClient(loser) && !g_bNoDisplayRating)
+    if (IsValidClient(loser) && !g_bNoDisplayRating && g_bShowElo[loser])
         MC_PrintToChat(loser, "%t", "LostPoints", loserscore);
 
     //This is necessary for when a player leaves a 2v2 arena that is almost done.
@@ -2346,16 +2424,16 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
     g_DB.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
     g_DB.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
 
-    if (IsValidClient(winner) && !g_bNoDisplayRating)
+    if (IsValidClient(winner) && !g_bNoDisplayRating && g_bShowElo[winner])
         MC_PrintToChat(winner, "%t", "GainedPoints", winnerscore);
 
-    if (IsValidClient(winner2) && !g_bNoDisplayRating)
+    if (IsValidClient(winner2) && !g_bNoDisplayRating && g_bShowElo[winner2])
         MC_PrintToChat(winner2, "%t", "GainedPoints", winnerscore);
 
-    if (IsValidClient(loser) && !g_bNoDisplayRating)
+    if (IsValidClient(loser) && !g_bNoDisplayRating && g_bShowElo[loser])
         MC_PrintToChat(loser, "%t", "LostPoints", loserscore);
 
-    if (IsValidClient(loser2) && !g_bNoDisplayRating)
+    if (IsValidClient(loser2) && !g_bNoDisplayRating && g_bShowElo[loser2])
         MC_PrintToChat(loser2, "%t", "LostPoints", loserscore);
 
 
@@ -4437,6 +4515,20 @@ Action Command_ToggleHud(int client, int args)
     return Plugin_Handled;
 }
 
+Action Command_ToggleElo(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+
+    g_bShowElo[client] = !g_bShowElo[client];
+
+    // Save the preference to client cookie
+    SetClientCookie(client, g_hShowEloCookie, g_bShowElo[client] ? "1" : "0");
+
+    PrintToChat(client, "\x01ELO display is \x04%sabled\x01.", g_bShowElo[client] ? "en":"dis");
+    return Plugin_Handled;
+}
+
 Action Command_Rank(int client, int args)
 {
     if (g_bNoStats || !IsValidClient(client))
@@ -4444,7 +4536,7 @@ Action Command_Rank(int client, int args)
 
     if (args == 0)
     {
-        if (g_bNoDisplayRating)
+        if (g_bNoDisplayRating || !g_bShowElo[client])
             MC_PrintToChat(client, "%t", "MyRankNoRating", g_iPlayerWins[client], g_iPlayerLosses[client]);
         else
             MC_PrintToChat(client, "%t", "MyRank", g_iPlayerRating[client], g_iPlayerWins[client], g_iPlayerLosses[client]);
@@ -4455,12 +4547,12 @@ Action Command_Rank(int client, int args)
 
         if (targ == client)
         {
-            if (g_bNoDisplayRating)
+            if (g_bNoDisplayRating || !g_bShowElo[client])
                 MC_PrintToChat(client, "%t", "MyRankNoRating", g_iPlayerWins[client], g_iPlayerLosses[client]);
             else
                 MC_PrintToChat(client, "%t", "MyRank", g_iPlayerRating[client], g_iPlayerWins[client], g_iPlayerLosses[client]);
         } else if (targ != -1) {
-            if (g_bNoDisplayRating)
+            if (g_bNoDisplayRating || !g_bShowElo[client])
                 PrintToChat(client, "\x03%N\x01 has \x04%i\x01 wins and \x04%i\x01 losses. You have a \x04%i%%\x01 chance of beating him.", targ, g_iPlayerWins[targ], g_iPlayerLosses[targ], RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targ] - g_iPlayerRating[client])) / 400) + 1)) * 100));
             else
                 PrintToChat(client, "\x03%N\x01's rating is \x04%i\x01. You have a \x04%i%%\x01 chance of beating him.", targ, g_iPlayerRating[targ], RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targ] - g_iPlayerRating[client])) / 400) + 1)) * 100));
@@ -4486,6 +4578,7 @@ Action Command_Help(int client, int args)
     PrintToConsole(client, "%t", "Cmd_Rank");
     PrintToConsole(client, "%t", "Cmd_HitBlip");
     PrintToConsole(client, "%t", "Cmd_Hud");
+    PrintToConsole(client, "%t", "Cmd_Elo");
     PrintToConsole(client, "%t", "Cmd_Handicap");
     PrintToConsole(client, "----------------------------\n\n");
 
