@@ -230,11 +230,13 @@ int
     g_iPlayerRating         [MAXPLAYERS + 1],
     g_iPlayerHandicap       [MAXPLAYERS + 1];
 
+// Pending arena context used when presenting menus without committing to arena changes yet
+int g_iPendingArena[MAXPLAYERS + 1];
+
 TFClassType g_tfctPlayerClass[MAXPLAYERS + 1];
 
 // 2v2 System Variables
 bool g_bPlayer2v2Ready[MAXPLAYERS + 1];  // Player ready status for 2v2 matches
-
 
 // Class tracking for duels
 TFClassType g_tfctPlayerDuelClass[MAXPLAYERS + 1];
@@ -2112,35 +2114,24 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
     // Handle case where player is already in an arena
     if (g_iPlayerArena[client])
     {
-        // If player is already in an arena, remove them before re-adding
-        // This handles team switching and moving from queue to active slot
-        if (g_iPlayerSlot[client] != 0)
-        {
-            g_iArenaQueue[g_iPlayerArena[client]][g_iPlayerSlot[client]] = 0;
-        }
-
         if (g_iPlayerArena[client] == arena_index)
         {
             // Player is re-selecting the same arena
             if (g_bFourPersonArena[arena_index] && playerPrefTeam == 0 && show2v2Menu)
             {
-                // Show 2v2 menu for team management
                 Show2v2SelectionMenu(client, arena_index);
                 return;
             }
             else if (show2v2Menu && playerPrefTeam == 0)
             {
-                // Regular re-selection with no specific action, just show status
                 MC_PrintToChat(client, "You are already in %s", g_sArenaName[arena_index]);
                 return;
             }
-            // If show2v2Menu=false or playerPrefTeam!=0, this is an intentional action
-            // (like converting to 1v1 or switching teams), so continue processing
-        }
-        else
-        {
-            // Player is switching to a different arena, remove from current one
-            RemoveFromQueue(client, true);
+            // Intentional action (team switch / re-slot) within same arena: clear old slot now
+            if (g_iPlayerSlot[client] != 0)
+            {
+                g_iArenaQueue[g_iPlayerArena[client]][g_iPlayerSlot[client]] = 0;
+            }
         }
     }
 
@@ -2156,8 +2147,8 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
         
         if (!allSlotsFilled)
         {
-            // Temporarily set arena to allow menu to access it
-            g_iPlayerArena[client] = arena_index;
+            // Show menu using pending arena context
+            g_iPendingArena[client] = arena_index;
             Show2v2SelectionMenu(client, arena_index);
             return;
         }
@@ -2208,6 +2199,11 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             player_slot++;
     }
 
+    // If committing to a different arena now, cleanly remove from current first
+    if (g_iPlayerArena[client] && g_iPlayerArena[client] != arena_index)
+    {
+        RemoveFromQueue(client, true);
+    }
     g_iPlayerArena[client] = arena_index;
     g_iPlayerSlot[client] = player_slot;
     g_iArenaQueue[arena_index][player_slot] = client;
@@ -2967,11 +2963,7 @@ int Menu_Main(Menu menu, MenuAction action, int param1, int param2)
                         return 0;
                     }
                 }
-
                 // Always call AddInQueue - it handles re-selection logic internally
-                if (g_iPlayerArena[client] && arena_index != g_iPlayerArena[client])
-                    RemoveFromQueue(client, true);
-
                 AddInQueue(client, arena_index);
 
             } else {
@@ -3248,8 +3240,8 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
             char info[32];
             menu.GetItem(param2, info, sizeof(info));
             
-            // Get arena index from stored data or player context
-            int arena_index = g_iPlayerArena[client]; // Should be set when showing menu
+            // Get arena index from pending context (preferred) or current arena
+            int arena_index = g_iPendingArena[client] ? g_iPendingArena[client] : g_iPlayerArena[client];
             
             if (StringToInt(info) == 1)
             {
@@ -3343,16 +3335,49 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
                     // Player is already in arena, just reset them for 1v1 mode
                     CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
                 }
+
+                // Clear pending arena after action
+                g_iPendingArena[client] = 0;
             }
             else if (StringToInt(info) == 2)
             {
                 // Join RED team
-                Handle2v2TeamSwitchFromMenu(client, arena_index, TEAM_RED);
+                if (g_iPlayerArena[client] != arena_index)
+                {
+                    // Switching arenas: remove from current on confirm, then add with team pref
+                    if (g_iPlayerArena[client])
+                    {
+                        RemoveFromQueue(client, true);
+                    }
+                    AddInQueue(client, arena_index, true, TEAM_RED, false);
+                }
+                else
+                {
+                    Handle2v2TeamSwitchFromMenu(client, arena_index, TEAM_RED);
+                }
+
+                // Clear pending arena after action
+                g_iPendingArena[client] = 0;
             }
             else if (StringToInt(info) == 3)
             {
                 // Join BLU team
-                Handle2v2TeamSwitchFromMenu(client, arena_index, TEAM_BLU);
+                if (g_iPlayerArena[client] != arena_index)
+                {
+                    // Switching arenas: remove from current on confirm, then add with team pref
+                    if (g_iPlayerArena[client])
+                    {
+                        RemoveFromQueue(client, true);
+                    }
+                    AddInQueue(client, arena_index, true, TEAM_BLU, false);
+                }
+                else
+                {
+                    Handle2v2TeamSwitchFromMenu(client, arena_index, TEAM_BLU);
+                }
+
+                // Clear pending arena after action
+                g_iPendingArena[client] = 0;
             }
         }
         case MenuAction_Cancel:
@@ -3368,6 +3393,9 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
                 g_iPlayerArena[client] = 0;
                 g_iPlayerSlot[client] = 0;
             }
+
+            // Always clear pending arena on cancel
+            g_iPendingArena[client] = 0;
 
             if (param2 == MenuCancel_ExitBack)
             {
@@ -3825,10 +3853,6 @@ Action Command_Menu(int client, int args)
         if (iArg > 0 && iArg <= g_iArenaCount)
         {
             // Always call AddInQueue - it will handle re-selection logic internally
-            // This allows 2v2 menu to show when re-selecting same arena
-            if (g_iPlayerArena[client] && g_iPlayerArena[client] != iArg)
-                RemoveFromQueue(client, true);
-
             AddInQueue(client, iArg, true, playerPrefTeam);
             return Plugin_Handled;
         }
@@ -3849,9 +3873,6 @@ Action Command_Menu(int client, int args)
         // If there was only one string match, and it was a valid match, place the player in that arena if they aren't already in it.
         if (found_arena > 0 && found_arena <= g_iArenaCount && found_arena != g_iPlayerArena[client])
         {
-            if (g_iPlayerArena[client])
-                RemoveFromQueue(client, true);
-
             AddInQueue(client, found_arena, true, playerPrefTeam);
             return Plugin_Handled;
         }
@@ -4574,9 +4595,6 @@ Action Command_First(int client, int args)
         {
             if (g_iArenaQueue[i][SLOT_ONE])
             {
-                if (g_iPlayerArena[client])
-                    RemoveFromQueue(client, true);
-
                 AddInQueue(client, i, true);
                 return Plugin_Handled;
             }
@@ -4590,9 +4608,6 @@ Action Command_First(int client, int args)
         {
             if (!g_iArenaQueue[i][SLOT_TWO] && g_iPlayerArena[client] != i)
             {
-                if (g_iPlayerArena[client])
-                    RemoveFromQueue(client, true);
-
                 AddInQueue(client, i, true);
                 return Plugin_Handled;
             }
