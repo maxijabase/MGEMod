@@ -2856,19 +2856,25 @@ void ShowMainMenu(int client, bool listplayers = true)
 
     for (int i = 1; i <= g_iArenaCount; i++)
     {
-        int numslots = 0;
-        for (int NUM = 1; NUM <= MAXPLAYERS + 1; NUM++)
+        // Count total players in the arena regardless of slot order
+        int totalPlayers = 0;
+        for (int NUM = 1; NUM <= MAXPLAYERS; NUM++)
         {
-            if (g_iArenaQueue[i][NUM])
-                numslots++;
-            else
-                break;
+            if (g_iArenaQueue[i][NUM] != 0)
+            {
+                totalPlayers++;
+            }
         }
 
-        if (numslots > 2)
-            Format(menu_item, sizeof(menu_item), "%s (2)(%d)", g_sArenaName[i], (numslots - 2));
-        else if (numslots > 0)
-            Format(menu_item, sizeof(menu_item), "%s (%d)", g_sArenaName[i], numslots);
+        // Cap active players shown based on arena type (1v1:2, 2v2:4)
+        int cap = g_bFourPersonArena[i] ? 4 : 2;
+        int active = (totalPlayers < cap) ? totalPlayers : cap;
+        int waiting = (totalPlayers > cap) ? (totalPlayers - cap) : 0;
+
+        if (waiting > 0)
+            Format(menu_item, sizeof(menu_item), "%s (%d)(%d)", g_sArenaName[i], active, waiting);
+        else if (active > 0)
+            Format(menu_item, sizeof(menu_item), "%s (%d)", g_sArenaName[i], active);
         else
             Format(menu_item, sizeof(menu_item), "%s", g_sArenaName[i]);
 
