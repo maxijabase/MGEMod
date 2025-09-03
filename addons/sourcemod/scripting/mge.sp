@@ -716,29 +716,6 @@ public void OnClientDisconnect(int client)
             ServerCommand("tf_bot_quota %d", quota - 1);
         }
 
-        if (g_bFourPersonArena[arena_index])
-        {
-            if (g_iArenaQueue[arena_index][SLOT_FOUR + 1])
-            {
-                int next_client = g_iArenaQueue[arena_index][SLOT_FOUR + 1];
-                g_iArenaQueue[arena_index][SLOT_FOUR + 1] = 0;
-                g_iArenaQueue[arena_index][player_slot] = next_client;
-                g_iPlayerSlot[next_client] = player_slot;
-                after_leaver_slot = SLOT_FOUR + 2;
-                char playername[MAX_NAME_LENGTH];
-                CreateTimer(2.0, Timer_StartDuel, arena_index);
-                GetClientName(next_client, playername, sizeof(playername));
-
-                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
-            } else {
-
-                if (foe && IsFakeClient(foe))
-                {
-                    ConVar cvar = FindConVar("tf_bot_quota");
-                    int quota = cvar.IntValue;
-                    ServerCommand("tf_bot_quota %d", quota - 1);
-                }
-
         if (foe2 && IsFakeClient(foe2))
         {
             ConVar cvar = FindConVar("tf_bot_quota");
@@ -755,47 +732,6 @@ public void OnClientDisconnect(int client)
 
         g_iArenaStatus[arena_index] = AS_IDLE;
         return;
-                g_iArenaStatus[arena_index] = AS_IDLE;
-                return;
-            }
-        }
-        else
-        {
-            if (g_iArenaQueue[arena_index][SLOT_TWO + 1])
-            {
-                int next_client = g_iArenaQueue[arena_index][SLOT_TWO + 1];
-                g_iArenaQueue[arena_index][SLOT_TWO + 1] = 0;
-                g_iArenaQueue[arena_index][player_slot] = next_client;
-                g_iPlayerSlot[next_client] = player_slot;
-                after_leaver_slot = SLOT_TWO + 2;
-                char playername[MAX_NAME_LENGTH];
-                CreateTimer(2.0, Timer_StartDuel, arena_index);
-                GetClientName(next_client, playername, sizeof(playername));
-
-                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
-            } else {
-                if (foe && IsFakeClient(foe))
-                {
-                    ConVar cvar = FindConVar("tf_bot_quota");
-                    int quota = cvar.IntValue;
-                    ServerCommand("tf_bot_quota %d", quota - 1);
-                }
-
-                g_iArenaStatus[arena_index] = AS_IDLE;
-                return;
-            }
-        }
-
-        if (g_iArenaQueue[arena_index][after_leaver_slot])
-        {
-            while (g_iArenaQueue[arena_index][after_leaver_slot])
-            {
-                g_iArenaQueue[arena_index][after_leaver_slot - 1] = g_iArenaQueue[arena_index][after_leaver_slot];
-                g_iPlayerSlot[g_iArenaQueue[arena_index][after_leaver_slot]] -= 1;
-                after_leaver_slot++;
-            }
-            g_iArenaQueue[arena_index][after_leaver_slot - 1] = 0;
-        }
     }
 }
 
