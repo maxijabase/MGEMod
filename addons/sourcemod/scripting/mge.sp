@@ -2091,6 +2091,13 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
     // Handle case where player is already in an arena
     if (g_iPlayerArena[client])
     {
+        // If player is already in an arena, remove them before re-adding
+        // This handles team switching and moving from queue to active slot
+        if (g_iPlayerSlot[client] != 0)
+        {
+            g_iArenaQueue[g_iPlayerArena[client]][g_iPlayerSlot[client]] = 0;
+        }
+
         if (g_iPlayerArena[client] == arena_index)
         {
             // Player is re-selecting the same arena
