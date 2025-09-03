@@ -14,7 +14,7 @@
 #include <morecolors>
 #include <clientprefs>
 // ====[ CONSTANTS ]===================================================
-#define PL_VERSION "3.1.0-beta2"
+#define PL_VERSION "3.1.0-2v2-beta1"
 #define MAXARENAS 63
 #define MAXSPAWNS 15
 #define HUDFADEOUTTIME 120.0
