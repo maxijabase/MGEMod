@@ -82,7 +82,7 @@ Handle
     hm_KothCap;
 
 // Cookie Handles
-Handle g_hShowEloCookie;
+Cookie g_hShowEloCookie;
 
 // Global Variables
 char g_sMapName[256];
@@ -325,7 +325,7 @@ public void OnPluginStart()
     LoadTranslations("mgemod.phrases");
 
     // Initialize cookies
-    g_hShowEloCookie = RegClientCookie("mgemod_showelo", "MGEMod ELO display preference", CookieAccess_Private);
+    g_hShowEloCookie = new Cookie("mgemod_showelo", "MGEMod ELO display preference", CookieAccess_Private);
 
     //ConVars
     CreateConVar("sm_mgemod_version", PL_VERSION, "MGEMod version", FCVAR_SPONLY | FCVAR_NOTIFY);
@@ -607,6 +607,18 @@ void OnProjectileTouch(int entity, int other)
 
 }
 
+public void OnClientCookiesCached(int client)
+{
+    if (IsFakeClient(client))
+        return;
+    
+    // Load ELO display preference from cookie
+    char cookieValue[8];
+    g_hShowEloCookie.Get(client, cookieValue, sizeof(cookieValue));
+    if (strlen(cookieValue) > 0)
+        g_bShowElo[client] = (StringToInt(cookieValue) == 1);
+}
+
 /* OnClientPostAdminCheck(client)
  *
  * Called once a client is fully in-game, and authorized with Steam.
@@ -643,12 +655,6 @@ public void OnClientPostAdminCheck(int client)
         g_bShowHud[client] = true;
         g_bPlayerRestoringAmmo[client] = false;
         g_bShowElo[client] = true;
-        
-        // Load ELO display preference from cookie
-        char cookieValue[8];
-        GetClientCookie(client, g_hShowEloCookie, cookieValue, sizeof(cookieValue));
-        if (strlen(cookieValue) > 0)
-            g_bShowElo[client] = (StringToInt(cookieValue) == 1);
         
         // Initialize class tracking ArrayList
         if (g_alPlayerDuelClasses[client] != null)
@@ -4635,7 +4641,7 @@ Action Command_ToggleElo(int client, int args)
     g_bShowElo[client] = !g_bShowElo[client];
 
     // Save the preference to client cookie
-    SetClientCookie(client, g_hShowEloCookie, g_bShowElo[client] ? "1" : "0");
+    g_hShowEloCookie.Set(client, g_bShowElo[client] ? "1" : "0");
 
     PrintToChat(client, "\x01ELO display is \x04%sabled\x01.", g_bShowElo[client] ? "en":"dis");
     return Plugin_Handled;
