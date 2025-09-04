@@ -2784,6 +2784,24 @@ void ParseAllowedClasses(const char[] sList, bool[] output)
     }
 }
 
+void RemoveEngineerBuildings(int client)
+{
+    if (!IsValidClient(client))
+    {
+        return;
+    }
+
+    int building = -1;
+    while ((building = FindEntityByClassname(building, "obj_*")) != -1)
+    {
+      if (GetEntPropEnt(building, Prop_Send, "m_hBuilder") == client)
+      {
+          SetVariantInt(9999);
+          AcceptEntityInput(building, "RemoveHealth");
+      }
+    }
+}
+
 // Particles ------------------------------------------------------------------
 
 void AttachParticle(int ent, char[] particleType, int &particle) // Particle code borrowed from "The Amplifier" and "Presents!".
@@ -4131,6 +4149,10 @@ Action Command_JoinClass(int client, int args)
                 }
                 else
                 {
+                    if (g_tfctPlayerClass[client] == TFClass_Engineer && new_class != TFClass_Engineer)
+                    {
+                        RemoveEngineerBuildings(client);
+                    }
                     TF2_SetPlayerClass(client, new_class);
                     g_tfctPlayerClass[client] = new_class;
 
@@ -4186,6 +4208,10 @@ Action Command_JoinClass(int client, int args)
                         {
                             MC_PrintToChat(client, "Class change during fight! You will be slayed and respawn next round.");
                             ForcePlayerSuicide(client);
+                            if (g_tfctPlayerClass[client] == TFClass_Engineer && new_class != TFClass_Engineer)
+                            {
+                                RemoveEngineerBuildings(client);
+                            }
                             TF2_SetPlayerClass(client, new_class);
                             g_tfctPlayerClass[client] = new_class;
                             return Plugin_Handled;
@@ -4207,6 +4233,10 @@ Action Command_JoinClass(int client, int args)
                 
                 if (g_iArenaStatus[arena_index] != AS_FIGHT || g_bArenaMGE[arena_index] || g_bArenaEndif[arena_index] || g_bArenaKoth[arena_index])
                 {
+                    if (g_tfctPlayerClass[client] == TFClass_Engineer && new_class != TFClass_Engineer)
+                    {
+                        RemoveEngineerBuildings(client);
+                    }
                     TF2_SetPlayerClass(client, new_class);
                     g_tfctPlayerClass[client] = new_class;
                     
