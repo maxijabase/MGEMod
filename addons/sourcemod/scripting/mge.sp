@@ -3577,16 +3577,6 @@ void PrintToChatArena(int arena_index, const char[] message, any ...)
             PrintToChat(client, buffer);
         }
     }
-    
-    // Also show to spectators in this arena
-    for (int i = 1; i <= MaxClients; i++)
-    {
-        if (IsValidClient(i) && GetClientTeam(i) == TEAM_SPEC && 
-            g_iPlayerSpecTarget[i] > 0 && g_iPlayerArena[g_iPlayerSpecTarget[i]] == arena_index)
-        {
-            PrintToChat(i, buffer);
-        }
-    }
 }
 
 Action Timer_ShowReadyMenu(Handle timer, int userid)
@@ -6603,24 +6593,6 @@ bool TraceEntityFilterPlayer(int entity, int contentsMask)
 {
     return entity > MaxClients || !entity;
 }
-
-/* TraceEntityPlayersOnly()
- *
- * Returns only players.
- * -------------------------------------------------------------------------- */
-/*
-bool TraceEntityPlayersOnly(int entity, int mask, int client)
-{
-    if (IsValidClient(entity) && entity != client)
-    {
-        PrintToChatAll("returning true for %d<%N>", entity, entity);
-        return true;
-    } else {
-        PrintToChatAll("returning false for %d<%N>", entity, entity);
-        return false;
-    }
-}
-*/
 
 /* IsValidClient()
  *
