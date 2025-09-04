@@ -660,7 +660,7 @@ public void OnClientPostAdminCheck(int client)
             GetClientAuthId(client, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty));
             g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
             strcopy(g_sPlayerSteamID[client], 32, steamid);
-            Format(query, sizeof(query), "SELECT rating, hitblip, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
+            g_DB.Format(query, sizeof(query), "SELECT rating, hitblip, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
             g_DB.Query(T_SQLQueryOnConnect, query, client);
         }
     }
@@ -2331,22 +2331,22 @@ void CalcELO(int winner, int loser)
     
     if (g_bUseSQLite)
     {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i)",
+        g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_duels VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i)",
             g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass, startTime, winner_previous_elo, g_iPlayerRating[winner], loser_previous_elo, g_iPlayerRating[loser]);
         g_DB.Query(SQLErrorCheckCallback, query);
     } else {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, loserclass, winner_previous_elo, winner_new_elo, loser_previous_elo, loser_new_elo) VALUES ('%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i)",
+        g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, loserclass, winner_previous_elo, winner_new_elo, loser_previous_elo, loser_new_elo) VALUES ('%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i)",
             g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass, winner_previous_elo, g_iPlayerRating[winner], loser_previous_elo, g_iPlayerRating[loser]);
         g_DB.Query(SQLErrorCheckCallback, query);
     }
 
     //winner's stats
-    Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
+    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[winner], time, g_sPlayerSteamID[winner]);
     g_DB.Query(SQLErrorCheckCallback, query);
 
     //loser's stats
-    Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
+    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[loser], time, g_sPlayerSteamID[loser]);
     g_DB.Query(SQLErrorCheckCallback, query);
 }
@@ -2411,32 +2411,32 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
     
     if (g_bUseSQLite)
     {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, %i, %i, %i, %i, %i)",
+        g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, %i, %i, %i, %i, %i)",
             g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class, startTime, winner_previous_elo, g_iPlayerRating[winner], winner2_previous_elo, g_iPlayerRating[winner2], loser_previous_elo, g_iPlayerRating[loser], loser2_previous_elo, g_iPlayerRating[loser2]);
         g_DB.Query(SQLErrorCheckCallback, query);
     } else {
-        Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 (winner, winner2, loser, loser2, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, winner2class, loserclass, loser2class, winner_previous_elo, winner_new_elo, winner2_previous_elo, winner2_new_elo, loser_previous_elo, loser_new_elo, loser2_previous_elo, loser2_new_elo) VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, %i, %i, %i)",
+        g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 (winner, winner2, loser, loser2, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, winner2class, loserclass, loser2class, winner_previous_elo, winner_new_elo, winner2_previous_elo, winner2_new_elo, loser_previous_elo, loser_new_elo, loser2_previous_elo, loser2_new_elo) VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, %i, %i, %i)",
             g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class, winner_previous_elo, g_iPlayerRating[winner], winner2_previous_elo, g_iPlayerRating[winner2], loser_previous_elo, g_iPlayerRating[loser], loser2_previous_elo, g_iPlayerRating[loser2]);
         g_DB.Query(SQLErrorCheckCallback, query);
     }
 
     //winner's stats
-    Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
+    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[winner], time, g_sPlayerSteamID[winner]);
     g_DB.Query(SQLErrorCheckCallback, query);
 
     //winner's teammate stats
-    Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
+    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[winner2], time, g_sPlayerSteamID[winner2]);
     g_DB.Query(SQLErrorCheckCallback, query);
 
     //loser's stats
-    Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
+    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[loser], time, g_sPlayerSteamID[loser]);
     g_DB.Query(SQLErrorCheckCallback, query);
 
     //loser's teammate stats
-    Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
+    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[loser2], time, g_sPlayerSteamID[loser2]);
     g_DB.Query(SQLErrorCheckCallback, query);
 }
@@ -3103,7 +3103,7 @@ int Menu_Top5(Menu menu, MenuAction action, int param1, int param2)
             {
                 g_iELOMenuPage[param1]++;
                 char query[256];
-                Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT %i, 5", g_iELOMenuPage[param1] * 5);
+                g_DB.Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT %i, 5", g_iELOMenuPage[param1] * 5);
                 //new data[] = {param1, param2+5, false};
                 g_DB.Query(T_SQL_Top5, query, param1);
             }
@@ -3114,14 +3114,14 @@ int Menu_Top5(Menu menu, MenuAction action, int param1, int param2)
                 if (g_iELOMenuPage[param1] == 0)
                 {
                     char query[256];
-                    Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT 5");
+                    g_DB.Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT 5");
                     //new data[] = {param1, param2-5, true};
                     g_DB.Query(T_SQL_Top5, query, param1);
                 }
                 else
                 {
                     char query[256];
-                    Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT %i, 5", g_iELOMenuPage[param1] * 5);
+                    g_DB.Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT %i, 5", g_iELOMenuPage[param1] * 5);
                     //new data[] = {param1, param2-5, false};
                     g_DB.Query(T_SQL_Top5, query, param1);
                 }
@@ -3960,7 +3960,7 @@ Action Command_Top5(int client, int args)
 
     g_iELOMenuPage[client] = 0;
     char query[256];
-    Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT 5");
+    g_DB.Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT 5");
     g_DB.Query(T_SQL_Top5, query, client);
     return Plugin_Continue;
 }
@@ -4534,7 +4534,7 @@ Action Command_ConnectionTest(int client, int args)
         return Plugin_Continue;
 
     char query[256];
-    Format(query, sizeof(query), "SELECT rating FROM mgemod_stats LIMIT 1");
+    g_DB.Format(query, sizeof(query), "SELECT rating FROM mgemod_stats LIMIT 1");
     g_DB.Query(T_SQL_Test, query, client);
 
     return Plugin_Handled;
@@ -5168,7 +5168,7 @@ void Migration_004_AddEloTracking()
 void MarkMigrationComplete(const char[] migrationName)
 {
     char query[256];
-    Format(query, sizeof(query), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('%s', %d)", migrationName, GetTime());
+    g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('%s', %d)", migrationName, GetTime());
     g_DB.Query(MarkMigrationCallback, query);
 }
 
@@ -5263,15 +5263,15 @@ void T_SQLQueryOnConnect(Database db, DBResultSet results, const char[] error, a
         g_iPlayerWins[client] = results.FetchInt(2);
         g_iPlayerLosses[client] = results.FetchInt(3);
 
-        Format(query, sizeof(query), "UPDATE mgemod_stats SET name='%s' WHERE steamid='%s'", namesql, g_sPlayerSteamID[client]);
+        g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET name='%s' WHERE steamid='%s'", namesql, g_sPlayerSteamID[client]);
         db.Query(SQLErrorCheckCallback, query);
     } else {
         if (g_bUseSQLite)
         {
-            Format(query, sizeof(query), "INSERT INTO mgemod_stats VALUES(1600, '%s', '%s', 0, 0, %i, 1)", g_sPlayerSteamID[client], namesql, GetTime());
+            g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_stats VALUES(1600, '%s', '%s', 0, 0, %i, 1)", g_sPlayerSteamID[client], namesql, GetTime());
             db.Query(SQLErrorCheckCallback, query);
         } else {
-            Format(query, sizeof(query), "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed, hitblip) VALUES (1600, '%s', '%s', 0, 0, %i, 1)", g_sPlayerSteamID[client], namesql, GetTime());
+            g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed, hitblip) VALUES (1600, '%s', '%s', 0, 0, %i, 1)", g_sPlayerSteamID[client], namesql, GetTime());
             db.Query(SQLErrorCheckCallback, query);
         }
 
@@ -5414,7 +5414,7 @@ void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any dat
                     GetClientAuthId(i, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty));
                     db.Escape(steamid_dirty, steamid, sizeof(steamid));
                     strcopy(g_sPlayerSteamID[i], 32, steamid);
-                    Format(query, sizeof(query), "SELECT rating, hitblip, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
+                    g_DB.Format(query, sizeof(query), "SELECT rating, hitblip, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
                     db.Query(T_SQLQueryOnConnect, query, i);
                     
                     // Handle hot-loading case: initialize client state that requires DB
@@ -6564,7 +6564,7 @@ Action Timer_ReconnectToDB(Handle timer)
     g_hDBReconnectTimer = null;
 
     char query[256];
-    Format(query, sizeof(query), "SELECT rating FROM mgemod_stats LIMIT 1");
+    g_DB.Format(query, sizeof(query), "SELECT rating FROM mgemod_stats LIMIT 1");
     g_DB.Query(SQLDbConnTest, query);
 
     return Plugin_Continue;
