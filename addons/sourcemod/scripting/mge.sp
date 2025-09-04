@@ -1611,7 +1611,7 @@ void ShowPlayerHud(int client)
 
     // Score
     SetHudTextParams(0.01, 0.01, HUDFADEOUTTIME, 255, 255, 255, 255);
-    char report[128];
+    char report[256];
     int fraglimit = g_iArenaFraglimit[arena_index];
 
     if (g_bArenaBBall[arena_index])
@@ -1758,7 +1758,7 @@ void ShowSpecHudToClient(int client)
     ShowSyncHudText(client, hm_HP, hp_report);
 
     // Score
-    char report[128];
+    char report[256];
     SetHudTextParams(0.01, 0.01, HUDFADEOUTTIME, 255, 255, 255, 255);
 
     int fraglimit = g_iArenaFraglimit[arena_index];
@@ -2908,7 +2908,7 @@ void ShowMainMenu(int client, bool listplayers = true)
     menu.ExitButton = true;
     menu.Display(client, 0);
 
-    char report[128];
+    char report[256];
 
     //listing players
     if (!listplayers)
