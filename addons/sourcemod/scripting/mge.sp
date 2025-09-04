@@ -528,6 +528,8 @@ public void OnMapStart()
         HookEvent("player_hurt", Event_PlayerHurt, EventHookMode_Pre);
         HookEvent("teamplay_round_start", Event_RoundStart, EventHookMode_Post);
         HookEvent("teamplay_win_panel", Event_WinPanel, EventHookMode_Post);
+        HookEvent("player_team", Event_Suppress, EventHookMode_Pre);
+        HookEvent("player_class", Event_Suppress, EventHookMode_Pre);
 
         AddNormalSoundHook(sound_hook);
     } else {
@@ -5958,6 +5960,12 @@ Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
         }
     }
 
+    return Plugin_Continue;
+}
+
+Action Event_Suppress(Event event, const char[] name, bool dontBroadcast)
+{
+    event.BroadcastDisabled = true;
     return Plugin_Continue;
 }
 
