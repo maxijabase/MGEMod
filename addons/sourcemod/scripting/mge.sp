@@ -1617,14 +1617,14 @@ void ShowPlayerHud(int client)
     if (g_bArenaBBall[arena_index])
     {
         if (fraglimit > 0)
-            Format(report, sizeof(report), "Arena %s. Capture Limit(%d)", g_sArenaName[arena_index], fraglimit);
+            Format(report, sizeof(report), "%s - Capture Limit [%d]", g_sArenaName[arena_index], fraglimit);
         else
-            Format(report, sizeof(report), "Arena %s. No Capture Limit", g_sArenaName[arena_index]);
+            Format(report, sizeof(report), "%s - No Capture Limit", g_sArenaName[arena_index]);
     } else {
         if (fraglimit > 0)
-            Format(report, sizeof(report), "Arena %s. Frag Limit(%d)", g_sArenaName[arena_index], fraglimit);
+            Format(report, sizeof(report), "%s - Frag Limit [%d]", g_sArenaName[arena_index], fraglimit);
         else
-            Format(report, sizeof(report), "Arena %s. No Frag Limit", g_sArenaName[arena_index]);
+            Format(report, sizeof(report), "%s - No Frag Limit", g_sArenaName[arena_index]);
     }
 
     int red_f1 = g_iArenaQueue[arena_index][SLOT_ONE];
@@ -1766,9 +1766,9 @@ void ShowSpecHudToClient(int client)
     if (g_iArenaStatus[arena_index] != AS_IDLE)
     {
         if (fraglimit > 0)
-            Format(report, sizeof(report), "Arena %s. Frag Limit(%d)", g_sArenaName[arena_index], fraglimit);
+            Format(report, sizeof(report), "%s - Frag Limit [%d]", g_sArenaName[arena_index], fraglimit);
         else
-            Format(report, sizeof(report), "Arena %s. No Frag Limit", g_sArenaName[arena_index]);
+            Format(report, sizeof(report), "%s - No Frag Limit", g_sArenaName[arena_index]);
     }
     else
     {
