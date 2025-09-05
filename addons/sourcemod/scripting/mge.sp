@@ -4104,6 +4104,11 @@ Action sound_hook(int clients[MAXPLAYERS], int& numClients, char sample[PLATFORM
         return Plugin_Handled;
     }
 
+    if (StrContains(sample, "regenerate") >= 0)
+    {
+        return Plugin_Handled;
+    }
+
     return Plugin_Continue;
 }
 
