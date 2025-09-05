@@ -91,3 +91,7 @@ Players in 1v1 matches sometimes spawn too close to their enemy.
 - Check for conflicts in spawn point assignment for 1v1 matches
 - Verify spawn point validation and collision detection
 - Test spawn logic across different 1v1 map configurations
+
+### Make all timers configurable
+
+Make game start, round start, game end, round end and any other timer configurable.
