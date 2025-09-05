@@ -81,3 +81,13 @@ There's a mysterious Format() bug that occurs on 2v2 match end, caused by incorr
 - Check for type mismatches or null values in query parameters
 - Review SQLite query construction logic for 2v2 match end
 - Add better error handling and parameter validation
+
+### 1v1 Spawn Logic Bug
+
+Players in 1v1 matches sometimes spawn too close to their enemy.
+
+**Investigation needed:**
+- Analyze current 1v1 spawn point selection algorithm
+- Check for conflicts in spawn point assignment for 1v1 matches
+- Verify spawn point validation and collision detection
+- Test spawn logic across different 1v1 map configurations
