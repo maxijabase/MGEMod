@@ -51,3 +51,33 @@ Mapmakers currently need to manually create and edit complex config files for th
 - Build visual arena placement and property editor
 - Implement config file generation from in-game setup
 - Add configuration templates and wizards for common map types
+
+### 2v2 ELO Display in HUD
+
+The ELO display logic in 2v2 mode is confusing since individual ELOs get merged/combined in 2v2 matches. The current implementation may not be relevant or useful for players in 2v2 scenarios.
+
+**Decision needed:**
+- Remove ELO display from 2v2 HUD entirely
+- Implement team-based ELO calculation and display
+- Show individual ELOs but with clear indication they're not used for 2v2 matchmaking
+- Redesign ELO system to be more intuitive for 2v2 gameplay
+
+### 2v2 Spawn Logic Bug
+
+Players sometimes spawn in the same location during 2v2 matches, causing immediate conflicts and poor gameplay experience. The spawn logic needs careful analysis to ensure proper spacing and fair positioning.
+
+**Investigation needed:**
+- Analyze current spawn point selection algorithm
+- Check for conflicts in spawn point assignment
+- Verify spawn point validation and collision detection
+- Test spawn logic across different map configurations
+
+### SQLite Format() Query Bug
+
+There's a mysterious Format() bug that occurs on 2v2 match end, caused by incorrect parameters being passed to the SQLite query formatting function. This bug is difficult to reproduce and solve.
+
+**Investigation needed:**
+- Trace the exact parameters being passed to Format() function
+- Check for type mismatches or null values in query parameters
+- Review SQLite query construction logic for 2v2 match end
+- Add better error handling and parameter validation
