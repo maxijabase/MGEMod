@@ -198,7 +198,7 @@ int
     g_iBBallHoop            [MAXARENAS + 1][3],
     g_iBBallIntel           [MAXARENAS + 1],
     g_iArenaEarlyLeave      [MAXARENAS + 1],
-    g_iELOMenuPage          [MAXARENAS + 1];
+    g_iTopPlayersPage       [MAXPLAYERS + 1];
 
 //int g_tfctArenaAllowedClasses[MAXARENAS + 1][TFClassType+1];
 bool g_tfctArenaAllowedClasses[MAXARENAS + 1][10];
@@ -395,7 +395,7 @@ public void OnPluginStart()
     RegConsoleCmd("add", Command_Menu, "Usage: add <arena number/arena name>. Add to an arena.");
     RegConsoleCmd("swap", Command_Swap, "Ask your teammate to swap classes with you in ultiduo");
     RegConsoleCmd("remove", Command_Remove, "Remove from current arena.");
-    RegConsoleCmd("top5", Command_Top5, "Display the Top 5 players.");
+    RegConsoleCmd("top5", Command_Top5, "Display the Top players.");
     RegConsoleCmd("hud", Command_ToggleHud, "Toggle text hud.");
     RegConsoleCmd("hidehud", Command_ToggleHud, "Toggle text hud. (alias)");
     RegConsoleCmd("elo", Command_ToggleElo, "Toggle ELO display.");
@@ -2973,94 +2973,42 @@ int SwapMenuHandler(Menu menu, MenuAction action, int param1, int param2)
     return 0;
 }
 
-void ShowTop5Menu(int client, char[][] name, int[] rating)
-{
-    if (!IsValidClient(client))
-        return;
 
-    char title[128];
-    char temp[128];
-    //char menu_item[128];
 
-    Menu menu = new Menu(Menu_Top5);
-
-    Format(title, sizeof(title), "ELO Rankings \n", client);
-
-    char si[4];
-
-    if (!g_bNoDisplayRating)
-    {
-        for (int i = 0; i < 5; i++)
-        {
-            int pos = (i + 1) + (g_iELOMenuPage[client] * 5);
-            IntToString((i + 1), si, sizeof(si));
-            //changed menu_item to title
-            Format(temp, sizeof(temp), "%i %s (%i) \n", pos, name[i], rating[i]);
-            StrCat(title, sizeof(title), temp);
-            //menu.AddItem(si, menu_item);
-        }
-    } else {
-        for (int i = 0; i < 5; i++)
-        {
-            int pos = (i + 1) + (g_iELOMenuPage[client] * 5);
-            IntToString(i, si, sizeof(si));
-            //changed menu_item to title
-            Format(temp, sizeof(temp), "%i %s (%i) \n", pos, name[i], rating[i]);
-            StrCat(title, sizeof(title), temp);
-            //menu.AddItem(si, menu_item);
-        }
-    }
-    menu.SetTitle(title);
-
-    menu.AddItem("1", "Next");
-    if (g_iELOMenuPage[client] != 0)
-    {
-        menu.AddItem("2", "back");
-    }
-
-    menu.ExitButton = true;
-    menu.Display(client, 0);
-}
-
-int Menu_Top5(Menu menu, MenuAction action, int param1, int param2)
+int Panel_TopPlayers(Menu menu, MenuAction action, int param1, int param2)
 {
     switch (action)
     {
         case MenuAction_Select:
         {
-            char info[32];
-            menu.GetItem(param2, info, sizeof(info));
-            //If he selected next, query the next menu
-            if (param2 == 0)
+            switch (param2)
             {
-                g_iELOMenuPage[param1]++;
-                char query[256];
-                g_DB.Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT %i, 5", g_iELOMenuPage[param1] * 5);
-                //new data[] = {param1, param2+5, false};
-                g_DB.Query(T_SQL_Top5, query, param1);
-            }
-            //If the player selected back show the previous menu
-            if (param2 == 1)
-            {
-                g_iELOMenuPage[param1]--;
-                if (g_iELOMenuPage[param1] == 0)
+                case 1: // Previous Page
                 {
-                    char query[256];
-                    g_DB.Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT 5");
-                    //new data[] = {param1, param2-5, true};
-                    g_DB.Query(T_SQL_Top5, query, param1);
+                    g_iTopPlayersPage[param1]--;
+                    char query[512];
+                    g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
+                    g_DB.Query(T_SQL_TopPlayersPanel, query, param1);
                 }
-                else
+                case 2: // Next Page
                 {
-                    char query[256];
-                    g_DB.Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT %i, 5", g_iELOMenuPage[param1] * 5);
-                    //new data[] = {param1, param2-5, false};
-                    g_DB.Query(T_SQL_Top5, query, param1);
+                    g_iTopPlayersPage[param1]++;
+                    char query[512];
+                    g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
+                    g_DB.Query(T_SQL_TopPlayersPanel, query, param1);
+                }
+                case 3: // Close
+                {
+                    // Panel closes automatically
                 }
             }
         }
         case MenuAction_Cancel:
         {
+            if (param2 == MenuCancel_ExitBack)
+            {
+                ShowMainMenu(param1);
+            }
         }
         case MenuAction_End:
         {
@@ -3849,10 +3797,10 @@ Action Command_Top5(int client, int args)
         return Plugin_Continue;
     }
 
-    g_iELOMenuPage[client] = 0;
-    char query[256];
-    g_DB.Format(query, sizeof(query), "SELECT rating,name FROM mgemod_stats ORDER BY rating DESC LIMIT 5");
-    g_DB.Query(T_SQL_Top5, query, client);
+    g_iTopPlayersPage[client] = 0;
+    char query[512];
+    g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
+    g_DB.Query(T_SQL_TopPlayersPanel, query, client);
     return Plugin_Continue;
 }
 
@@ -4916,49 +4864,121 @@ void T_SQLQueryOnConnect(Database db, DBResultSet results, const char[] error, a
     }
 }
 
-void T_SQL_Top5(Database db, DBResultSet results, const char[] error, any data)
+
+void T_SQL_TopPlayersPanel(Database db, DBResultSet results, const char[] error, any data)
 {
     int client = data;
 
     if (db == null)
     {
-        LogError("[Top5] Query failed: database connection lost");
+        LogError("[TopPlayersPanel] Query failed: database connection lost");
         return;
     }
     
     if (results == null)
     {
-        LogError("[Top5] Query failed: %s", error);
+        LogError("[TopPlayersPanel] Query failed: %s", error);
         return;
     }
 
     if (client < 1 || client > MaxClients || !IsClientConnected(client))
     {
-        LogError("T_SQL_Top5 failed: client %d <%s> is invalid.", client, g_sPlayerSteamID[client]);
+        LogError("T_SQL_TopPlayersPanel failed: client %d <%s> is invalid.", client, g_sPlayerSteamID[client]);
         return;
     }
 
-    if (SQL_GetRowCount(results) == 5)
+    int rowCount = SQL_GetRowCount(results);
+    if (rowCount == 0)
     {
-        int rating[5], i;
-        char name[5][MAX_NAME_LENGTH];
-
-        while (results.FetchRow())
-        {
-            if (i > 5)
-                break;
-
-            results.FetchString(1, name[i], 64);
-            rating[i] = results.FetchInt(0);
-
-            i++;
-        }
-
-        ShowTop5Menu(client, name, rating);
-    } else {
         MC_PrintToChat(client, "%t", "top5error");
+        return;
     }
 
+    ShowTopPlayersPanel(client, results, rowCount);
+}
+
+void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
+{
+    if (!IsValidClient(client))
+        return;
+
+    Panel panel = new Panel();
+    panel.SetTitle("ELO Rankings - Top Players\n");
+
+    int playersPerPage = 10;
+    int totalPages = (totalRows + playersPerPage - 1) / playersPerPage;
+    int currentPage = g_iTopPlayersPage[client];
+    
+    if (currentPage >= totalPages)
+        currentPage = 0;
+    if (currentPage < 0)
+        currentPage = totalPages - 1;
+    
+    g_iTopPlayersPage[client] = currentPage;
+    
+    int startIndex = currentPage * playersPerPage;
+    int endIndex = startIndex + playersPerPage;
+    if (endIndex > totalRows)
+        endIndex = totalRows;
+
+    char line[256];
+    Format(line, sizeof(line), "Page %d of %d (%d total players)\n", currentPage + 1, totalPages, totalRows);
+    panel.DrawText(line);
+    panel.DrawText(" ");
+
+    int currentRow = 0;
+    int rank = 1;
+    
+    while (results.FetchRow())
+    {
+        if (currentRow < startIndex)
+        {
+            currentRow++;
+            rank++;
+            continue;
+        }
+        
+        if (currentRow >= endIndex)
+            break;
+
+        int rating = results.FetchInt(0);
+        char name[MAX_NAME_LENGTH];
+        results.FetchString(1, name, sizeof(name));
+        int wins = results.FetchInt(2);
+        int losses = results.FetchInt(3);
+
+        if (g_bNoDisplayRating)
+        {
+            Format(line, sizeof(line), "#%d %s", rank, name);
+        }
+        else
+        {
+            Format(line, sizeof(line), "#%d %s (%d) [%d/%d]", rank, name, rating, wins, losses);
+        }
+        
+        panel.DrawText(line);
+        currentRow++;
+        rank++;
+    }
+
+    panel.DrawText(" ");
+    
+    if (totalPages > 1)
+    {
+        if (currentPage > 0)
+            panel.DrawItem("Previous Page");
+        else
+            panel.DrawItem("Previous Page", ITEMDRAW_DISABLED);
+            
+        if (currentPage < totalPages - 1)
+            panel.DrawItem("Next Page");
+        else
+            panel.DrawItem("Next Page", ITEMDRAW_DISABLED);
+    }
+    
+    panel.DrawItem("Close");
+    panel.Send(client, Panel_TopPlayers, MENU_TIME_FOREVER);
+    delete panel;
 }
 
 void T_SQL_Test(Database db, DBResultSet results, const char[] error, any data)
