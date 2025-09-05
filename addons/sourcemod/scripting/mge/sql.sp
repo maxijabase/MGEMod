@@ -2,13 +2,13 @@ void PrepareSQL()
 {
     char error[256];
 
-    // initial mysql connect
+    // Initial mysql connect
     if (g_DB == null && SQL_CheckConfig(g_sDBConfig))
     {
         g_DB = SQL_Connect(g_sDBConfig, /* persistent */ true, error, sizeof(error));
     }
 
-    // failed mysql connect for whatever reason (likely no config in databases.cfg)
+    // Failed mysql connect for whatever reason (likely no config in databases.cfg)
     if (g_DB == null)
     {
         LogError("Cant use database config <%s> <Error: %s>, trying SQLite <storage-local>...", g_sDBConfig, error);

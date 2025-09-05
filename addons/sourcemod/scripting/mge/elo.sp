@@ -29,8 +29,8 @@ void CalcELO(int winner, int loser)
     if (IsValidClient(loser) && !g_bNoDisplayRating && g_bShowElo[loser])
         MC_PrintToChat(loser, "%t", "LostPoints", loserscore);
 
-    //This is necessary for when a player leaves a 2v2 arena that is almost done.
-    //I don't want to penalize the player that doesn't leave, so only the winners/leavers ELO will be effected.
+    // This is necessary for when a player leaves a 2v2 arena that is almost done.
+    // I don't want to penalize the player that doesn't leave, so only the winners/leavers ELO will be effected.
     int winner_team_slot = (g_iPlayerSlot[winner] > 2) ? (g_iPlayerSlot[winner] - 2) : g_iPlayerSlot[winner];
     int loser_team_slot = (g_iPlayerSlot[loser] > 2) ? (g_iPlayerSlot[loser] - 2) : g_iPlayerSlot[loser];
 
@@ -53,12 +53,12 @@ void CalcELO(int winner, int loser)
         g_DB.Query(SQL_OnGenericQueryFinished, query);
     }
 
-    //winner's stats
+    // Winner's stats
     g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[winner], time, g_sPlayerSteamID[winner]);
     g_DB.Query(SQL_OnGenericQueryFinished, query);
 
-    //loser's stats
+    // Loser's stats
     g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[loser], time, g_sPlayerSteamID[loser]);
     g_DB.Query(SQL_OnGenericQueryFinished, query);
@@ -133,22 +133,22 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
         g_DB.Query(SQL_OnGenericQueryFinished, query);
     }
 
-    //winner's stats
+    // Winner's stats
     g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[winner], time, g_sPlayerSteamID[winner]);
     g_DB.Query(SQL_OnGenericQueryFinished, query);
 
-    //winner's teammate stats
+    // Winner's teammate stats
     g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[winner2], time, g_sPlayerSteamID[winner2]);
     g_DB.Query(SQL_OnGenericQueryFinished, query);
 
-    //loser's stats
+    // Loser's stats
     g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[loser], time, g_sPlayerSteamID[loser]);
     g_DB.Query(SQL_OnGenericQueryFinished, query);
 
-    //loser's teammate stats
+    // Loser's teammate stats
     g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
         g_iPlayerRating[loser2], time, g_sPlayerSteamID[loser2]);
     g_DB.Query(SQL_OnGenericQueryFinished, query);
