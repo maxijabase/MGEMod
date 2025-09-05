@@ -293,6 +293,8 @@ static const char stockSounds[][] =  // Sounds that do not need to be downloaded
 
 // Modules
 #include "mge/migrations.sp"
+#include "mge/elo.sp"
+#include "mge/sql.sp"
 
 public Plugin myinfo =
 {
@@ -628,7 +630,7 @@ public void OnClientPostAdminCheck(int client)
             g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
             strcopy(g_sPlayerSteamID[client], 32, steamid);
             g_DB.Format(query, sizeof(query), "SELECT rating, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
-            g_DB.Query(T_SQLQueryOnConnect, query, client);
+            g_DB.Query(SQL_OnPlayerReceived, query, client);
         }
     }
 
@@ -2214,162 +2216,6 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
     return;
 }
 
-// ====[ STATS ]====================================================
-void CalcELO(int winner, int loser)
-{
-    if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats)
-        return;
-
-    // Store previous ELO values before calculating new ones
-    int winner_previous_elo = g_iPlayerRating[winner];
-    int loser_previous_elo = g_iPlayerRating[loser];
-
-    // ELO formula
-    float El = 1 / (Pow(10.0, float((g_iPlayerRating[winner] - g_iPlayerRating[loser])) / 400) + 1);
-    int k = (g_iPlayerRating[winner] >= 2400) ? 10 : 15;
-    int winnerscore = RoundFloat(k * El);
-    g_iPlayerRating[winner] += winnerscore;
-    k = (g_iPlayerRating[loser] >= 2400) ? 10 : 15;
-    int loserscore = RoundFloat(k * El);
-    g_iPlayerRating[loser] -= loserscore;
-
-    int arena_index = g_iPlayerArena[winner];
-    int time = GetTime();
-    char query[512], sCleanArenaname[128], sCleanMapName[128];
-
-    g_DB.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
-    g_DB.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
-
-    if (IsValidClient(winner) && !g_bNoDisplayRating && g_bShowElo[winner])
-        MC_PrintToChat(winner, "%t", "GainedPoints", winnerscore);
-
-    if (IsValidClient(loser) && !g_bNoDisplayRating && g_bShowElo[loser])
-        MC_PrintToChat(loser, "%t", "LostPoints", loserscore);
-
-    //This is necessary for when a player leaves a 2v2 arena that is almost done.
-    //I don't want to penalize the player that doesn't leave, so only the winners/leavers ELO will be effected.
-    int winner_team_slot = (g_iPlayerSlot[winner] > 2) ? (g_iPlayerSlot[winner] - 2) : g_iPlayerSlot[winner];
-    int loser_team_slot = (g_iPlayerSlot[loser] > 2) ? (g_iPlayerSlot[loser] - 2) : g_iPlayerSlot[loser];
-
-    // DB entry for this specific duel.
-    char winnerClass[64], loserClass[64];
-    GetPlayerClassString(winner, arena_index, winnerClass, sizeof(winnerClass));
-    GetPlayerClassString(loser, arena_index, loserClass, sizeof(loserClass));
-    
-    int startTime = g_iArenaDuelStartTime[arena_index];
-    int endTime = time;
-    
-    if (g_bUseSQLite)
-    {
-        g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_duels VALUES ('%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i)",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass, startTime, winner_previous_elo, g_iPlayerRating[winner], loser_previous_elo, g_iPlayerRating[loser]);
-        g_DB.Query(SQLErrorCheckCallback, query);
-    } else {
-        g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, loserclass, winner_previous_elo, winner_new_elo, loser_previous_elo, loser_new_elo) VALUES ('%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i)",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass, winner_previous_elo, g_iPlayerRating[winner], loser_previous_elo, g_iPlayerRating[loser]);
-        g_DB.Query(SQLErrorCheckCallback, query);
-    }
-
-    //winner's stats
-    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
-        g_iPlayerRating[winner], time, g_sPlayerSteamID[winner]);
-    g_DB.Query(SQLErrorCheckCallback, query);
-
-    //loser's stats
-    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
-        g_iPlayerRating[loser], time, g_sPlayerSteamID[loser]);
-    g_DB.Query(SQLErrorCheckCallback, query);
-}
-
-void CalcELO2(int winner, int winner2, int loser, int loser2)
-{
-    if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || IsFakeClient(loser2) || IsFakeClient(winner2))
-        return;
-
-    // Store previous ELO values before calculating new ones
-    int winner_previous_elo = g_iPlayerRating[winner];
-    int winner2_previous_elo = g_iPlayerRating[winner2];
-    int loser_previous_elo = g_iPlayerRating[loser];
-    int loser2_previous_elo = g_iPlayerRating[loser2];
-
-    float Losers_ELO = float((g_iPlayerRating[loser] + g_iPlayerRating[loser2]) / 2);
-    float Winners_ELO = float((g_iPlayerRating[winner] + g_iPlayerRating[winner2]) / 2);
-
-    // ELO formula
-    float El = 1 / (Pow(10.0, (Winners_ELO - Losers_ELO) / 400) + 1);
-    int k = (Winners_ELO >= 2400) ? 10 : 15;
-    int winnerscore = RoundFloat(k * El);
-    g_iPlayerRating[winner] += winnerscore;
-    g_iPlayerRating[winner2] += winnerscore;
-    k = (Losers_ELO >= 2400) ? 10 : 15;
-    int loserscore = RoundFloat(k * El);
-    g_iPlayerRating[loser] -= loserscore;
-    g_iPlayerRating[loser2] -= loserscore;
-
-    int winner_team_slot = (g_iPlayerSlot[winner] > 2) ? (g_iPlayerSlot[winner] - 2) : g_iPlayerSlot[winner];
-    int loser_team_slot = (g_iPlayerSlot[loser] > 2) ? (g_iPlayerSlot[loser] - 2) : g_iPlayerSlot[loser];
-
-    int arena_index = g_iPlayerArena[winner];
-    int time = GetTime();
-    char query[512], sCleanArenaname[128], sCleanMapName[128];
-
-    g_DB.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
-    g_DB.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
-
-    if (IsValidClient(winner) && !g_bNoDisplayRating && g_bShowElo[winner])
-        MC_PrintToChat(winner, "%t", "GainedPoints", winnerscore);
-
-    if (IsValidClient(winner2) && !g_bNoDisplayRating && g_bShowElo[winner2])
-        MC_PrintToChat(winner2, "%t", "GainedPoints", winnerscore);
-
-    if (IsValidClient(loser) && !g_bNoDisplayRating && g_bShowElo[loser])
-        MC_PrintToChat(loser, "%t", "LostPoints", loserscore);
-
-    if (IsValidClient(loser2) && !g_bNoDisplayRating && g_bShowElo[loser2])
-        MC_PrintToChat(loser2, "%t", "LostPoints", loserscore);
-
-
-    // DB entry for this specific duel.
-    char winnerClass[64], winner2Class[64], loserClass[64], loser2Class[64];
-    GetPlayerClassString(winner, arena_index, winnerClass, sizeof(winnerClass));
-    GetPlayerClassString(winner2, arena_index, winner2Class, sizeof(winner2Class));
-    GetPlayerClassString(loser, arena_index, loserClass, sizeof(loserClass));
-    GetPlayerClassString(loser2, arena_index, loser2Class, sizeof(loser2Class));
-    
-    int startTime = g_iArenaDuelStartTime[arena_index];
-    int endTime = time;
-    
-    if (g_bUseSQLite)
-    {
-        g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, %i, %i, %i, %i, %i)",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class, startTime, winner_previous_elo, g_iPlayerRating[winner], winner2_previous_elo, g_iPlayerRating[winner2], loser_previous_elo, g_iPlayerRating[loser], loser2_previous_elo, g_iPlayerRating[loser2]);
-        g_DB.Query(SQLErrorCheckCallback, query);
-    } else {
-        g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_duels_2v2 (winner, winner2, loser, loser2, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, winner2class, loserclass, loser2class, winner_previous_elo, winner_new_elo, winner2_previous_elo, winner2_new_elo, loser_previous_elo, loser_new_elo, loser2_previous_elo, loser2_new_elo) VALUES ('%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, %i, %i, %i)",
-            g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class, winner_previous_elo, g_iPlayerRating[winner], winner2_previous_elo, g_iPlayerRating[winner2], loser_previous_elo, g_iPlayerRating[loser], loser2_previous_elo, g_iPlayerRating[loser2]);
-        g_DB.Query(SQLErrorCheckCallback, query);
-    }
-
-    //winner's stats
-    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
-        g_iPlayerRating[winner], time, g_sPlayerSteamID[winner]);
-    g_DB.Query(SQLErrorCheckCallback, query);
-
-    //winner's teammate stats
-    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'",
-        g_iPlayerRating[winner2], time, g_sPlayerSteamID[winner2]);
-    g_DB.Query(SQLErrorCheckCallback, query);
-
-    //loser's stats
-    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
-        g_iPlayerRating[loser], time, g_sPlayerSteamID[loser]);
-    g_DB.Query(SQLErrorCheckCallback, query);
-
-    //loser's teammate stats
-    g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'",
-        g_iPlayerRating[loser2], time, g_sPlayerSteamID[loser2]);
-    g_DB.Query(SQLErrorCheckCallback, query);
-}
 // ====[ UTIL ]====================================================
 bool LoadSpawnPoints()
 {
@@ -2988,14 +2834,14 @@ int Panel_TopPlayers(Menu menu, MenuAction action, int param1, int param2)
                     g_iTopPlayersPage[param1]--;
                     char query[512];
                     g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
-                    g_DB.Query(T_SQL_TopPlayersPanel, query, param1);
+                    g_DB.Query(SQL_OnTopPlayersReceived, query, param1);
                 }
                 case 2: // Next Page
                 {
                     g_iTopPlayersPage[param1]++;
                     char query[512];
                     g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
-                    g_DB.Query(T_SQL_TopPlayersPanel, query, param1);
+                    g_DB.Query(SQL_OnTopPlayersReceived, query, param1);
                 }
                 case 3: // Close
                 {
@@ -3800,7 +3646,7 @@ Action Command_Top5(int client, int args)
     g_iTopPlayersPage[client] = 0;
     char query[512];
     g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
-    g_DB.Query(T_SQL_TopPlayersPanel, query, client);
+    g_DB.Query(SQL_OnTopPlayersReceived, query, client);
     return Plugin_Continue;
 }
 
@@ -4353,7 +4199,7 @@ Action Command_ConnectionTest(int client, int args)
 
     char query[256];
     g_DB.Format(query, sizeof(query), "SELECT rating FROM mgemod_stats LIMIT 1");
-    g_DB.Query(T_SQL_Test, query, client);
+    g_DB.Query(SQL_OnTestReceived, query, client);
 
     return Plugin_Handled;
 }
@@ -4715,63 +4561,7 @@ Action sound_hook(int clients[MAXPLAYERS], int& numClients, char sample[PLATFORM
 // ====[ SQL ]====================================================
 
 // Opens the connection to the database, and creates the tables if they dont exist.
-void PrepareSQL() 
-{
-    char error[256];
 
-    // initial mysql connect
-    if (g_DB == null && SQL_CheckConfig(g_sDBConfig))
-    {
-        g_DB = SQL_Connect(g_sDBConfig, /* persistent */ true, error, sizeof(error));
-    }
-
-    // failed mysql connect for whatever reason (likely no config in databases.cfg)
-    if (g_DB == null)
-    {
-        LogError("Cant use database config <%s> <Error: %s>, trying SQLite <storage-local>...", g_sDBConfig, error);
-        g_DB = SQL_Connect("storage-local", true, error, sizeof(error));
-
-        if (g_DB == null)
-        {
-            SetFailState("Could not connect to database: %s", error);
-        }
-        else
-        {
-            LogMessage("Success, using SQLite <storage-local>", g_sDBConfig, error);
-        }
-    }
-
-    char ident[16];
-    g_DB.Driver.GetIdentifier(ident, sizeof(ident));
-
-    if (StrEqual(ident, "mysql", false))
-    {
-        g_bUseSQLite = false;
-    }
-    else if (StrEqual(ident, "sqlite", false))
-    {
-        g_bUseSQLite = true;
-    }
-    else
-    {
-        SetFailState("Invalid database.");
-    }
-
-    if (g_bUseSQLite)
-    {
-        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INTEGER, steamid TEXT, name TEXT, wins INTEGER, losses INTEGER, lastplayed INTEGER)");
-        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner TEXT, loser TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
-        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner TEXT, winner2 TEXT, loser TEXT, loser2 TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
-    }
-    else
-    {
-        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INT(4) NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INT(4) NOT NULL, losses INT(4) NOT NULL, lastplayed INT(11) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
-        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
-        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner VARCHAR(32) NOT NULL, winner2 VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, loser2 VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
-    }
-
-    RunDatabaseMigrations();
-}
 
 char[] TFClassToString(TFClassType class)
 {
@@ -4813,88 +4603,6 @@ void GetPlayerClassString(int client, int arena_index, char[] buffer, int maxlen
         // Use single class from duel start
         strcopy(buffer, maxlen, TFClassToString(g_tfctPlayerDuelClass[client]));
     }
-}
-
-void T_SQLQueryOnConnect(Database db, DBResultSet results, const char[] error, any data)
-{
-    int client = data;
-
-    if (db == null)
-    {
-        LogError("T_SQLQueryOnConnect failed: database connection lost");
-        return;
-    }
-    
-    if (results == null)
-    {
-        LogError("T_SQLQueryOnConnect failed: %s", error);
-        return;
-    }
-
-    if ( client < 1 || client > MaxClients || !IsClientConnected(client) )
-    {
-        LogError("T_SQLQueryOnConnect failed: client %d <%s> is invalid.", client, g_sPlayerSteamID[client]);
-        return;
-    }
-
-    char query[512];
-    char namesql_dirty[MAX_NAME_LENGTH], namesql[(MAX_NAME_LENGTH * 2) + 1];
-    GetClientName(client, namesql_dirty, sizeof(namesql_dirty));
-    db.Escape(namesql_dirty, namesql, sizeof(namesql));
-
-    if (results.FetchRow())
-    {
-        g_iPlayerRating[client] = results.FetchInt(0);
-        g_iPlayerWins[client] = results.FetchInt(1);
-        g_iPlayerLosses[client] = results.FetchInt(2);
-
-        g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET name='%s' WHERE steamid='%s'", namesql, g_sPlayerSteamID[client]);
-        db.Query(SQLErrorCheckCallback, query);
-    } else {
-        if (g_bUseSQLite)
-        {
-            g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_stats VALUES(1600, '%s', '%s', 0, 0, %i)", g_sPlayerSteamID[client], namesql, GetTime());
-            db.Query(SQLErrorCheckCallback, query);
-        } else {
-            g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed) VALUES (1600, '%s', '%s', 0, 0, %i)", g_sPlayerSteamID[client], namesql, GetTime());
-            db.Query(SQLErrorCheckCallback, query);
-        }
-
-        g_iPlayerRating[client] = 1600;
-    }
-}
-
-
-void T_SQL_TopPlayersPanel(Database db, DBResultSet results, const char[] error, any data)
-{
-    int client = data;
-
-    if (db == null)
-    {
-        LogError("[TopPlayersPanel] Query failed: database connection lost");
-        return;
-    }
-    
-    if (results == null)
-    {
-        LogError("[TopPlayersPanel] Query failed: %s", error);
-        return;
-    }
-
-    if (client < 1 || client > MaxClients || !IsClientConnected(client))
-    {
-        LogError("T_SQL_TopPlayersPanel failed: client %d <%s> is invalid.", client, g_sPlayerSteamID[client]);
-        return;
-    }
-
-    int rowCount = SQL_GetRowCount(results);
-    if (rowCount == 0)
-    {
-        MC_PrintToChat(client, "%t", "top5error");
-        return;
-    }
-
-    ShowTopPlayersPanel(client, results, rowCount);
 }
 
 void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
@@ -4979,121 +4687,6 @@ void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
     panel.DrawItem("Close");
     panel.Send(client, Panel_TopPlayers, MENU_TIME_FOREVER);
     delete panel;
-}
-
-void T_SQL_Test(Database db, DBResultSet results, const char[] error, any data)
-{
-    int client = data;
-
-    if (db == null)
-    {
-        LogError("[Test] Query failed: database connection lost");
-        PrintToChat(client, "[Test] Database connection lost");
-        return;
-    }
-    
-    if (results == null)
-    {
-        LogError("[Test] Query failed: %s", error);
-        PrintToChat(client, "[Test] Query failed: %s", error);
-        return;
-    }
-
-    if (client < 1 || client > MaxClients || !IsClientConnected(client))
-    {
-        LogError("T_SQL_Test failed: client %d <%s> is invalid.", client, g_sPlayerSteamID[client]);
-        return;
-    }
-
-    if (results.FetchRow())
-        PrintToChat(client, "\x01Database is \x04Up\x01.");
-    else
-        PrintToChat(client, "\x01Database is \x04Down\x01.");
-}
-
-void SQLErrorCheckCallback(Database db, DBResultSet results, const char[] error, any data)
-{
-    if (db == null)
-    {
-        LogError("SQLErrorCheckCallback: Database connection lost (db handle is null)");
-        
-        if (!g_bNoStats)
-        {
-            g_bNoStats = true;
-            PrintHintTextToAll("%t", "DatabaseDown", g_iReconnectInterval);
-
-            // Refresh all huds to get rid of stats display.
-            ShowHudToAll();
-
-            LogError("Lost connection to database, attempting reconnect in %i minutes.", g_iReconnectInterval);
-
-            if (g_hDBReconnectTimer == null)
-                g_hDBReconnectTimer = CreateTimer(float(60 * g_iReconnectInterval), Timer_ReconnectToDB, TIMER_FLAG_NO_MAPCHANGE);
-        }
-    }
-    else if (!StrEqual("", error))
-    {
-        LogError("SQLErrorCheckCallback: Query failed (connection OK): %s", error);
-    }
-}
-
-void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any data)
-{
-    if (db == null)
-    {
-        LogError("Database connection test failed: connection lost");
-        LogError("Database reconnect failed, next attempt in %i minutes.", g_iReconnectInterval);
-        PrintHintTextToAll("%t", "DatabaseDown", g_iReconnectInterval);
-
-        if (g_hDBReconnectTimer == null)
-            g_hDBReconnectTimer = CreateTimer(float(60 * g_iReconnectInterval), Timer_ReconnectToDB, TIMER_FLAG_NO_MAPCHANGE);
-    }
-    else if (!StrEqual("", error))
-    {
-        LogError("Database connection test query failed: %s", error);
-        LogError("Database reconnect failed, next attempt in %i minutes.", g_iReconnectInterval);
-        PrintHintTextToAll("%t", "DatabaseDown", g_iReconnectInterval);
-
-        if (g_hDBReconnectTimer == null)
-            g_hDBReconnectTimer = CreateTimer(float(60 * g_iReconnectInterval), Timer_ReconnectToDB, TIMER_FLAG_NO_MAPCHANGE);
-    } else {
-        g_bNoStats = gcvar_stats.BoolValue ? false : true;
-
-        if (!g_bNoStats && db != null)
-        {
-            // Database connection successful - handle both reconnection and hot-loading scenarios
-            for (int i = 1; i <= MaxClients; i++)
-            {
-                if (IsValidClient(i))
-                {
-                    char steamid_dirty[31], steamid[64], query[256];
-                    GetClientAuthId(i, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty));
-                    db.Escape(steamid_dirty, steamid, sizeof(steamid));
-                    strcopy(g_sPlayerSteamID[i], 32, steamid);
-                    g_DB.Format(query, sizeof(query), "SELECT rating, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
-                    db.Query(T_SQLQueryOnConnect, query, i);
-                    
-                    // Handle hot-loading case: initialize client state that requires DB
-                    if (!IsFakeClient(i))
-                    {
-                        // Ensure spectator team and proper client setup
-                        ChangeClientTeam(i, TEAM_SPEC);
-                        g_bShowHud[i] = true;
-                        g_bPlayerRestoringAmmo[i] = false;
-                    }
-                }
-            }
-
-            // Refresh all huds to show stats again.
-            ShowHudToAll();
-
-            PrintHintTextToAll("%t", "StatsRestored");
-            LogError("Database connection restored.");
-        } else {
-            PrintHintTextToAll("%t", "StatsRestoredDown");
-            LogError("Database connection restored but stats are disabled or DB handle is invalid.");
-        }
-    }
 }
 
 /*
