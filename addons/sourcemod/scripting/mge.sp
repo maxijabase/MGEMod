@@ -33,10 +33,10 @@ enum
 // teams
 enum
 {
-    TEAM_NONE = 0,
-    TEAM_SPEC,
-    TEAM_RED,
-    TEAM_BLU
+    TEAM_NONE = TFTeam_Unassigned,
+    TEAM_SPEC = TFTeam_Spectator,
+    TEAM_RED = TFTeam_Red,
+    TEAM_BLU = TFTeam_Blue
 };
 
 //arena status
