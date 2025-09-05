@@ -210,7 +210,6 @@ bool
     g_bPlayerTakenDirectHit [MAXPLAYERS + 1],//player was hit directly
     g_bPlayerRestoringAmmo  [MAXPLAYERS + 1],//player is awaiting full ammo restore
     g_bPlayerHasIntel       [MAXPLAYERS + 1],
-    g_bHitBlip              [MAXPLAYERS + 1],
     g_bShowHud              [MAXPLAYERS + 1] = { true, ... },
     g_bShowElo              [MAXPLAYERS + 1] = { true, ... },
     g_iPlayerWaiting        [MAXPLAYERS + 1],
@@ -314,11 +313,6 @@ public Plugin myinfo =
 ** ------------------------------------------------------------------
 **/
 
-/* OnPluginStart()
- *
- * When the plugin is loaded.
- * Cvars, variables, and console commands are initialzed here.
- * -------------------------------------------------------------------------- */
 public void OnPluginStart()
 {
     LoadTranslations("common.phrases");
@@ -402,7 +396,6 @@ public void OnPluginStart()
     RegConsoleCmd("swap", Command_Swap, "Ask your teammate to swap classes with you in ultiduo");
     RegConsoleCmd("remove", Command_Remove, "Remove from current arena.");
     RegConsoleCmd("top5", Command_Top5, "Display the Top 5 players.");
-    RegConsoleCmd("hitblip", Command_ToogleHitblip, "Toggle hitblip!");
     RegConsoleCmd("hud", Command_ToggleHud, "Toggle text hud.");
     RegConsoleCmd("hidehud", Command_ToggleHud, "Toggle text hud. (alias)");
     RegConsoleCmd("elo", Command_ToggleElo, "Toggle ELO display.");
@@ -465,27 +458,17 @@ public void OnPluginStart()
 
 public void OnConfigsExecuted()
 {
-    // Only connect to the SQL DB if stats are enabled.
-    // This is here so we don't have a race condition where we load from sqlite no matter what since we don't wait until db cfg is set.
-    // Most of the rest of the cvar checking logic in this plugin needs moved here too.
     if (!g_bNoStats)
     {
         PrepareSQL();
     }
 }
 
-
-
-/* OnMapStart()
-*
-* When the map starts.
-* Sounds, models, and spawns are loaded here.
-* Most events are hooked here as well.
-* -------------------------------------------------------------------------- */
 public void OnMapStart()
 {
-    for (int i = 0; i < STOCK_SOUND_COUNT; i++)/* Stock sounds are considered mandatory. */
-    PrecacheSound(stockSounds[i], true);
+    for (int i = 0; i < STOCK_SOUND_COUNT; i++) {
+        PrecacheSound(stockSounds[i], true);
+    }
 
     // Models. These are used for the artifical flag in BBall.
     PrecacheModel(MODEL_BRIEFCASE, true);
@@ -555,12 +538,6 @@ public void OnMapStart()
     }
 }
 
-/* OnMapEnd()
- *
- * When the map ends.
- * Repeating timers can be killed here.
- * Hooks are removed here.
- * -------------------------------------------------------------------------- */
 public void OnMapEnd()
 {
     g_hDBReconnectTimer = null;
@@ -584,27 +561,16 @@ public void OnMapEnd()
     }
 }
 
-/* OnEntityCreated(entity, const String:classname[])
- *
- * When an entity is created.
- * This is an SDKHooks forward.
- * -------------------------------------------------------------------------- */
 public void OnEntityCreated(int entity, const char[] classname)
 {
     if (StrEqual(classname, "tf_projectile_rocket") || StrEqual(classname, "tf_projectile_pipe"))
         SDKHook(entity, SDKHook_Touch, OnProjectileTouch);
 }
 
-/* OnProjectileTouch(int entity, int other)
- *
- * When a projectile is touched.
- * This is how direct hits from pipes are rockets are detected.
- * -------------------------------------------------------------------------- */
 void OnProjectileTouch(int entity, int other)
 {
     if (other > 0 && other <= MaxClients)
         g_bPlayerTakenDirectHit[other] = true;
-
 }
 
 public void OnClientCookiesCached(int client)
@@ -619,15 +585,8 @@ public void OnClientCookiesCached(int client)
         g_bShowElo[client] = (StringToInt(cookieValue) == 1);
 }
 
-/* OnClientPostAdminCheck(client)
- *
- * Called once a client is fully in-game, and authorized with Steam.
- * Client-specific variables are initialized here.
- * 
- * NOTE: This needs to not be here. This will break when steam is down, this probably has other issues as well
- * 
- * Most of this should be in OnClientPutInServer
- * -------------------------------------------------------------------------- */
+// TODO: This needs to not be here. This will break when steam is down, this probably has other issues as well
+// TODO: Most of this should be in OnClientPutInServer
 public void OnClientPostAdminCheck(int client)
 {
     if (IsFakeClient(client))
@@ -651,7 +610,6 @@ public void OnClientPostAdminCheck(int client)
     {
         ChangeClientTeam(client, TEAM_SPEC);
         CreateTimer(5.0, Timer_ShowAdv, GetClientUserId(client)); /* Show advice to type !add in chat */
-        g_bHitBlip[client] = false;
         g_bShowHud[client] = true;
         g_bPlayerRestoringAmmo[client] = false;
         g_bShowElo[client] = true;
@@ -669,7 +627,7 @@ public void OnClientPostAdminCheck(int client)
             GetClientAuthId(client, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty));
             g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
             strcopy(g_sPlayerSteamID[client], 32, steamid);
-            g_DB.Format(query, sizeof(query), "SELECT rating, hitblip, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
+            g_DB.Format(query, sizeof(query), "SELECT rating, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
             g_DB.Query(T_SQLQueryOnConnect, query, client);
         }
     }
@@ -677,11 +635,6 @@ public void OnClientPostAdminCheck(int client)
     SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 }
 
-/* OnClientDisconnect(client)
-*
-* When a client disconnects from the server.
-* Client-specific timers are killed here.
-* -------------------------------------------------------------------------- */
 public void OnClientDisconnect(int client)
 {
     // We ignore the kick queue check for this function only so that clients that get kicked still get their elo calculated
@@ -761,11 +714,7 @@ public void OnClientDisconnect(int client)
     }
 }
 
-/* OnGameFrame()
- *
- * This code is run on every frame. Can be very hardware intensive.
- * -------------------------------------------------------------------------- */
-// note from the future - "this can be hardware intensive" and then its repeated code like 4 times? lol ok
+// TODO: note from the future - "this can be hardware intensive" and then its repeated code like 4 times? lol ok
 public void OnGameFrame()
 {
     int arena_index;
@@ -1000,10 +949,6 @@ public void OnGameFrame()
     }
 }
 
-/* OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype)
- *
- * When a client takes damage.
- * -------------------------------------------------------------------------- */
 Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
 {
     if (!IsValidClient(victim) || !IsValidClient(attacker))
@@ -1019,25 +964,7 @@ Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, in
     return Plugin_Continue;
 }
 
-/* OnPlayerRunCmd(client, &buttons, &impulse, Float:vel[3], Float:angles[3], &weapon)
-*
-* When a client runs a command.
-* Infinite ammo is triggered here.
-* -------------------------------------------------------------------------- */
-public Action OnPlayerRunCmd
-(
-    int client,
-    int& buttons,
-    int& impulse,
-    float vel[3],
-    float angles[3],
-    int& weapon,
-    int& subtype,
-    int& cmdnum,
-    int& tickcount,
-    int& seed,
-    int mouse[2]
-)
+public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3], int& weapon, int& subtype, int& cmdnum, int& tickcount, int& seed, int mouse[2])
 {
     int arena_index = g_iPlayerArena[client];
     if (g_bArenaInfAmmo[arena_index])
@@ -1051,10 +978,7 @@ public Action OnPlayerRunCmd
     return Plugin_Continue;
 }
 
-/* OnTouchPoint(int entity, int other)
-*
-* When the point is touched
-* ------------------------------------------------------------------------- */
+// When the point is no longer touched
 Action OnEndTouchPoint(int entity, int other)
 {
     int client = other;
@@ -1070,10 +994,7 @@ Action OnEndTouchPoint(int entity, int other)
     return Plugin_Continue;
 }
 
-/* OnTouchPoint(int entity, int other)
-*
-* When the point is touched
-* ------------------------------------------------------------------------- */
+// When the point is touched
 Action OnTouchPoint(int entity, int other)
 {
     int client = other;
@@ -1088,10 +1009,7 @@ Action OnTouchPoint(int entity, int other)
     return Plugin_Continue;
 }
 
-/* OnTouchHoop(int entity, int other)
-*
-* When a hoop is touched by a player in BBall.
-* -------------------------------------------------------------------------- */
+// When a hoop is touched by a player in BBall.
 Action OnTouchHoop(int entity, int other)
 {
     int client = other;
@@ -1219,10 +1137,7 @@ Action OnTouchHoop(int entity, int other)
     return Plugin_Continue;
 }
 
-/* OnTouchIntel(int entity, int other)
-*
-* When the intel is touched by a player in BBall.
-* -------------------------------------------------------------------------- */
+// When the intel is touched by a player in BBall.
 Action OnTouchIntel(int entity, int other)
 {
     int client = other;
@@ -2740,7 +2655,8 @@ void ResetIntel(int arena_index, any client = -1)
 }
 
 void SetPlayerToAllowedClass(int client, int arena_index)
-{  // If a player's class isn't allowed, set it to one that is.
+{
+    // If a player's class isn't allowed, set it to one that is.
     if (g_tfctPlayerClass[client] == TFClass_Unknown || !g_tfctArenaAllowedClasses[arena_index][g_tfctPlayerClass[client]])
     {
         for (int i = 1; i <= 9; i++)
@@ -2821,8 +2737,9 @@ void RemoveEngineerBuildings(int client)
 
 // Particles ------------------------------------------------------------------
 
-void AttachParticle(int ent, char[] particleType, int &particle) // Particle code borrowed from "The Amplifier" and "Presents!".
+void AttachParticle(int ent, char[] particleType, int &particle) 
 {
+    // Particle code borrowed from "The Amplifier" and "Presents!".
     particle = CreateEntityByName("info_particle_system");
 
     float pos[3];
@@ -3832,8 +3749,6 @@ void Check2v2TeamBalance(int arena_index)
     }
 }
 
-
-
 void Handle2v2TeamSwitchFromMenu(int client, int arena_index, int target_team)
 {
     int current_slot = g_iPlayerSlot[client];
@@ -3886,11 +3801,7 @@ Action BoostVectors(Handle timer, int userid)
     return Plugin_Continue;
 }
 
-
-
-// ====[ CVARS ]====================================================
-// i think this shit needs a switch case rewrite
-
+// TODO: consider refactor
 void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] newValue)
 {
     if (convar == gcvar_blockFallDamage) {
@@ -4545,7 +4456,8 @@ Action Command_TwoVsTwo(int client, int args)
 }
 
 Action Command_Spec(int client, int args)
-{  //detecting spectator target
+{  
+    // Detecting spectator target
     if (!IsValidClient(client))
         return Plugin_Continue;
 
@@ -4559,7 +4471,8 @@ Action Command_EurekaTeleport(int client, int args)
 }
 
 Action Command_AddBot(int client, int args)
-{  //adding bot to client's arena
+{  
+    // Adding bot to client's arena
     if (!IsValidClient(client))
         return Plugin_Continue;
 
@@ -4584,17 +4497,6 @@ Action Command_Loc(int client, int args)
     GetClientAbsOrigin(client, vec);
     GetClientEyeAngles(client, ang);
     PrintToChat(client, "%.0f %.0f %.0f %.0f", vec[0], vec[1], vec[2], ang[1]);
-    return Plugin_Handled;
-}
-
-Action Command_ToogleHitblip(int client, int args)
-{
-    if (!IsValidClient(client))
-        return Plugin_Continue;
-
-    PrintToChat(client, "This doesn't do anything and hasn't for a long time. Have a hitsound instead!");
-
-    ClientCommand(client, "playgamesound \"ui/hitsound.wav\"");
     return Plugin_Handled;
 }
 
@@ -4694,7 +4596,6 @@ Action Command_Help(int client, int args)
     PrintToConsole(client, "%t", "Cmd_First");
     PrintToConsole(client, "%t", "Cmd_Top5");
     PrintToConsole(client, "%t", "Cmd_Rank");
-    PrintToConsole(client, "%t", "Cmd_HitBlip");
     PrintToConsole(client, "%t", "Cmd_Hud");
     PrintToConsole(client, "%t", "Cmd_Elo");
     PrintToConsole(client, "%t", "Cmd_Handicap");
@@ -4824,10 +4725,7 @@ Action Command_Handicap(int client, int args)
     return Plugin_Handled;
 }
 
-/* OnDropIntel(client, command, argc)
-*
-* When a player drops the intel in BBall.
-* -------------------------------------------------------------------------- */
+// When a player drops the intel in BBall
 Action Command_DropItem(int client, const char[] command, int argc)
 {
     int arena_index = g_iPlayerArena[client];
@@ -4875,7 +4773,89 @@ Action Command_DropItem(int client, const char[] command, int argc)
     return Plugin_Continue;
 }
 
-//blocking sounds
+Action Command_Koth(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+
+    int arena_index = g_iPlayerArena[client];
+    //new player_slot = g_iPlayerSlot[client];
+
+    if (!arena_index) {
+        PrintToChat(client, "You are not in an arena!");
+        return Plugin_Continue;
+    }
+
+    if (g_bArenaKoth[arena_index]) {
+        PrintToChat(client, "This arena is already in KOTH mode!");
+        return Plugin_Continue;
+    }
+
+    if (!g_bArenaAllowKoth[arena_index]) {
+        PrintToChat(client, "Cannot change to KOTH mode in this arena!");
+        return Plugin_Continue;
+    }
+
+    if (g_iArenaStatus[arena_index] != AS_IDLE) {
+        PrintToChat(client, "Cannot switch to KOTH now!");
+        return Plugin_Continue;
+    }
+
+    g_bArenaKoth[arena_index] = true;
+    g_bArenaMGE[arena_index] = false;
+    g_fArenaRespawnTime[arena_index] = 5.0;
+    g_iArenaFraglimit[arena_index] = g_iArenaCaplimit[arena_index];
+    CreateTimer(1.5, Timer_StartDuel, arena_index);
+    UpdateArenaName(arena_index);
+
+    if(g_iArenaQueue[arena_index][SLOT_ONE]) {
+        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to KOTH mode!");
+    }
+
+    if(g_iArenaQueue[arena_index][SLOT_TWO]) {
+        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to KOTH mode");
+    }
+
+    return Plugin_Handled;
+}
+
+Action Command_Mge(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+
+    int arena_index = g_iPlayerArena[client];
+    //new player_slot = g_iPlayerSlot[client];
+
+    if (!arena_index) {
+        PrintToChat(client, "You are not in an arena!");
+        return Plugin_Continue;
+    }
+
+    if (g_bArenaMGE[arena_index]) {
+        PrintToChat(client, "This arena is already in MGE mode!");
+        return Plugin_Continue;
+    }
+
+    g_bArenaKoth[arena_index] = false;
+    g_bArenaMGE[arena_index] = true;
+    g_fArenaRespawnTime[arena_index] = 0.2;
+    g_iArenaFraglimit[arena_index] = g_iArenaMgelimit[arena_index];
+    CreateTimer(1.5, Timer_StartDuel, arena_index);
+    UpdateArenaName(arena_index);
+
+    if(g_iArenaQueue[arena_index][SLOT_ONE]) {
+        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to MGE mode!");
+    }
+
+    if(g_iArenaQueue[arena_index][SLOT_TWO]) {
+        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to MGE mode");
+    }
+
+    return Plugin_Handled;
+}
+
+// Blocking sounds
 Action sound_hook(int clients[MAXPLAYERS], int& numClients, char sample[PLATFORM_MAX_PATH], int& entity, int& channel, float& volume, int& level, int& pitch, int& flags, char soundEntry[PLATFORM_MAX_PATH], int& seed)
 {
     if (StrContains(sample, "pl_fallpain") >= 0 && g_bBlockFallDamage)
@@ -4887,7 +4867,9 @@ Action sound_hook(int clients[MAXPLAYERS], int& numClients, char sample[PLATFORM
 }
 
 // ====[ SQL ]====================================================
-void PrepareSQL() // Opens the connection to the database, and creates the tables if they dont exist.
+
+// Opens the connection to the database, and creates the tables if they dont exist.
+void PrepareSQL() 
 {
     char error[256];
 
@@ -4931,13 +4913,13 @@ void PrepareSQL() // Opens the connection to the database, and creates the table
 
     if (g_bUseSQLite)
     {
-        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INTEGER, steamid TEXT, name TEXT, wins INTEGER, losses INTEGER, lastplayed INTEGER, hitblip INTEGER)");
+        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INTEGER, steamid TEXT, name TEXT, wins INTEGER, losses INTEGER, lastplayed INTEGER)");
         g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner TEXT, loser TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
         g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner TEXT, winner2 TEXT, loser TEXT, loser2 TEXT, winnerscore INTEGER, loserscore INTEGER, winlimit INTEGER, gametime INTEGER, mapname TEXT, arenaname TEXT) ");
     }
     else
     {
-        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INT(4) NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INT(4) NOT NULL, losses INT(4) NOT NULL, lastplayed INT(11) NOT NULL, hitblip INT(2) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
+        g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INT(4) NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INT(4) NOT NULL, losses INT(4) NOT NULL, lastplayed INT(11) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
         g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels (winner VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
         g_DB.Query(SQLErrorCheckCallback, "CREATE TABLE IF NOT EXISTS mgemod_duels_2v2 (winner VARCHAR(32) NOT NULL, winner2 VARCHAR(32) NOT NULL, loser VARCHAR(32) NOT NULL, loser2 VARCHAR(32) NOT NULL, winnerscore INT(4) NOT NULL, loserscore INT(4) NOT NULL, winlimit INT(4) NOT NULL, gametime INT(11) NOT NULL, mapname VARCHAR(64) NOT NULL, arenaname VARCHAR(32) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB ");
     }
@@ -5017,24 +4999,22 @@ void T_SQLQueryOnConnect(Database db, DBResultSet results, const char[] error, a
     if (results.FetchRow())
     {
         g_iPlayerRating[client] = results.FetchInt(0);
-        g_bHitBlip[client] = results.FetchInt(1) == 1;
-        g_iPlayerWins[client] = results.FetchInt(2);
-        g_iPlayerLosses[client] = results.FetchInt(3);
+        g_iPlayerWins[client] = results.FetchInt(1);
+        g_iPlayerLosses[client] = results.FetchInt(2);
 
         g_DB.Format(query, sizeof(query), "UPDATE mgemod_stats SET name='%s' WHERE steamid='%s'", namesql, g_sPlayerSteamID[client]);
         db.Query(SQLErrorCheckCallback, query);
     } else {
         if (g_bUseSQLite)
         {
-            g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_stats VALUES(1600, '%s', '%s', 0, 0, %i, 1)", g_sPlayerSteamID[client], namesql, GetTime());
+            g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_stats VALUES(1600, '%s', '%s', 0, 0, %i)", g_sPlayerSteamID[client], namesql, GetTime());
             db.Query(SQLErrorCheckCallback, query);
         } else {
-            g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed, hitblip) VALUES (1600, '%s', '%s', 0, 0, %i, 1)", g_sPlayerSteamID[client], namesql, GetTime());
+            g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed) VALUES (1600, '%s', '%s', 0, 0, %i)", g_sPlayerSteamID[client], namesql, GetTime());
             db.Query(SQLErrorCheckCallback, query);
         }
 
         g_iPlayerRating[client] = 1600;
-        g_bHitBlip[client] = false;
     }
 }
 
@@ -5172,7 +5152,7 @@ void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any dat
                     GetClientAuthId(i, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty));
                     db.Escape(steamid_dirty, steamid, sizeof(steamid));
                     strcopy(g_sPlayerSteamID[i], 32, steamid);
-                    g_DB.Format(query, sizeof(query), "SELECT rating, hitblip, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
+                    g_DB.Format(query, sizeof(query), "SELECT rating, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
                     db.Query(T_SQLQueryOnConnect, query, i);
                     
                     // Handle hot-loading case: initialize client state that requires DB
@@ -5180,7 +5160,6 @@ void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any dat
                     {
                         // Ensure spectator team and proper client setup
                         ChangeClientTeam(i, TEAM_SPEC);
-                        g_bHitBlip[i] = false;
                         g_bShowHud[i] = true;
                         g_bPlayerRestoringAmmo[i] = false;
                     }
@@ -5198,7 +5177,6 @@ void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any dat
         }
     }
 }
-
 
 /*
 ** ------------------------------------------------------------------
@@ -5604,7 +5582,6 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
     return Plugin_Continue;
 }
 
-
 Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
     gcvar_WfP.SetInt(1); //cancel waiting for players
@@ -5705,9 +5682,7 @@ Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
                 SetEntityModel(g_iCapturePoint[i], MODEL_POINT);
                 DispatchKeyValue(g_iCapturePoint[i], "powerup_model", MODEL_BRIEFCASE);
 
-                //SDKUnhook(g_iCapturePoint[i], SDKHook_StartTouch, OnTouchPoint);
                 SDKHook(g_iCapturePoint[i], SDKHook_StartTouch, OnTouchPoint);
-                //SDKUnhook(g_iCapturePoint[i], SDKHook_EndTouch, OnEndTouchPoint);
                 SDKHook(g_iCapturePoint[i], SDKHook_EndTouch, OnEndTouchPoint);
             }
 
@@ -6285,24 +6260,6 @@ Action Timer_GiveAmmo(Handle timer, int userid)
     return Plugin_Continue;
 }
 
-/*
-Action Timer_DeleteParticle(Handle timer, any particle)
-{
-    if (IsValidEdict(particle))
-    {
-        char classname[64];
-        GetEdictClassname(particle, classname, sizeof(classname));
-
-        if (StrEqual(classname, "info_particle_system", false))
-        {
-            RemoveEdict(particle);
-        }
-    }
-
-    return Plugin_Continue;
-}
-*/
-
 Action Timer_AddBotInQueue(Handle timer, DataPack pack)
 {
     pack.Reset();
@@ -6665,19 +6622,13 @@ Action Timer_RegenArena(Handle timer, any arena_index)
 ** ------------------------------------------------------------------
 **/
 
-/* TraceEntityFilterPlayer()
- *
- * Ignores players.
- * -------------------------------------------------------------------------- */
+// Ignores players.
 bool TraceEntityFilterPlayer(int entity, int contentsMask)
 {
     return entity > MaxClients || !entity;
 }
 
-/* IsValidClient()
- *
- * Checks if a client is valid.
- * -------------------------------------------------------------------------- */
+// Checks if a client is valid.
 bool IsValidClient(int iClient, bool bIgnoreKickQueue = false)
 {
     if
@@ -6701,10 +6652,7 @@ bool IsValidClient(int iClient, bool bIgnoreKickQueue = false)
     return true;
 }
 
-/* ShootsRocketsOrPipes()
- *
- * Does this player's gun shoot rockets or pipes?
- * -------------------------------------------------------------------------- */
+// Does this player's gun shoot rockets or pipes?
 bool ShootsRocketsOrPipes(int client)
 {
     char weapon[64];
@@ -6712,10 +6660,7 @@ bool ShootsRocketsOrPipes(int client)
     return (StrContains(weapon, "tf_weapon_rocketlauncher") == 0) || StrEqual(weapon, "tf_weapon_grenadelauncher");
 }
 
-/* DistanceAboveGround()
- *
- * How high off the ground is the player?
- * -------------------------------------------------------------------------- */
+// How high off the ground is the player?
 float DistanceAboveGround(int victim)
 {
     float vStart[3];
@@ -6737,14 +6682,9 @@ float DistanceAboveGround(int victim)
     return distance;
 }
 
-/* DistanceAboveGroundAroundUser()
- *
- * How high off the ground is the player?
- *This is used for dropping
- * -------------------------------------------------------------------------- */
-
- // i highly suspect this also needs a switch case rewrite lol
-
+// How high off the ground is the player?
+// This is used for dropping
+// TODO: refactor
 float DistanceAboveGroundAroundPlayer(int victim)
 {
     float vStart[3];
@@ -6837,10 +6777,7 @@ float DistanceAboveGroundAroundPlayer(int victim)
     return minDist;
 }
 
-/* FindEntityByClassname2()
- *
- * Finds entites, and won't error out when searching invalid entities.
- * -------------------------------------------------------------------------- */
+// Finds entites, and won't error out when searching invalid entities.
 stock int FindEntityByClassname2(int startEnt, const char[] classname)
 {
     /* If startEnt isn't valid shifting it back to the nearest valid one */
@@ -6849,14 +6786,10 @@ stock int FindEntityByClassname2(int startEnt, const char[] classname)
     return FindEntityByClassname(startEnt, classname);
 }
 
-/* getTeammate()
- *
- * Gets a clients teammate if he's in a 4 player arena
- * This can actually be replaced by g_iArenaQueue[SLOT_X] but I didn't realize that array existed, so YOLO
- *---------------------------------------------------------------------*/
+// Gets a clients teammate if he's in a 4 player arena
+// TODO: This can actually be replaced by g_iArenaQueue[SLOT_X] but I didn't realize that array existed, so YOLO
 int getTeammate(int myClientSlot, int arena_index)
 {
-
     int client_teammate_slot;
 
     if (myClientSlot == SLOT_ONE)
@@ -6878,17 +6811,11 @@ int getTeammate(int myClientSlot, int arena_index)
 
     int myClientTeammate = g_iArenaQueue[arena_index][client_teammate_slot];
     return myClientTeammate;
-
 }
 
-
-/*  EndUlitduo(any arena_index, any winner_team)
-*
-* Called when someone wins an ultiduo round
-* --------------------------------------------------------------------------- */
+// Called when someone wins an ultiduo round
 void EndKoth(any arena_index, any winner_team)
 {
-
     PlayEndgameSoundsToArena(arena_index, winner_team);
     g_iArenaScore[arena_index][winner_team] += 1;
     int fraglimit = g_iArenaFraglimit[arena_index];
@@ -7001,10 +6928,7 @@ void EndKoth(any arena_index, any winner_team)
     }
 }
 
-/*  ResetArena(any arena_index)
-*
-* Called when a round starts to reset medics ubercharge
-* --------------------------------------------------------------------------- */
+// Called when a round starts to reset medics ubercharge
 void ResetArena(int arena_index)
 {
     //Tell the game this was a forced suicide and it shouldn't do anything about it
@@ -7067,13 +6991,9 @@ void Restore2v2WaitingSpectators(int arena_index)
     }
 }
 
-/*  swapClasses(int client, int client_teammate)
-*
-* Called when players want to swap classes in an ultiduo arena
-* --------------------------------------------------------------------------- */
+// Called when players want to swap classes in an ultiduo arena
 void swapClasses(int client, int client_teammate)
 {
-
     TFClassType client_class = g_tfctPlayerClass[client];
     TFClassType client_teammate_class = g_tfctPlayerClass[client_teammate];
 
@@ -7087,10 +7007,7 @@ void swapClasses(int client, int client_teammate)
 
 }
 
-/*  EnemyTeamTouching(any team)
-*
-* Returns of a player on the other team is touching the point
-* --------------------------------------------------------------------------- */
+// Returns of a player on the other team is touching the point
 bool EnemyTeamTouching(any team, any arena_index)
 {
     if (team == TEAM_RED)
@@ -7112,7 +7029,6 @@ bool EnemyTeamTouching(any team, any arena_index)
             return false;
     }
 }
-
 
 void PlayEndgameSoundsToArena(any arena_index, any winner_team)
 {
@@ -7154,88 +7070,6 @@ void PlayEndgameSoundsToArena(any arena_index, any winner_team)
                 EmitSoundToClient(blu_2, SoundFileBlu);
         }
     }
-}
-
-Action Command_Koth(int client, int args)
-{
-    if (!IsValidClient(client))
-        return Plugin_Continue;
-
-    int arena_index = g_iPlayerArena[client];
-    //new player_slot = g_iPlayerSlot[client];
-
-    if (!arena_index) {
-        PrintToChat(client, "You are not in an arena!");
-        return Plugin_Continue;
-    }
-
-    if (g_bArenaKoth[arena_index]) {
-        PrintToChat(client, "This arena is already in KOTH mode!");
-        return Plugin_Continue;
-    }
-
-    if (!g_bArenaAllowKoth[arena_index]) {
-        PrintToChat(client, "Cannot change to KOTH mode in this arena!");
-        return Plugin_Continue;
-    }
-
-    if (g_iArenaStatus[arena_index] != AS_IDLE) {
-        PrintToChat(client, "Cannot switch to KOTH now!");
-        return Plugin_Continue;
-    }
-
-    g_bArenaKoth[arena_index] = true;
-    g_bArenaMGE[arena_index] = false;
-    g_fArenaRespawnTime[arena_index] = 5.0;
-    g_iArenaFraglimit[arena_index] = g_iArenaCaplimit[arena_index];
-    CreateTimer(1.5, Timer_StartDuel, arena_index);
-    UpdateArenaName(arena_index);
-
-    if(g_iArenaQueue[arena_index][SLOT_ONE]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to KOTH mode!");
-    }
-
-    if(g_iArenaQueue[arena_index][SLOT_TWO]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to KOTH mode");
-    }
-
-    return Plugin_Handled;
-}
-
-Action Command_Mge(int client, int args)
-{
-    if (!IsValidClient(client))
-        return Plugin_Continue;
-
-    int arena_index = g_iPlayerArena[client];
-    //new player_slot = g_iPlayerSlot[client];
-
-    if (!arena_index) {
-        PrintToChat(client, "You are not in an arena!");
-        return Plugin_Continue;
-    }
-
-    if (g_bArenaMGE[arena_index]) {
-        PrintToChat(client, "This arena is already in MGE mode!");
-        return Plugin_Continue;
-    }
-
-    g_bArenaKoth[arena_index] = false;
-    g_bArenaMGE[arena_index] = true;
-    g_fArenaRespawnTime[arena_index] = 0.2;
-    g_iArenaFraglimit[arena_index] = g_iArenaMgelimit[arena_index];
-    CreateTimer(1.5, Timer_StartDuel, arena_index);
-    UpdateArenaName(arena_index);
-
-    if(g_iArenaQueue[arena_index][SLOT_ONE]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to MGE mode!");
-    }
-
-    if(g_iArenaQueue[arena_index][SLOT_TWO]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to MGE mode");
-    }
-
-    return Plugin_Handled;
 }
 
 void UpdateArenaName(int arena)
