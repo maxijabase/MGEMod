@@ -428,6 +428,9 @@ public void OnPluginStart()
     // 2v2 Ready System Commands
     RegConsoleCmd("ready", Command_Ready, "Mark yourself as ready for 2v2 match");
     RegConsoleCmd("r", Command_Ready, "Mark yourself as ready for 2v2 match");
+    
+    // Force 2v2 Command
+    RegAdminCmd("force2v2", Command_Force2v2, ADMFLAG_BAN, "Force add all players to a 2v2 arena");
 
     AddCommandListener(Command_DropItem, "dropitem");
 
@@ -3244,6 +3247,120 @@ Action Command_Ready(int client, int args)
     g_bPlayer2v2Ready[client] = !g_bPlayer2v2Ready[client];
 
     Update2v2ReadyStatus(arena_index);
+    return Plugin_Handled;
+}
+
+Action Command_Force2v2(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+
+    // Count total players in server
+    int total_players = 0;
+    int valid_players[MAXPLAYERS + 1];
+    
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsValidClient(i) && !IsFakeClient(i))
+        {
+            valid_players[total_players] = i;
+            total_players++;
+        }
+    }
+
+    if (total_players < 4)
+    {
+        PrintToChat(client, "Need at least 4 players for 2v2. Found %d players.", total_players);
+        return Plugin_Handled;
+    }
+
+    // Find available 2v2 arena
+    int target_arena = -1;
+    for (int i = 1; i <= g_iArenaCount; i++)
+    {
+        if (g_bFourPersonArena[i] && g_iArenaStatus[i] == AS_IDLE)
+        {
+            // Check if arena has space
+            int arena_players = 0;
+            for (int j = SLOT_ONE; j <= SLOT_FOUR; j++)
+            {
+                if (g_iArenaQueue[i][j])
+                    arena_players++;
+            }
+            
+            if (arena_players == 0)
+            {
+                target_arena = i;
+                break;
+            }
+        }
+    }
+
+    if (target_arena == -1)
+    {
+        PrintToChat(client, "No available 2v2 arenas found!");
+        return Plugin_Handled;
+    }
+
+    // Remove all players from their current arenas first
+    for (int i = 0; i < total_players; i++)
+    {
+        int player = valid_players[i];
+        if (g_iPlayerArena[player])
+        {
+            RemoveFromQueue(player, true);
+        }
+    }
+
+    // Add first 4 players to the 2v2 arena
+    int red_team[2];
+    int blu_team[2];
+    red_team[0] = valid_players[0];
+    red_team[1] = valid_players[1];
+    blu_team[0] = valid_players[2];
+    blu_team[1] = valid_players[3];
+
+    // Add RED team players
+    g_iPlayerArena[red_team[0]] = target_arena;
+    g_iPlayerSlot[red_team[0]] = SLOT_ONE;
+    g_iArenaQueue[target_arena][SLOT_ONE] = red_team[0];
+    SetPlayerToAllowedClass(red_team[0], target_arena);
+
+    g_iPlayerArena[red_team[1]] = target_arena;
+    g_iPlayerSlot[red_team[1]] = SLOT_THREE;
+    g_iArenaQueue[target_arena][SLOT_THREE] = red_team[1];
+    SetPlayerToAllowedClass(red_team[1], target_arena);
+
+    // Add BLU team players
+    g_iPlayerArena[blu_team[0]] = target_arena;
+    g_iPlayerSlot[blu_team[0]] = SLOT_TWO;
+    g_iArenaQueue[target_arena][SLOT_TWO] = blu_team[0];
+    SetPlayerToAllowedClass(blu_team[0], target_arena);
+
+    g_iPlayerArena[blu_team[1]] = target_arena;
+    g_iPlayerSlot[blu_team[1]] = SLOT_FOUR;
+    g_iArenaQueue[target_arena][SLOT_FOUR] = blu_team[1];
+    SetPlayerToAllowedClass(blu_team[1], target_arena);
+
+    // Notify all players
+    char red_names[128], blu_names[128];
+    char name1[MAX_NAME_LENGTH], name2[MAX_NAME_LENGTH], name3[MAX_NAME_LENGTH], name4[MAX_NAME_LENGTH];
+    
+    GetClientName(red_team[0], name1, sizeof(name1));
+    GetClientName(red_team[1], name2, sizeof(name2));
+    GetClientName(blu_team[0], name3, sizeof(name3));
+    GetClientName(blu_team[1], name4, sizeof(name4));
+    
+    Format(red_names, sizeof(red_names), "%s & %s", name1, name2);
+    Format(blu_names, sizeof(blu_names), "%s & %s", name3, name4);
+
+    PrintToChatAll("Admin force-added players to 2v2 arena: %s", g_sArenaName[target_arena]);
+    PrintToChatAll("RED Team: %s", red_names);
+    PrintToChatAll("BLU Team: %s", blu_names);
+
+    // Start the 2v2 ready system
+    Start2v2ReadySystem(target_arena);
+
     return Plugin_Handled;
 }
 
