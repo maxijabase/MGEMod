@@ -79,7 +79,8 @@ Handle
     hm_TeammateHP,
     hm_KothTimerBLU,
     hm_KothTimerRED,
-    hm_KothCap;
+    hm_KothCap,
+    hm_2v2Ready;
 
 // Cookie Handles
 Cookie g_hShowEloCookie;
@@ -437,6 +438,7 @@ public void OnPluginStart()
     hm_KothTimerRED = CreateHudSynchronizer();
     hm_KothCap      = CreateHudSynchronizer();
     hm_TeammateHP   = CreateHudSynchronizer();
+    hm_2v2Ready     = CreateHudSynchronizer();
 
     // Set up the log file for debug logging.
     BuildPath(Path_SM, g_sLogFile, sizeof(g_sLogFile), "logs/mgemod.log");
@@ -676,10 +678,10 @@ public void OnClientDisconnect(int client)
         // Clear 2v2 ready status
         g_bPlayer2v2Ready[client] = false;
         
-        // Clear hint text if arena was in ready state
+        // Clear hud text if arena was in ready state
         if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
         {
-            Clear2v2ReadyHint(arena_index);
+            Clear2v2ReadyHud(arena_index);
         }
 
         // Bot cleanup logic (queue advancement is handled by RemoveFromQueue)
@@ -2648,8 +2650,8 @@ void Start2v2ReadySystem(int arena_index)
     PrintToChatArena(arena_index, "All 4 players joined! Please ready up to start the match.");
     Update2v2ReadyStatus(arena_index);
     
-    // Start hint text refresh timer
-    CreateTimer(5.0, Timer_Refresh2v2Hint, arena_index, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
+    // Start hud text refresh timer
+    CreateTimer(5.0, Timer_Refresh2v2Hud, arena_index, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
 void Show2v2ReadyMenu(int client)
@@ -2721,7 +2723,7 @@ void Update2v2ReadyStatus(int arena_index)
     // Show progress to all players in arena
     if (total_players == 4)
     {
-        Show2v2ReadyHint(arena_index, ready_count);
+        Show2v2ReadyHud(arena_index, ready_count);
         
         if (ready_count == 4)
         {
@@ -2732,15 +2734,15 @@ void Update2v2ReadyStatus(int arena_index)
     }
 }
 
-void Show2v2ReadyHint(int arena_index, int ready_count)
+void Show2v2ReadyHud(int arena_index, int ready_count)
 {
-    // Show personalized hint text to each player
+    // Show personalized HUD text to each player
     for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
     {
         int client = g_iArenaQueue[arena_index][i];
         if (client)
         {
-            char hint_text[256];
+            char hudtext[256];
             char status_indicator[32];
             
             // Set personal ready status indicator
@@ -2753,31 +2755,30 @@ void Show2v2ReadyHint(int arena_index, int ready_count)
                 Format(status_indicator, sizeof(status_indicator), "✘ You are NOT READY");
             }
             
-            // Format personalized hint text
-            Format(hint_text, sizeof(hint_text), "%d/4 players ready\n%s\nType !ready or !r to toggle", 
+            // Format personalized hud text
+            Format(hudtext, sizeof(hudtext), "%d/4 players ready\n%s\nType !ready or !r to toggle", 
                    ready_count, status_indicator);
             
-            PrintHintText(client, hint_text);
-            StopSound(client, SNDCHAN_STATIC, "UI/hint.mp3");
+            SetHudTextParams(0.42, 0.85, 5.0, 255, 255, 255, 255, 0, 0.0, 0.0, 0.0);
+            ShowSyncHudText(client, hm_2v2Ready, "%s", hudtext);
         }
     }
 }
 
-void Clear2v2ReadyHint(int arena_index)
+void Clear2v2ReadyHud(int arena_index)
 {
-    // Clear hint text for all players in arena
+    // Clear HUD text for all players in arena
     for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
     {
         int client = g_iArenaQueue[arena_index][i];
         if (client)
         {
-            PrintHintText(client, "");
-            StopSound(client, SNDCHAN_STATIC, "UI/hint.mp3");
+            ClearSyncHud(client, hm_2v2Ready);
         }
     }
 }
 
-Action Timer_Refresh2v2Hint(Handle timer, any arena_index)
+Action Timer_Refresh2v2Hud(Handle timer, any arena_index)
 {
     // Only refresh if arena is still in ready state
     if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
@@ -2798,7 +2799,7 @@ Action Timer_Refresh2v2Hint(Handle timer, any arena_index)
         
         if (total_players == 4)
         {
-            Show2v2ReadyHint(arena_index, ready_count);
+            Show2v2ReadyHud(arena_index, ready_count);
         }
         else
         {
@@ -2863,7 +2864,7 @@ Action Timer_Restart2v2Ready(Handle timer, any arena_index)
     else
     {
         // Not enough players, revert to normal behavior
-        Clear2v2ReadyHint(arena_index);
+        Clear2v2ReadyHud(arena_index);
         g_iArenaStatus[arena_index] = AS_IDLE;
         // Still restore any parked spectators in case teams refill
         Restore2v2WaitingSpectators(arena_index);
@@ -2971,7 +2972,7 @@ void Check2v2TeamBalance(int arena_index)
         else if (g_iArenaStatus[arena_index] == AS_AFTERFIGHT || g_iArenaStatus[arena_index] == AS_FIGHT)
         {
             // Match just ended and players were promoted, transition to ready system
-            Clear2v2ReadyHint(arena_index);
+            Clear2v2ReadyHud(arena_index);
             g_iArenaStatus[arena_index] = AS_IDLE;
             // Restore any waiting/spec players before readying again
             if (g_bFourPersonArena[arena_index])
@@ -2986,7 +2987,7 @@ void Check2v2TeamBalance(int arena_index)
         // Not balanced, inform players
         if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
         {
-            Clear2v2ReadyHint(arena_index);
+            Clear2v2ReadyHud(arena_index);
             g_iArenaStatus[arena_index] = AS_IDLE;
             if (g_bFourPersonArena[arena_index])
             {
@@ -5196,8 +5197,8 @@ Action Timer_StartDuel(Handle timer, any arena_index)
 
     ShowSpecHudToArena(arena_index);
     
-    // Clear 2v2 ready hint text
-    Clear2v2ReadyHint(arena_index);
+    // Clear 2v2 ready hud text
+    Clear2v2ReadyHud(arena_index);
 
     StartCountDown(arena_index);
 
