@@ -5223,7 +5223,7 @@ Action Timer_Tele(Handle timer, int userid)
                     return Plugin_Continue;
                 } else if (distance > besteffort_dist) {
                     besteffort_dist = distance;
-                    besteffort_spawn = i;
+                    besteffort_spawn = RandomSpawn[i];
                 }
             }
         }
