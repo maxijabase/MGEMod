@@ -62,16 +62,6 @@ The ELO display logic in 2v2 mode is confusing since individual ELOs get merged/
 - Show individual ELOs but with clear indication they're not used for 2v2 matchmaking
 - Redesign ELO system to be more intuitive for 2v2 gameplay
 
-### 2v2 Spawn Logic Bug
-
-Players sometimes spawn in the same location during 2v2 matches, causing immediate conflicts and poor gameplay experience. The spawn logic needs careful analysis to ensure proper spacing and fair positioning.
-
-**Investigation needed:**
-- Analyze current spawn point selection algorithm
-- Check for conflicts in spawn point assignment
-- Verify spawn point validation and collision detection
-- Test spawn logic across different map configurations
-
 ### SQLite Format() Query Bug
 
 There's a mysterious Format() bug that occurs on 2v2 match end, caused by incorrect parameters being passed to the SQLite query formatting function. This bug is difficult to reproduce and solve.
@@ -81,16 +71,6 @@ There's a mysterious Format() bug that occurs on 2v2 match end, caused by incorr
 - Check for type mismatches or null values in query parameters
 - Review SQLite query construction logic for 2v2 match end
 - Add better error handling and parameter validation
-
-### 1v1 Spawn Logic Bug
-
-Players in 1v1 matches sometimes spawn too close to their enemy.
-
-**Investigation needed:**
-- Analyze current 1v1 spawn point selection algorithm
-- Check for conflicts in spawn point assignment for 1v1 matches
-- Verify spawn point validation and collision detection
-- Test spawn logic across different 1v1 map configurations
 
 ### Make all timers configurable
 
