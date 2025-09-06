@@ -5176,12 +5176,25 @@ Action Timer_Tele(Handle timer, int userid)
         if (g_iPlayerSlot[client] == SLOT_ONE || g_iPlayerSlot[client] == SLOT_THREE)
         {
             offset_high = ((g_iArenaSpawns[arena_index]) / 2);
-            random_int = GetRandomInt(1, offset_high); // The first half of the player spawns are for slot one and three.
+            offset_low = 1;
         } else {
             offset_high = (g_iArenaSpawns[arena_index]);
             offset_low = (((g_iArenaSpawns[arena_index]) / 2) + 1);
-            random_int = GetRandomInt(offset_low, offset_high);
         }
+
+        // Get teammate and check if they're using a spawn point
+        int teammate = getTeammate(g_iPlayerSlot[client], arena_index);
+        int teammate_spawn = -1;
+        if (IsValidClient(teammate) && IsPlayerAlive(teammate)) {
+            teammate_spawn = GetPlayerCurrentSpawnPoint(teammate, arena_index);
+        }
+
+        // Pick random spawn from team's pool, avoiding teammate's spawn
+        int attempts = 0;
+        do {
+            random_int = GetRandomInt(offset_low, offset_high);
+            attempts++;
+        } while (random_int == teammate_spawn && attempts < 50); // Prevent infinite loop
 
         TeleportEntity(client, g_fArenaSpawnOrigin[arena_index][random_int], g_fArenaSpawnAngles[arena_index][random_int], vel);
         EmitAmbientSound("items/spawn_item.wav", g_fArenaSpawnOrigin[arena_index][random_int], _, SNDLEVEL_NORMAL, _, 1.0);
@@ -6017,6 +6030,35 @@ int getTeammate(int myClientSlot, int arena_index)
 
     int myClientTeammate = g_iArenaQueue[arena_index][client_teammate_slot];
     return myClientTeammate;
+}
+
+int GetPlayerCurrentSpawnPoint(int client, int arena_index)
+{
+    if (!IsValidClient(client) || !IsPlayerAlive(client))
+        return -1;
+    
+    float client_pos[3];
+    GetClientAbsOrigin(client, client_pos);
+    
+    // Find the closest spawn point to the player's current position
+    int closest_spawn = -1;
+    float closest_distance = 999999.0;
+    
+    for (int i = 1; i <= g_iArenaSpawns[arena_index]; i++)
+    {
+        float distance = GetVectorDistance(client_pos, g_fArenaSpawnOrigin[arena_index][i]);
+        if (distance < closest_distance)
+        {
+            closest_distance = distance;
+            closest_spawn = i;
+        }
+    }
+    
+    // Only return the spawn if the player is very close to it (within 100 units)
+    if (closest_distance < 100.0)
+        return closest_spawn;
+    
+    return -1;
 }
 
 // Called when someone wins an ultiduo round
