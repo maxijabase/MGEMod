@@ -18,7 +18,7 @@ void CalcELO(int winner, int loser)
 
     int arena_index = g_iPlayerArena[winner];
     int time = GetTime();
-    char query[512], sCleanArenaname[128], sCleanMapName[128];
+    char query[1024], sCleanArenaname[128], sCleanMapName[128];
 
     g_DB.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
     g_DB.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
@@ -94,7 +94,7 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
 
     int arena_index = g_iPlayerArena[winner];
     int time = GetTime();
-    char query[512], sCleanArenaname[128], sCleanMapName[128];
+    char query[1024], sCleanArenaname[128], sCleanMapName[128];
 
     g_DB.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
     g_DB.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
