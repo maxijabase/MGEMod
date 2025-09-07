@@ -198,7 +198,8 @@ int
     g_iBBallHoop            [MAXARENAS + 1][3],
     g_iBBallIntel           [MAXARENAS + 1],
     g_iArenaEarlyLeave      [MAXARENAS + 1],
-    g_iTopPlayersPage       [MAXPLAYERS + 1];
+    g_iTopPlayersPage       [MAXPLAYERS + 1],
+    g_iTopPlayersTotalPages [MAXPLAYERS + 1];
 
 bool g_tfctArenaAllowedClasses[MAXARENAS + 1][10];
 
@@ -2386,25 +2387,42 @@ int Panel_TopPlayers(Menu menu, MenuAction action, int param1, int param2)
     {
         case MenuAction_Select:
         {
-            switch (param2)
+            char query[512];
+            
+            // Check if we have stored pagination info for this client
+            bool hasPagination = g_iTopPlayersTotalPages[param1] > 1;
+            
+            if (hasPagination)
             {
-                case 1: // Previous Page
+                switch (param2)
                 {
-                    g_iTopPlayersPage[param1]--;
-                    char query[512];
-                    g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
-                    g_DB.Query(SQL_OnTopPlayersReceived, query, param1);
+                    case 1: // Previous Page
+                    {
+                        g_iTopPlayersPage[param1]--;
+                        g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
+                        g_DB.Query(SQL_OnTopPlayersReceived, query, param1);
+                    }
+                    case 2: // Next Page
+                    {
+                        g_iTopPlayersPage[param1]++;
+                        g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
+                        g_DB.Query(SQL_OnTopPlayersReceived, query, param1);
+                    }
+                    case 3: // Close
+                    {
+                        // Panel closes automatically
+                    }
                 }
-                case 2: // Next Page
+            }
+            else
+            {
+                // No pagination, so item 1 is Close
+                switch (param2)
                 {
-                    g_iTopPlayersPage[param1]++;
-                    char query[512];
-                    g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
-                    g_DB.Query(SQL_OnTopPlayersReceived, query, param1);
-                }
-                case 3: // Close
-                {
-                    // Panel closes automatically
+                    case 1: // Close
+                    {
+                        // Panel closes automatically
+                    }
                 }
             }
         }
@@ -4293,6 +4311,7 @@ void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
         currentPage = totalPages - 1;
     
     g_iTopPlayersPage[client] = currentPage;
+    g_iTopPlayersTotalPages[client] = totalPages;
     
     int startIndex = currentPage * playersPerPage;
     int endIndex = startIndex + playersPerPage;
