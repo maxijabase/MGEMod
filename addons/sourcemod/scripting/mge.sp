@@ -3191,7 +3191,6 @@ Action Command_Swap(int client, int args)
     int client_teammate = getTeammate(g_iPlayerSlot[client], arena_index);
     ShowSwapMenu(client_teammate);
     return Plugin_Handled;
-
 }
 
 Action Command_Top5(int client, int args)
@@ -3206,7 +3205,7 @@ Action Command_Top5(int client, int args)
     char query[512];
     g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
     g_DB.Query(SQL_OnTopPlayersReceived, query, client);
-    return Plugin_Continue;
+    return Plugin_Handled;
 }
 
 Action Command_Remove(int client, int args)
@@ -3221,7 +3220,7 @@ Action Command_Remove(int client, int args)
 Action Command_Ready(int client, int args)
 {
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     int arena_index = g_iPlayerArena[client];
     if (!arena_index)
@@ -3252,7 +3251,7 @@ Action Command_Ready(int client, int args)
 Action Command_Force2v2(int client, int args)
 {
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     // Count total players in server
     int total_players = 0;
@@ -3367,7 +3366,7 @@ Action Command_AutoTeam(int client, int args)
 {
     // Block autoteam command usage, and show add menu instead
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
     
     if (TF2_GetClientTeam(client) == TFTeam_Spectator)
     {
@@ -3379,10 +3378,10 @@ Action Command_AutoTeam(int client, int args)
 Action Command_JoinTeam(int client, int args)
 {
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     // Get the team argument
-    char team[16];
+    char team[16];  
     GetCmdArg(1, team, sizeof(team));
 
     // Allow spectate command to pass through
@@ -3401,7 +3400,7 @@ Action Command_JoinTeam(int client, int args)
         HideHud(client);
         CreateTimer(1.0, Timer_ChangeSpecTarget, GetClientUserId(client));
 
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
     else
     {
@@ -3730,33 +3729,33 @@ Action Command_JoinClass(int client, int args)
 Action Command_OneVsOne(int client, int args)
 {
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     int arena_index = g_iPlayerArena[client];
 
     if (!arena_index) {
         PrintToChat(client, "You are not in an arena!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if (!g_bFourPersonArena[arena_index]) {
         PrintToChat(client, "This arena is already in 1v1 mode!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if (!g_bArenaAllowChange[arena_index]) {
         PrintToChat(client, "Cannot change to 1v1 in this arena!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if (g_iArenaStatus[arena_index] != AS_IDLE) {
         PrintToChat(client, "Cannot switch to 1v1 now!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if(g_iArenaQueue[arena_index][SLOT_THREE] || g_iArenaQueue[arena_index][SLOT_FOUR]) {
         PrintToChat(client, "There are more then 2 players in this arena");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     g_bFourPersonArena[arena_index] = false;
@@ -3778,28 +3777,28 @@ Action Command_OneVsOne(int client, int args)
 Action Command_TwoVsTwo(int client, int args)
 {
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     int arena_index = g_iPlayerArena[client];
 
     if (!arena_index) {
         PrintToChat(client, "You are not in an arena!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if(g_bFourPersonArena[arena_index]) {
         PrintToChat(client, "This arena is already in 2v2 mode!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if (!g_bArenaAllowChange[arena_index]) {
         PrintToChat(client, "Cannot change to 2v2 in this arena!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if (g_iArenaStatus[arena_index] != AS_IDLE) {
         PrintToChat(client, "Cannot switch to 2v2 now!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     g_bFourPersonArena[arena_index] = true;
@@ -3822,7 +3821,7 @@ Action Command_Spec(int client, int args)
 {  
     // Detecting spectator target
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     CreateTimer(0.1, Timer_ChangeSpecTarget, GetClientUserId(client));
     return Plugin_Continue;
@@ -3837,7 +3836,7 @@ Action Command_AddBot(int client, int args)
 {  
     // Adding bot to client's arena
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     int arena_index = g_iPlayerArena[client];
     int player_slot = g_iPlayerSlot[client];
@@ -3853,7 +3852,7 @@ Action Command_AddBot(int client, int args)
 Action Command_Loc(int client, int args)
 {
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     float vec[3];
     float ang[3];
@@ -3866,7 +3865,7 @@ Action Command_Loc(int client, int args)
 Action Command_ConnectionTest(int client, int args)
 {
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     char query[256];
     g_DB.Format(query, sizeof(query), "SELECT rating FROM mgemod_stats LIMIT 1");
@@ -3878,7 +3877,7 @@ Action Command_ConnectionTest(int client, int args)
 Action Command_ToggleHud(int client, int args)
 {
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     g_bShowHud[client] = !g_bShowHud[client];
 
@@ -3915,7 +3914,7 @@ Action Command_ToggleElo(int client, int args)
 Action Command_Rank(int client, int args)
 {
     if (g_bNoStats || !IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     if (args == 0)
     {
@@ -4136,28 +4135,28 @@ Action Command_DropItem(int client, const char[] command, int argc)
 Action Command_Koth(int client, int args)
 {
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     int arena_index = g_iPlayerArena[client];
 
     if (!arena_index) {
         PrintToChat(client, "You are not in an arena!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if (g_bArenaKoth[arena_index]) {
         PrintToChat(client, "This arena is already in KOTH mode!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if (!g_bArenaAllowKoth[arena_index]) {
         PrintToChat(client, "Cannot change to KOTH mode in this arena!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if (g_iArenaStatus[arena_index] != AS_IDLE) {
         PrintToChat(client, "Cannot switch to KOTH now!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     g_bArenaKoth[arena_index] = true;
@@ -4181,18 +4180,18 @@ Action Command_Koth(int client, int args)
 Action Command_Mge(int client, int args)
 {
     if (!IsValidClient(client))
-        return Plugin_Continue;
+        return Plugin_Handled;
 
     int arena_index = g_iPlayerArena[client];
 
     if (!arena_index) {
         PrintToChat(client, "You are not in an arena!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     if (g_bArenaMGE[arena_index]) {
         PrintToChat(client, "This arena is already in MGE mode!");
-        return Plugin_Continue;
+        return Plugin_Handled;
     }
 
     g_bArenaKoth[arena_index] = false;
