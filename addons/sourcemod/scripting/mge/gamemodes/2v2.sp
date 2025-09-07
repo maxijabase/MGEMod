@@ -1,3 +1,6 @@
+// ===== ARENA SELECTION MENU SYSTEM =====
+
+// Displays the main 2v2 arena selection menu with team join options and conversion to 1v1
 void Show2v2SelectionMenu(int client, int arena_index)
 {
     if (!IsValidClient(client))
@@ -70,6 +73,7 @@ void Show2v2SelectionMenu(int client, int arena_index)
     menu.Display(client, 0);
 }
 
+// Handles user selections from the 2v2 arena selection menu
 int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
 {
     switch (action)
@@ -193,7 +197,10 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
     return 0;
 }
 
-// ====[ 2V2 READY SYSTEM ]==============================================
+
+// ===== READY SYSTEM MANAGEMENT =====
+
+// Initializes the 2v2 ready system when all 4 players have joined an arena
 void Start2v2ReadySystem(int arena_index)
 {
     // Reset all players' ready status
@@ -228,6 +235,7 @@ void Start2v2ReadySystem(int arena_index)
     CreateTimer(5.0, Timer_Refresh2v2Hud, arena_index, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
 }
 
+// Displays the ready confirmation menu to players in 2v2 arenas
 void Show2v2ReadyMenu(int client)
 {
     if (!IsValidClient(client))
@@ -250,6 +258,7 @@ void Show2v2ReadyMenu(int client)
     menu.Display(client, 0);
 }
 
+// Processes player responses from the ready confirmation menu
 int Menu_2v2Ready(Menu menu, MenuAction action, int param1, int param2)
 {
     switch (action)
@@ -278,6 +287,7 @@ int Menu_2v2Ready(Menu menu, MenuAction action, int param1, int param2)
     return 0;
 }
 
+// Updates and checks the ready status of all players in a 2v2 arena
 void Update2v2ReadyStatus(int arena_index)
 {
     int ready_count = 0;
@@ -308,6 +318,10 @@ void Update2v2ReadyStatus(int arena_index)
     }
 }
 
+
+// ===== HUD DISPLAY SYSTEM =====
+
+// Shows personalized ready status HUD text to each player in the arena
 void Show2v2ReadyHud(int arena_index, int ready_count)
 {
     // Show personalized HUD text to each player
@@ -339,6 +353,7 @@ void Show2v2ReadyHud(int arena_index, int ready_count)
     }
 }
 
+// Clears ready status HUD text from all players in the arena
 void Clear2v2ReadyHud(int arena_index)
 {
     // Clear HUD text for all players in arena
@@ -353,89 +368,10 @@ void Clear2v2ReadyHud(int arena_index)
     }
 }
 
-Action Timer_Refresh2v2Hud(Handle timer, any arena_index)
-{
-    // Only refresh if arena is still in ready state
-    if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
-    {
-        int ready_count = 0;
-        int total_players = 0;
-        
-        for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
-        {
-            int client = g_iArenaQueue[arena_index][i];
-            if (client)
-            {
-                total_players++;
-                if (g_bPlayer2v2Ready[client])
-                    ready_count++;
-            }
-        }
-        
-        if (total_players == 4)
-        {
-            Show2v2ReadyHud(arena_index, ready_count);
-        }
-        else
-        {
-            // Not enough players, stop the timer
-            return Plugin_Stop;
-        }
-    }
-    else
-    {
-        // Arena is no longer in ready state, stop the timer
-        return Plugin_Stop;
-    }
-    
-    return Plugin_Continue;
-}
 
+// ===== TEAM MANAGEMENT =====
 
-
-Action Timer_ShowReadyMenu(Handle timer, int userid)
-{
-    int client = GetClientOfUserId(userid);
-    if (client)
-    {
-        Show2v2ReadyMenu(client);
-    }
-    return Plugin_Continue;
-}
-
-Action Timer_Restart2v2Ready(Handle timer, any arena_index)
-{
-    // Check if we still have 4 players in the arena
-    int player_count = 0;
-    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
-    {
-        if (g_iArenaQueue[arena_index][i])
-            player_count++;
-    }
-
-    if (player_count == 4)
-    {
-        // Reset scores and return to ready state
-        g_iArenaScore[arena_index][SLOT_ONE] = 0;
-        g_iArenaScore[arena_index][SLOT_TWO] = 0;
-        // Ensure any players that were placed into spectator (waiting) are restored
-        Restore2v2WaitingSpectators(arena_index);
-        Start2v2ReadySystem(arena_index);
-        PrintToChatArena(arena_index, "Match finished! Please ready up for the next round.");
-    }
-    else
-    {
-        // Not enough players, revert to normal behavior
-        Clear2v2ReadyHud(arena_index);
-        g_iArenaStatus[arena_index] = AS_IDLE;
-        // Still restore any parked spectators in case teams refill
-        Restore2v2WaitingSpectators(arena_index);
-        ResetArena(arena_index);
-    }
-
-    return Plugin_Continue;
-}
-
+// Handles team switching logic for players already in 2v2 arenas
 void Handle2v2TeamSwitch(int client, int arena_index, int new_team)
 {
     int current_slot = g_iPlayerSlot[client];
@@ -504,6 +440,37 @@ void Handle2v2TeamSwitch(int client, int arena_index, int new_team)
 
 }
 
+// Processes team switching requests originating from menu selections
+void Handle2v2TeamSwitchFromMenu(int client, int arena_index, int target_team)
+{
+    int current_slot = g_iPlayerSlot[client];
+    
+    // Check if player is already in the arena
+    if (current_slot >= SLOT_ONE && current_slot <= SLOT_FOUR)
+    {
+        // Player is already in the arena, handle team switching
+        int current_team = (current_slot == SLOT_ONE || current_slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
+        
+        if (current_team == target_team)
+        {
+            // Player is already on the selected team, just show confirmation
+            char team_name[16];
+            Format(team_name, sizeof(team_name), (target_team == TEAM_RED) ? "RED" : "BLU");
+            PrintToChat(client, "You are already on the %s team!", team_name);
+            return;
+        }
+        
+        // Use the existing team switch handler
+        Handle2v2TeamSwitch(client, arena_index, target_team);
+    }
+    else
+    {
+        // Player is not in arena yet, add them with team preference
+        AddInQueue(client, arena_index, true, target_team, false);
+    }
+}
+
+// Validates team balance and triggers ready system when 2v2 balance is achieved
 void Check2v2TeamBalance(int arena_index)
 {
     int red_count = 0;
@@ -560,34 +527,8 @@ void Check2v2TeamBalance(int arena_index)
     }
 }
 
-void Handle2v2TeamSwitchFromMenu(int client, int arena_index, int target_team)
-{
-    int current_slot = g_iPlayerSlot[client];
-    
-    // Check if player is already in the arena
-    if (current_slot >= SLOT_ONE && current_slot <= SLOT_FOUR)
-    {
-        // Player is already in the arena, handle team switching
-        int current_team = (current_slot == SLOT_ONE || current_slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
-        
-        if (current_team == target_team)
-        {
-            // Player is already on the selected team, just show confirmation
-            char team_name[16];
-            Format(team_name, sizeof(team_name), (target_team == TEAM_RED) ? "RED" : "BLU");
-            PrintToChat(client, "You are already on the %s team!", team_name);
-            return;
-        }
-        
-        // Use the existing team switch handler
-        Handle2v2TeamSwitch(client, arena_index, target_team);
-    }
-    else
-    {
-        // Player is not in arena yet, add them with team preference
-        AddInQueue(client, arena_index, true, target_team, false);
-    }
-}
+
+// ===== PLAYER UTILITIES =====
 
 // Gets a clients teammate if he's in a 4 player arena
 // TODO: This can actually be replaced by g_iArenaQueue[SLOT_X] but I didn't realize that array existed, so YOLO
@@ -616,7 +557,7 @@ int getTeammate(int myClientSlot, int arena_index)
     return myClientTeammate;
 }
 
-// Called when players want to swap classes in an ultiduo arena
+// Executes class swapping between two teammates in ultiduo arenas
 void swapClasses(int client, int client_teammate)
 {
     TFClassType client_class = g_tfctPlayerClass[client];
@@ -632,6 +573,93 @@ void swapClasses(int client, int client_teammate)
 
 }
 
+// Restores any 2v2 participants who were moved to spectator while waiting for their teammate
+// To finish the round. Ensures they are back on the correct team, clears waiting flag, and
+// Schedules a reset to spawn them properly.
+void Restore2v2WaitingSpectators(int arena_index)
+{
+    if (!g_bFourPersonArena[arena_index])
+        return;
+
+    for (int slot = SLOT_ONE; slot <= SLOT_FOUR; slot++)
+    {
+        int client = g_iArenaQueue[arena_index][slot];
+        if (!IsValidClient(client))
+            continue;
+
+        bool isSpec = (GetClientTeam(client) == TEAM_SPEC);
+        if (g_iPlayerWaiting[client] || isSpec)
+        {
+            int targetTeam = (slot == SLOT_ONE || slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
+            if (GetClientTeam(client) != targetTeam)
+            {
+                ChangeClientTeam(client, targetTeam);
+            }
+            g_iPlayerWaiting[client] = false;
+            CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
+        }
+    }
+}
+
+
+// ===== CLASS SWAP MENU SYSTEM =====
+
+// Displays the class swap confirmation menu to the target teammate
+void ShowSwapMenu(int client)
+{
+    if (!IsValidClient(client))
+        return;
+
+    char title[128];
+
+    Menu menu = new Menu(SwapMenuHandler);
+
+    Format(title, sizeof(title), "Would you like to swap classes with your teammate?", client);
+    menu.SetTitle(title);
+    menu.AddItem("yes", "Yes");
+    menu.AddItem("no", "No");
+    menu.ExitButton = false;
+    menu.Display(client, 20);
+}
+
+// Processes responses from the class swap confirmation menu
+int SwapMenuHandler(Menu menu, MenuAction action, int param1, int param2)
+{
+    /* If an option was selected, tell the client about the item. */
+    if (action == MenuAction_Select)
+    {
+        if (param2 == 0)
+        {
+            int client = param1;
+            if (!client)
+                return 0;
+
+            int arena_index = g_iPlayerArena[client];
+            int client_teammate = getTeammate(g_iPlayerSlot[client], arena_index);
+            swapClasses(client, client_teammate);
+
+        }
+        else
+            delete menu;
+    }
+    /* If the menu was cancelled, print a message to the server about it. */
+    else if (action == MenuAction_Cancel)
+    {
+        PrintToServer("Client %d's menu was cancelled.  Reason: %d", param1, param2);
+    }
+    /* If the menu has ended, destroy it */
+    else if (action == MenuAction_End)
+    {
+        delete menu;
+    }
+
+    return 0;
+}
+
+
+// ===== COMMANDS =====
+
+// Handles the !ready command for toggling ready status in 2v2 arenas
 Action Command_Ready(int client, int args)
 {
     if (!IsValidClient(client))
@@ -663,6 +691,7 @@ Action Command_Ready(int client, int args)
     return Plugin_Handled;
 }
 
+// Handles the !force2v2 admin command for automatically setting up 2v2 matches
 Action Command_Force2v2(int client, int args)
 {
     if (!IsValidClient(client))
@@ -777,6 +806,7 @@ Action Command_Force2v2(int client, int args)
     return Plugin_Handled;
 }
 
+// Handles the !swap command for initiating class swaps in ultiduo arenas
 Action Command_Swap(int client, int args)
 {
     if (!IsValidClient(client))
@@ -803,86 +833,94 @@ Action Command_Swap(int client, int args)
     return Plugin_Handled;
 }
 
-void ShowSwapMenu(int client)
+
+// ===== TIMER CALLBACKS =====
+
+// Periodically refreshes the ready status HUD display for active 2v2 arenas
+Action Timer_Refresh2v2Hud(Handle timer, any arena_index)
 {
-    if (!IsValidClient(client))
-        return;
-
-    char title[128];
-
-    Menu menu = new Menu(SwapMenuHandler);
-
-    Format(title, sizeof(title), "Would you like to swap classes with your teammate?", client);
-    menu.SetTitle(title);
-    menu.AddItem("yes", "Yes");
-    menu.AddItem("no", "No");
-    menu.ExitButton = false;
-    menu.Display(client, 20);
-}
-
-// ====[ MAIN MENU ]====================================================
-
-int SwapMenuHandler(Menu menu, MenuAction action, int param1, int param2)
-{
-    /* If an option was selected, tell the client about the item. */
-    if (action == MenuAction_Select)
+    // Only refresh if arena is still in ready state
+    if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
     {
-        if (param2 == 0)
+        int ready_count = 0;
+        int total_players = 0;
+        
+        for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
         {
-            int client = param1;
-            if (!client)
-                return 0;
-
-            int arena_index = g_iPlayerArena[client];
-            int client_teammate = getTeammate(g_iPlayerSlot[client], arena_index);
-            swapClasses(client, client_teammate);
-
+            int client = g_iArenaQueue[arena_index][i];
+            if (client)
+            {
+                total_players++;
+                if (g_bPlayer2v2Ready[client])
+                    ready_count++;
+            }
+        }
+        
+        if (total_players == 4)
+        {
+            Show2v2ReadyHud(arena_index, ready_count);
         }
         else
-            delete menu;
-    }
-    /* If the menu was cancelled, print a message to the server about it. */
-    else if (action == MenuAction_Cancel)
-    {
-        PrintToServer("Client %d's menu was cancelled.  Reason: %d", param1, param2);
-    }
-    /* If the menu has ended, destroy it */
-    else if (action == MenuAction_End)
-    {
-        delete menu;
-    }
-
-    return 0;
-}
-
-// Restores any 2v2 participants who were moved to spectator while waiting for their teammate
-// To finish the round. Ensures they are back on the correct team, clears waiting flag, and
-// Schedules a reset to spawn them properly.
-void Restore2v2WaitingSpectators(int arena_index)
-{
-    if (!g_bFourPersonArena[arena_index])
-        return;
-
-    for (int slot = SLOT_ONE; slot <= SLOT_FOUR; slot++)
-    {
-        int client = g_iArenaQueue[arena_index][slot];
-        if (!IsValidClient(client))
-            continue;
-
-        bool isSpec = (GetClientTeam(client) == TEAM_SPEC);
-        if (g_iPlayerWaiting[client] || isSpec)
         {
-            int targetTeam = (slot == SLOT_ONE || slot == SLOT_THREE) ? TEAM_RED : TEAM_BLU;
-            if (GetClientTeam(client) != targetTeam)
-            {
-                ChangeClientTeam(client, targetTeam);
-            }
-            g_iPlayerWaiting[client] = false;
-            CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
+            // Not enough players, stop the timer
+            return Plugin_Stop;
         }
     }
+    else
+    {
+        // Arena is no longer in ready state, stop the timer
+        return Plugin_Stop;
+    }
+    
+    return Plugin_Continue;
 }
 
+// Delayed callback to display the ready menu to newly joined players
+Action Timer_ShowReadyMenu(Handle timer, int userid)
+{
+    int client = GetClientOfUserId(userid);
+    if (client)
+    {
+        Show2v2ReadyMenu(client);
+    }
+    return Plugin_Continue;
+}
+
+// Handles post-match cleanup and ready system restart for continuous 2v2 play
+Action Timer_Restart2v2Ready(Handle timer, any arena_index)
+{
+    // Check if we still have 4 players in the arena
+    int player_count = 0;
+    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
+    {
+        if (g_iArenaQueue[arena_index][i])
+            player_count++;
+    }
+
+    if (player_count == 4)
+    {
+        // Reset scores and return to ready state
+        g_iArenaScore[arena_index][SLOT_ONE] = 0;
+        g_iArenaScore[arena_index][SLOT_TWO] = 0;
+        // Ensure any players that were placed into spectator (waiting) are restored
+        Restore2v2WaitingSpectators(arena_index);
+        Start2v2ReadySystem(arena_index);
+        PrintToChatArena(arena_index, "Match finished! Please ready up for the next round.");
+    }
+    else
+    {
+        // Not enough players, revert to normal behavior
+        Clear2v2ReadyHud(arena_index);
+        g_iArenaStatus[arena_index] = AS_IDLE;
+        // Still restore any parked spectators in case teams refill
+        Restore2v2WaitingSpectators(arena_index);
+        ResetArena(arena_index);
+    }
+
+    return Plugin_Continue;
+}
+
+// Resets all players in a 2v2 arena and transitions to active fighting state
 Action Timer_New2v2Round(Handle timer, any arena_index) {
     int red_f1 = g_iArenaQueue[arena_index][SLOT_ONE]; /* Red (slot one) player. */
     int blu_f1 = g_iArenaQueue[arena_index][SLOT_TWO]; /* Blu (slot two) player. */
@@ -900,6 +938,7 @@ Action Timer_New2v2Round(Handle timer, any arena_index) {
     return Plugin_Continue;
 }
 
+// Resets the class swap cooldown timer for a specific player
 Action Timer_ResetSwap(Handle timer, int client)
 {
     g_bCanPlayerSwap[client] = true;
