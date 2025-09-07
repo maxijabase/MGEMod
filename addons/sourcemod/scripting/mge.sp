@@ -79,8 +79,7 @@ Handle
     hm_TeammateHP,
     hm_KothTimerBLU,
     hm_KothTimerRED,
-    hm_KothCap,
-    hm_2v2Ready;
+    hm_KothCap;
 
 // Cookie Handles
 Cookie g_hShowEloCookie;
@@ -441,7 +440,6 @@ public void OnPluginStart()
     hm_KothTimerRED = CreateHudSynchronizer();
     hm_KothCap      = CreateHudSynchronizer();
     hm_TeammateHP   = CreateHudSynchronizer();
-    hm_2v2Ready     = CreateHudSynchronizer();
 
     // Set up the log file for debug logging.
     BuildPath(Path_SM, g_sLogFile, sizeof(g_sLogFile), "logs/mgemod.log");
@@ -2762,8 +2760,8 @@ void Show2v2ReadyHud(int arena_index, int ready_count)
             Format(hudtext, sizeof(hudtext), "%d/4 players ready\n%s\nType !ready or !r to toggle", 
                    ready_count, status_indicator);
             
-            SetHudTextParams(0.42, 0.85, 5.0, 255, 255, 255, 255, 0, 0.0, 0.0, 0.0);
-            ShowSyncHudText(client, hm_2v2Ready, "%s", hudtext);
+            PrintHintText(client, "%s", hudtext);
+            StopSound(client, SNDCHAN_STATIC, "UI/hint.wav");
         }
     }
 }
@@ -2776,7 +2774,8 @@ void Clear2v2ReadyHud(int arena_index)
         int client = g_iArenaQueue[arena_index][i];
         if (client)
         {
-            ClearSyncHud(client, hm_2v2Ready);
+            PrintHintText(client, "");
+            StopSound(client, SNDCHAN_STATIC, "UI/hint.wav");
         }
     }
 }
