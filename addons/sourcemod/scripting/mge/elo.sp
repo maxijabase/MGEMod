@@ -153,3 +153,17 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
         g_iPlayerRating[loser2], time, g_sPlayerSteamID[loser2]);
     g_DB.Query(SQL_OnGenericQueryFinished, query);
 }
+
+Action Command_ToggleElo(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+
+    g_bShowElo[client] = !g_bShowElo[client];
+
+    // Save the preference to client cookie
+    g_hShowEloCookie.Set(client, g_bShowElo[client] ? "1" : "0");
+
+    PrintToChat(client, "\x01ELO display is \x04%sabled\x01.", g_bShowElo[client] ? "en":"dis");
+    return Plugin_Handled;
+}

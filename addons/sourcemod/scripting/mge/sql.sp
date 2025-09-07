@@ -220,34 +220,13 @@ void SQL_OnGenericQueryFinished(Database db, DBResultSet results, const char[] e
     }
 }
 
-void SQL_OnTopPlayersReceived(Database db, DBResultSet results, const char[] error, any data)
+Action Timer_ReconnectToDB(Handle timer)
 {
-    int client = data;
+    g_hDBReconnectTimer = null;
 
-    if (db == null)
-    {
-        LogError("[TopPlayersPanel] Query failed: database connection lost");
-        return;
-    }
-    
-    if (results == null)
-    {
-        LogError("[TopPlayersPanel] Query failed: %s", error);
-        return;
-    }
+    char query[256];
+    g_DB.Format(query, sizeof(query), "SELECT rating FROM mgemod_stats LIMIT 1");
+    g_DB.Query(SQLDbConnTest, query);
 
-    if (client < 1 || client > MaxClients || !IsClientConnected(client))
-    {
-        LogError("SQL_OnTopPlayersReceived failed: client %d <%s> is invalid.", client, g_sPlayerSteamID[client]);
-        return;
-    }
-
-    int rowCount = SQL_GetRowCount(results);
-    if (rowCount == 0)
-    {
-        MC_PrintToChat(client, "%t", "top5error");
-        return;
-    }
-
-    ShowTopPlayersPanel(client, results, rowCount);
+    return Plugin_Continue;
 }
