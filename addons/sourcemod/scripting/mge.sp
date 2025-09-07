@@ -48,6 +48,9 @@ public Plugin myinfo =
     url         = "https://github.com/sapphonie/MGEMod"
 }
 
+// ===== PLUGIN CORE LIFECYCLE =====
+
+// Initialize the plugin, register commands, create convars, and set up core systems
 public void OnPluginStart()
 {
     LoadTranslations("common.phrases");
@@ -193,6 +196,7 @@ public void OnPluginStart()
     }
 }
 
+// Execute configuration after all configs are loaded
 public void OnConfigsExecuted()
 {
     if (!g_bNoStats)
@@ -201,6 +205,7 @@ public void OnConfigsExecuted()
     }
 }
 
+// Initialize map-specific systems, precache models, hook events, and set up arenas
 public void OnMapStart()
 {
     for (int i = 0; i < sizeof(stockSounds); i++) {
@@ -271,6 +276,7 @@ public void OnMapStart()
     }
 }
 
+// Clean up resources and unhook events when map ends
 public void OnMapEnd()
 {
     delete g_hDBReconnectTimer;
@@ -294,18 +300,27 @@ public void OnMapEnd()
     }
 }
 
+
+// ===== ENTITY & PROJECTILE SYSTEM =====
+
+// Hook projectiles for direct hit detection when entities are created
 public void OnEntityCreated(int entity, const char[] classname)
 {
     if (StrEqual(classname, "tf_projectile_rocket") || StrEqual(classname, "tf_projectile_pipe"))
         SDKHook(entity, SDKHook_Touch, OnProjectileTouch);
 }
 
+// Track direct hits from projectiles for airshot calculations
 void OnProjectileTouch(int entity, int other)
 {
     if (other > 0 && other <= MaxClients)
         g_bPlayerTakenDirectHit[other] = true;
 }
 
+
+// ===== CLIENT LIFECYCLE MANAGEMENT =====
+
+// Load client preferences from cookies when they become available
 public void OnClientCookiesCached(int client)
 {
     if (IsFakeClient(client))
@@ -318,6 +333,7 @@ public void OnClientCookiesCached(int client)
         g_bShowElo[client] = (StringToInt(cookieValue) == 1);
 }
 
+// Initialize client data, ratings, and bot handling when clients connect
 // TODO: This needs to not be here. This will break when steam is down, this probably has other issues as well
 // TODO: Most of this should be in OnClientPutInServer
 public void OnClientPostAdminCheck(int client)
@@ -368,6 +384,7 @@ public void OnClientPostAdminCheck(int client)
     SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 }
 
+// Clean up client data, handle arena cleanup, and manage bot removal on disconnect
 public void OnClientDisconnect(int client)
 {
     // We ignore the kick queue check for this function only so that clients that get kicked still get their elo calculated
@@ -447,12 +464,17 @@ public void OnClientDisconnect(int client)
     }
 }
 
+
+// ===== GAME MECHANICS & HOOKS =====
+
+// Process continuous game mechanics like ammomod health and KOTH capture points
 public void OnGameFrame()
 {
     ProcessAmmomodHealthManagement();
     ProcessKothCapturePoints();
 }
 
+// Handle damage modifications including fall damage blocking
 Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
 {
     if (!IsValidClient(victim) || !IsValidClient(attacker))
@@ -468,6 +490,7 @@ Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, in
     return Plugin_Continue;
 }
 
+// Process infinite ammo restoration for ammomod arenas
 public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3], float angles[3], int& weapon, int& subtype, int& cmdnum, int& tickcount, int& seed, int mouse[2])
 {
     int arena_index = g_iPlayerArena[client];
@@ -482,6 +505,10 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
     return Plugin_Continue;
 }
 
+
+// ===== CONFIGURATION SYSTEM =====
+
+// Update global variables when convars change
 // TODO: consider refactor
 void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] newValue)
 {
@@ -519,6 +546,33 @@ void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] new
 
 }
 
+
+// ===== UTILITY FUNCTIONS =====
+
+// Convert TF2 class enum to readable string representation
+char[] TFClassToString(TFClassType class)
+{
+    char className[16];
+    switch (class)
+    {
+        case TFClass_Scout: strcopy(className, sizeof(className), "scout");
+        case TFClass_Sniper: strcopy(className, sizeof(className), "sniper");
+        case TFClass_Soldier: strcopy(className, sizeof(className), "soldier");
+        case TFClass_DemoMan: strcopy(className, sizeof(className), "demoman");
+        case TFClass_Medic: strcopy(className, sizeof(className), "medic");
+        case TFClass_Heavy: strcopy(className, sizeof(className), "heavy");
+        case TFClass_Pyro: strcopy(className, sizeof(className), "pyro");
+        case TFClass_Spy: strcopy(className, sizeof(className), "spy");
+        case TFClass_Engineer: strcopy(className, sizeof(className), "engineer");
+        default: strcopy(className, sizeof(className), "unknown");
+    }
+    return className;
+}
+
+
+// ===== ADMIN COMMANDS =====
+
+// Display client's current position and angles for debugging
 Action Command_Loc(int client, int args)
 {
     if (!IsValidClient(client))
@@ -532,6 +586,7 @@ Action Command_Loc(int client, int args)
     return Plugin_Handled;
 }
 
+// Test database connection for troubleshooting
 Action Command_ConnectionTest(int client, int args)
 {
     if (!IsValidClient(client))
@@ -544,6 +599,10 @@ Action Command_ConnectionTest(int client, int args)
     return Plugin_Handled;
 }
 
+
+// ===== HELP SYSTEM =====
+
+// Display available commands and usage information to players
 // TODO: refactor to menu
 Action Command_Help(int client, int args)
 {
@@ -567,6 +626,10 @@ Action Command_Help(int client, int args)
     return Plugin_Handled;
 }
 
+
+// ===== SOUND SYSTEM =====
+
+// Block unwanted sounds like fall damage and regeneration
 Action Sound_BlockSound(int clients[MAXPLAYERS], int& numClients, char sample[PLATFORM_MAX_PATH], int& entity, int& channel, float& volume, int& level, int& pitch, int& flags, char soundEntry[PLATFORM_MAX_PATH], int& seed)
 {
     if (StrContains(sample, "pl_fallpain") >= 0 && g_bBlockFallDamage)
@@ -582,25 +645,10 @@ Action Sound_BlockSound(int clients[MAXPLAYERS], int& numClients, char sample[PL
     return Plugin_Continue;
 }
 
-char[] TFClassToString(TFClassType class)
-{
-    char className[16];
-    switch (class)
-    {
-        case TFClass_Scout: strcopy(className, sizeof(className), "scout");
-        case TFClass_Sniper: strcopy(className, sizeof(className), "sniper");
-        case TFClass_Soldier: strcopy(className, sizeof(className), "soldier");
-        case TFClass_DemoMan: strcopy(className, sizeof(className), "demoman");
-        case TFClass_Medic: strcopy(className, sizeof(className), "medic");
-        case TFClass_Heavy: strcopy(className, sizeof(className), "heavy");
-        case TFClass_Pyro: strcopy(className, sizeof(className), "pyro");
-        case TFClass_Spy: strcopy(className, sizeof(className), "spy");
-        case TFClass_Engineer: strcopy(className, sizeof(className), "engineer");
-        default: strcopy(className, sizeof(className), "unknown");
-    }
-    return className;
-}
 
+// ===== GAME EVENTS =====
+
+// Disable stats tracking when match ends to prevent point loss from leavers
 Action Event_WinPanel(Event event, const char[] name, bool dontBroadcast)
 {
     // Disable stats so people leaving at the end of the map don't lose points.
@@ -608,6 +656,7 @@ Action Event_WinPanel(Event event, const char[] name, bool dontBroadcast)
     return Plugin_Continue;
 }
 
+// Initialize BBall hoops and KOTH capture points when round starts
 Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
     gcvar_WfP.SetInt(1); // Cancel waiting for players
@@ -716,6 +765,7 @@ Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
     return Plugin_Continue;
 }
 
+// Suppress team and class change broadcasts
 Action Event_Suppress(Event event, const char[] name, bool dontBroadcast)
 {
     event.BroadcastDisabled = true;
