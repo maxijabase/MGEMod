@@ -11,6 +11,10 @@ int ResetPlayer(int client)
         return 0;
     }
 
+    // Remove projectiles when resetting a player
+    if (g_bClearProjectiles)
+        RemoveArenaProjectiles(arena_index);
+
     g_iPlayerSpecTarget[client] = 0;
 
     if (player_slot == SLOT_ONE || player_slot == SLOT_THREE)

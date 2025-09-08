@@ -80,6 +80,7 @@ public void OnPluginStart()
     gcvar_reconnectInterval = new Convar("mgemod_reconnect_interval", "5", "How long (in minutes) to wait between database reconnection attempts.");
     gcvar_2v2SkipCountdown = new Convar("mgemod_2v2_skip_countdown", "0", "Skip countdown between 2v2 rounds? (0 = Normal countdown, 1 = Skip countdown)", FCVAR_NONE, true, 0.0, true, 1.0);
     gcvar_2v2Elo = new Convar("mgemod_2v2_elo", "1", "Enable ELO calculation and display for 2v2 matches? (0 = Disabled, 1 = Enabled)", FCVAR_NONE, true, 0.0, true, 1.0);
+    gcvar_clearProjectiles = new Convar("mgemod_clear_projectiles", "0", "Clear projectiles when a new round starts? (0 = Disabled, 1 = Enabled)", FCVAR_NONE, true, 0.0, true, 1.0);
 
     // Create config file
     Convar.CreateConfig("mge");
@@ -94,6 +95,7 @@ public void OnPluginStart()
     g_iReconnectInterval = gcvar_reconnectInterval.IntValue;
     g_b2v2SkipCountdown = gcvar_2v2SkipCountdown.IntValue ? true : false;
     g_b2v2Elo = gcvar_2v2Elo.IntValue ? true : false;
+    g_bClearProjectiles = gcvar_clearProjectiles.IntValue ? true : false;
 
     gcvar_dbConfig.GetString(g_sDBConfig, sizeof(g_sDBConfig));
     gcvar_bballParticle_red.GetString(g_sBBallParticleRed, sizeof(g_sBBallParticleRed));
@@ -552,7 +554,8 @@ void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] new
         StringToInt(newValue) ? (g_b2v2SkipCountdown = true) : (g_b2v2SkipCountdown = false);
     else if (convar == gcvar_2v2Elo)
         StringToInt(newValue) ? (g_b2v2Elo = true) : (g_b2v2Elo = false);
-
+    else if (convar == gcvar_clearProjectiles)
+        StringToInt(newValue) ? (g_bClearProjectiles = true) : (g_bClearProjectiles = false);
 }
 
 

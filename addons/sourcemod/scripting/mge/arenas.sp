@@ -639,6 +639,10 @@ int StartCountDown(int arena_index)
     int red_f1 = g_iArenaQueue[arena_index][SLOT_ONE]; /* Red (slot one) player. */
     int blu_f1 = g_iArenaQueue[arena_index][SLOT_TWO]; /* Blu (slot two) player. */
 
+    // Remove all projectiles from previous round
+    if (g_bClearProjectiles)
+        RemoveArenaProjectiles(arena_index);
+
     if (g_bFourPersonArena[arena_index])
     {
         int red_f2 = g_iArenaQueue[arena_index][SLOT_THREE]; /* 2nd Red (slot three) player. */
@@ -1055,7 +1059,6 @@ Action Command_Menu(int client, int args)
             int target = FindTarget(client, targetName, false, false);
             if (target == -1)
             {
-                MC_PrintToChat(client, "[MGE] Player not found.");
                 return Plugin_Handled;
             }
             
@@ -1678,4 +1681,56 @@ stock bool CanConvertArenaTo1v1(int arena_index, int client, char[] reason, int 
             return false;
         }
     }
+}
+
+// Removes all projectiles shot by players in the specified arena
+void RemoveArenaProjectiles(int arena_index)
+{
+    if (!arena_index)
+        return;
+
+    int entity = -1;
+    char classname[64];
+    
+    // Collect entities to remove first, then remove them
+    ArrayList entitiesToRemove = new ArrayList();
+    
+    while ((entity = FindEntityByClassname(entity, "*")) != -1)
+    {
+        if (!IsValidEntity(entity))
+            continue;
+            
+        GetEntityClassname(entity, classname, sizeof(classname));
+        
+        if (StrContains(classname, "tf_projectile_", false) == 0)
+        {
+            int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+            if (owner == -1)
+                owner = GetEntPropEnt(entity, Prop_Send, "m_hThrower");
+                
+            if (IsValidClient(owner) && g_iPlayerArena[owner] == arena_index)
+            {
+                entitiesToRemove.Push(entity);
+            }
+        }
+        else if (StrEqual(classname, "tf_ball_ornament", false))
+        {
+            int owner = GetEntPropEnt(entity, Prop_Send, "m_hThrower");
+            if (IsValidClient(owner) && g_iPlayerArena[owner] == arena_index)
+            {
+                entitiesToRemove.Push(entity);
+            }
+        }
+    }
+    
+    for (int i = 0; i < entitiesToRemove.Length; i++)
+    {
+        entity = entitiesToRemove.Get(i);
+        if (IsValidEntity(entity))
+        {
+            RemoveEdict(entity);
+        }
+    }
+    
+    delete entitiesToRemove;
 }

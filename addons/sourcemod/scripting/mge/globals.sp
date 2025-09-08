@@ -62,7 +62,8 @@ bool g_bBlockFallDamage,
      g_bUseSQLite,
      g_bAutoCvar,
      g_b2v2SkipCountdown,
-     g_b2v2Elo;
+     g_b2v2Elo,
+     g_bClearProjectiles;
 
 int
     g_iDefaultFragLimit,
@@ -93,7 +94,8 @@ Convar
     gcvar_stats,
     gcvar_reconnectInterval,
     gcvar_2v2SkipCountdown,
-    gcvar_2v2Elo;
+    gcvar_2v2Elo,
+    gcvar_clearProjectiles;
 
 // Classes
 bool g_tfctClassAllowed[10];
