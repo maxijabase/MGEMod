@@ -1,3 +1,6 @@
+// ===== DATABASE INITIALIZATION =====
+
+// Establishes database connection, detects database type, creates initial tables, and runs migrations
 void PrepareSQL() 
 {
     char error[256];
@@ -56,6 +59,10 @@ void PrepareSQL()
     RunDatabaseMigrations();
 }
 
+
+// ===== CONNECTION MANAGEMENT =====
+
+// Tests database connection and handles reconnection logic with player state restoration
 void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any data)
 {
     if (db == null)
@@ -115,6 +122,10 @@ void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any dat
     }
 }
 
+
+// ===== DATABASE QUERY HANDLERS =====
+
+// Processes database test query results and reports connection status to client
 void SQL_OnTestReceived(Database db, DBResultSet results, const char[] error, any data)
 {
     int client = data;
@@ -145,6 +156,7 @@ void SQL_OnTestReceived(Database db, DBResultSet results, const char[] error, an
         PrintToChat(client, "\x01Database is \x04Down\x01.");
 }
 
+// Handles player statistics retrieval from database and creates new player records if needed
 void SQL_OnPlayerReceived(Database db, DBResultSet results, const char[] error, any data)
 {
     int client = data;
@@ -194,6 +206,7 @@ void SQL_OnPlayerReceived(Database db, DBResultSet results, const char[] error, 
     }
 }
 
+// Generic callback for database queries with error handling and connection monitoring
 void SQL_OnGenericQueryFinished(Database db, DBResultSet results, const char[] error, any data)
 {
     if (db == null)
@@ -220,6 +233,10 @@ void SQL_OnGenericQueryFinished(Database db, DBResultSet results, const char[] e
     }
 }
 
+
+// ===== TIMER FUNCTIONS =====
+
+// Attempts database reconnection after connection loss with periodic retry mechanism
 Action Timer_ReconnectToDB(Handle timer)
 {
     g_hDBReconnectTimer = null;
