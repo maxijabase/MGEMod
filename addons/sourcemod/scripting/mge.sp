@@ -38,6 +38,7 @@
 #include "mge/gamemodes/koth.sp"
 #include "mge/gamemodes/2v2.sp"
 #include "mge/gamemodes/ammomod.sp"
+#include "mge/gamemodes/endif.sp"
 
 public Plugin myinfo =
 {

@@ -1,3 +1,61 @@
+// ===== ENTITY MANAGEMENT =====
+
+// Reset and recreate the intel entity at appropriate spawn locations for bball gameplay
+void ResetIntel(int arena_index, any client = -1)
+{
+    if (g_bArenaBBall[arena_index])
+    {
+        if (IsValidEdict(g_iBBallIntel[arena_index]) && g_iBBallIntel[arena_index] > 0)
+        {
+            RemoveEdict(g_iBBallIntel[arena_index]);
+            g_iBBallIntel[arena_index] = -1;
+        }
+
+        if (g_iBBallIntel[arena_index] == -1)
+            g_iBBallIntel[arena_index] = CreateEntityByName("item_ammopack_small");
+        else
+            LogError("[%s] Intel [%i] already exists.", g_sArenaName[arena_index], g_iBBallIntel[arena_index]);
+
+
+        float intel_loc[3];
+
+        if (client != -1)
+        {
+            int client_slot = g_iPlayerSlot[client];
+            g_bPlayerHasIntel[client] = false;
+
+            if (client_slot == SLOT_ONE || client_slot == SLOT_THREE)
+            {
+                intel_loc[0] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 3][0];
+                intel_loc[1] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 3][1];
+                intel_loc[2] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 3][2];
+            } else if (client_slot == SLOT_TWO || client_slot == SLOT_FOUR) {
+                intel_loc[0] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 2][0];
+                intel_loc[1] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 2][1];
+                intel_loc[2] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 2][2];
+            }
+        } else {
+            intel_loc[0] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 4][0];
+            intel_loc[1] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 4][1];
+            intel_loc[2] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 4][2];
+        }
+
+        // Should fix the intel being an ammopack
+        DispatchKeyValue(g_iBBallIntel[arena_index], "powerup_model", MODEL_BRIEFCASE);
+        DispatchSpawn(g_iBBallIntel[arena_index]);
+        TeleportEntity(g_iBBallIntel[arena_index], intel_loc, NULL_VECTOR, NULL_VECTOR);
+        SetEntProp(g_iBBallIntel[arena_index], Prop_Send, "m_iTeamNum", 1, 4);
+        SetEntPropFloat(g_iBBallIntel[arena_index], Prop_Send, "m_flModelScale", 1.15);
+
+        SDKHook(g_iBBallIntel[arena_index], SDKHook_StartTouch, OnTouchIntel);
+        AcceptEntityInput(g_iBBallIntel[arena_index], "Enable");
+    }
+}
+
+
+// ===== EVENT HANDLERS =====
+
+// Handle intel pickup events including particle effects, sound cues, and team notifications
 Action OnTouchIntel(int entity, int other)
 {
     int client = other;
@@ -187,73 +245,8 @@ Action OnTouchHoop(int entity, int other)
     return Plugin_Continue;
 }
 
-void ResetIntel(int arena_index, any client = -1)
-{
-    if (g_bArenaBBall[arena_index])
-    {
-        if (IsValidEdict(g_iBBallIntel[arena_index]) && g_iBBallIntel[arena_index] > 0)
-        {
-            RemoveEdict(g_iBBallIntel[arena_index]);
-            g_iBBallIntel[arena_index] = -1;
-        }
 
-        if (g_iBBallIntel[arena_index] == -1)
-            g_iBBallIntel[arena_index] = CreateEntityByName("item_ammopack_small");
-        else
-            LogError("[%s] Intel [%i] already exists.", g_sArenaName[arena_index], g_iBBallIntel[arena_index]);
-
-
-        float intel_loc[3];
-
-        if (client != -1)
-        {
-            int client_slot = g_iPlayerSlot[client];
-            g_bPlayerHasIntel[client] = false;
-
-            if (client_slot == SLOT_ONE || client_slot == SLOT_THREE)
-            {
-                intel_loc[0] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 3][0];
-                intel_loc[1] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 3][1];
-                intel_loc[2] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 3][2];
-            } else if (client_slot == SLOT_TWO || client_slot == SLOT_FOUR) {
-                intel_loc[0] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 2][0];
-                intel_loc[1] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 2][1];
-                intel_loc[2] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 2][2];
-            }
-        } else {
-            intel_loc[0] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 4][0];
-            intel_loc[1] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 4][1];
-            intel_loc[2] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 4][2];
-        }
-
-        // Should fix the intel being an ammopack
-        DispatchKeyValue(g_iBBallIntel[arena_index], "powerup_model", MODEL_BRIEFCASE);
-        DispatchSpawn(g_iBBallIntel[arena_index]);
-        TeleportEntity(g_iBBallIntel[arena_index], intel_loc, NULL_VECTOR, NULL_VECTOR);
-        SetEntProp(g_iBBallIntel[arena_index], Prop_Send, "m_iTeamNum", 1, 4);
-        SetEntPropFloat(g_iBBallIntel[arena_index], Prop_Send, "m_flModelScale", 1.15);
-
-        SDKHook(g_iBBallIntel[arena_index], SDKHook_StartTouch, OnTouchIntel);
-        AcceptEntityInput(g_iBBallIntel[arena_index], "Enable");
-    }
-}
-
-Action Timer_ResetIntel(Handle timer, int userid)
-{
-    int client = GetClientOfUserId(userid);
-    int arena_index = g_iPlayerArena[client];
-
-    ResetIntel(arena_index, client);
-
-    return Plugin_Continue;
-}
-
-Action Timer_AllowPlayerCap(Handle timer, int userid)
-{
-    g_bCanPlayerGetIntel[userid] = true;
-
-    return Plugin_Continue;
-}
+// ===== COMMANDS =====
 
 // When a player drops the intel in BBall
 Action Command_DropItem(int client, const char[] command, int argc)
@@ -300,24 +293,24 @@ Action Command_DropItem(int client, const char[] command, int argc)
     return Plugin_Continue;
 }
 
-Action BoostVectors(Handle timer, int userid)
+
+// ===== TIMER CALLBACKS =====
+
+// Restore intel to spawn location after scoring or timeout events
+Action Timer_ResetIntel(Handle timer, int userid)
 {
     int client = GetClientOfUserId(userid);
-    float vecClient[3];
-    float vecBoost[3];
+    int arena_index = g_iPlayerArena[client];
 
-    GetEntPropVector(client, Prop_Data, "m_vecVelocity", vecClient);
+    ResetIntel(arena_index, client);
 
-    vecBoost[0] = vecClient[0] * g_fRocketForceX;
-    vecBoost[1] = vecClient[1] * g_fRocketForceY;
-    if (vecClient[2] > 0)
-    {
-        vecBoost[2] = vecClient[2] * g_fRocketForceZ;
-    } else {
-        vecBoost[2] = vecClient[2];
-    }
+    return Plugin_Continue;
+}
 
-    TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, vecBoost);
+// Re-enable intel pickup capability after a brief cooldown period
+Action Timer_AllowPlayerCap(Handle timer, int userid)
+{
+    g_bCanPlayerGetIntel[userid] = true;
 
     return Plugin_Continue;
 }
