@@ -1,3 +1,7 @@
+
+// ===== HUD DISPLAY CORE =====
+
+// Displays comprehensive HUD information to active players including health, scores, and game-specific elements
 void ShowPlayerHud(int client)
 {
     if (!IsValidClient(client))
@@ -234,6 +238,7 @@ void ShowPlayerHud(int client)
     ShowSyncHudText(client, hm_TeammateHP, hp_report);
 }
 
+// Updates HUD display for all players and spectators across all arenas
 void ShowHudToAll()
 {
     for (int i = 1; i <= g_iArenaCount; i++)
@@ -250,6 +255,7 @@ void ShowHudToAll()
     }
 }
 
+// Clears HUD elements for a specific client when they disable HUD or leave arena
 void HideHud(int client)
 {
     if (!IsValidClient(client))
@@ -259,6 +265,10 @@ void HideHud(int client)
     ClearSyncHud(client, hm_HP);
 }
 
+
+// ===== PLAYER COMMANDS =====
+
+// Toggles HUD display on/off for individual players and saves preference
 Action Command_ToggleHud(int client, int args)
 {
     if (!IsValidClient(client))
