@@ -1,8 +1,8 @@
-#include <sourcemod>
-#include <sdktools>
-
 StringMap g_migrationProgress;
 
+// ===== MIGRATION SYSTEM CORE =====
+
+// Initializes the migration tracking system by creating or resetting the progress map
 void InitializeMigrationSystem()
 {
     if (g_migrationProgress != null)
@@ -10,6 +10,7 @@ void InitializeMigrationSystem()
     g_migrationProgress = new StringMap();
 }
 
+// Entry point for database schema migrations that orchestrates the entire migration process
 void RunDatabaseMigrations()
 {
     LogMessage("[Migrations] Starting database schema migrations");
@@ -17,6 +18,7 @@ void RunDatabaseMigrations()
     CreateMigrationsTable();
 }
 
+// Creates the migrations tracking table for both SQLite and MySQL databases
 void CreateMigrationsTable()
 {
     char query[512];
@@ -31,6 +33,67 @@ void CreateMigrationsTable()
     g_DB.Query(CreateMigrationsTableCallback, query);
 }
 
+
+// ===== MIGRATION EXECUTION ENGINE =====
+
+// Checks if a migration has been executed and runs it if needed
+void CheckAndRunMigration(const char[] migrationName)
+{
+    char query[256];
+    g_DB.Format(query, sizeof(query), "SELECT COUNT(*) FROM mgemod_migrations WHERE migration_name = '%s'", migrationName);
+    
+    DataPack pack = new DataPack();
+    pack.WriteString(migrationName);
+    
+    g_DB.Query(CheckMigrationCallback, query, pack);
+}
+
+// Dispatches specific migration execution based on migration name
+void RunMigration(const char[] migrationName)
+{
+    if (StrEqual(migrationName, "001_add_class_columns"))
+    {
+        g_migrationProgress.SetValue(migrationName, 6);
+        Migration_001_AddClassColumns();
+    }
+    else if (StrEqual(migrationName, "002_duel_timing_columns"))
+    {
+        g_migrationProgress.SetValue(migrationName, 4);
+        Migration_002_DuelTimingColumns();
+    }
+    else if (StrEqual(migrationName, "003_add_primary_keys"))
+    {
+        g_migrationProgress.SetValue(migrationName, 3);
+        Migration_003_AddPrimaryKeys();
+    }
+    else if (StrEqual(migrationName, "004_add_elo_tracking"))
+    {
+        g_migrationProgress.SetValue(migrationName, 12);
+        Migration_004_AddEloTracking();
+    }
+}
+
+// Executes individual migration steps with progress tracking and error handling
+void ExecuteMigrationStep(const char[] migrationName, const char[] query, int stepNumber)
+{
+    DataPack pack = new DataPack();
+    pack.WriteString(migrationName);
+    pack.WriteCell(stepNumber);
+    g_DB.Query(GenericMigrationCallback, query, pack);
+}
+
+// Records successful migration completion in the migrations tracking table
+void MarkMigrationComplete(const char[] migrationName)
+{
+    char query[256];
+    g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('%s', %d)", migrationName, GetTime());
+    g_DB.Query(MarkMigrationCallback, query);
+}
+
+
+// ===== DATABASE CALLBACK HANDLERS =====
+
+// Handles migrations table creation result and initiates individual migration checks
 void CreateMigrationsTableCallback(Database db, DBResultSet results, const char[] error, any data)
 {
     if (db == null)
@@ -54,17 +117,7 @@ void CreateMigrationsTableCallback(Database db, DBResultSet results, const char[
     CheckAndRunMigration("004_add_elo_tracking");
 }
 
-void CheckAndRunMigration(const char[] migrationName)
-{
-    char query[256];
-    g_DB.Format(query, sizeof(query), "SELECT COUNT(*) FROM mgemod_migrations WHERE migration_name = '%s'", migrationName);
-    
-    DataPack pack = new DataPack();
-    pack.WriteString(migrationName);
-    
-    g_DB.Query(CheckMigrationCallback, query, pack);
-}
-
+// Processes migration existence check results and triggers migration execution if needed
 void CheckMigrationCallback(Database db, DBResultSet results, const char[] error, DataPack pack)
 {
     pack.Reset();
@@ -99,38 +152,7 @@ void CheckMigrationCallback(Database db, DBResultSet results, const char[] error
     }
 }
 
-void RunMigration(const char[] migrationName)
-{
-    if (StrEqual(migrationName, "001_add_class_columns"))
-    {
-        g_migrationProgress.SetValue(migrationName, 6);
-        Migration_001_AddClassColumns();
-    }
-    else if (StrEqual(migrationName, "002_duel_timing_columns"))
-    {
-        g_migrationProgress.SetValue(migrationName, 4);
-        Migration_002_DuelTimingColumns();
-    }
-    else if (StrEqual(migrationName, "003_add_primary_keys"))
-    {
-        g_migrationProgress.SetValue(migrationName, 3);
-        Migration_003_AddPrimaryKeys();
-    }
-    else if (StrEqual(migrationName, "004_add_elo_tracking"))
-    {
-        g_migrationProgress.SetValue(migrationName, 12);
-        Migration_004_AddEloTracking();
-    }
-}
-
-void ExecuteMigrationStep(const char[] migrationName, const char[] query, int stepNumber)
-{
-    DataPack pack = new DataPack();
-    pack.WriteString(migrationName);
-    pack.WriteCell(stepNumber);
-    g_DB.Query(GenericMigrationCallback, query, pack);
-}
-
+// Handles individual migration step results and tracks progress toward completion
 void GenericMigrationCallback(Database db, DBResultSet results, const char[] error, DataPack pack)
 {
     pack.Reset();
@@ -182,13 +204,7 @@ void GenericMigrationCallback(Database db, DBResultSet results, const char[] err
     }
 }
 
-void MarkMigrationComplete(const char[] migrationName)
-{
-    char query[256];
-    g_DB.Format(query, sizeof(query), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('%s', %d)", migrationName, GetTime());
-    g_DB.Query(MarkMigrationCallback, query);
-}
-
+// Processes migration completion marking results with error logging
 void MarkMigrationCallback(Database db, DBResultSet results, const char[] error, any data)
 {
     if (db == null)
@@ -204,6 +220,10 @@ void MarkMigrationCallback(Database db, DBResultSet results, const char[] error,
     }
 }
 
+
+// ===== SPECIFIC MIGRATIONS =====
+
+// Adds class tracking columns to duel tables for both 1v1 and 2v2 matches
 void Migration_001_AddClassColumns()
 {
     LogMessage("[Migration 001] Adding class tracking columns");
@@ -228,6 +248,7 @@ void Migration_001_AddClassColumns()
     }
 }
 
+// Converts gametime to endtime and adds starttime column for better duel tracking
 void Migration_002_DuelTimingColumns()
 {
     LogMessage("[Migration 002] Converting gametime to endtime and adding starttime column");
@@ -248,6 +269,7 @@ void Migration_002_DuelTimingColumns()
     }
 }
 
+// Adds primary keys to database tables and creates necessary indexes
 void Migration_003_AddPrimaryKeys()
 {
     LogMessage("[Migration 003] Adding primary keys to database tables");
@@ -276,6 +298,7 @@ void Migration_003_AddPrimaryKeys()
     }
 }
 
+// Adds ELO tracking columns to record rating changes for each duel participant
 void Migration_004_AddEloTracking()
 {
     LogMessage("[Migration 004] Adding ELO tracking columns to duel tables");
