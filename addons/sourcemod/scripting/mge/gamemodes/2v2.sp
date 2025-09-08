@@ -685,6 +685,9 @@ Action Command_Ready(int client, int args)
         return Plugin_Handled;
     }
 
+    // Close any open menu for the player
+    CloseClientMenu(client);
+
     // Toggle ready status
     g_bPlayer2v2Ready[client] = !g_bPlayer2v2Ready[client];
 
