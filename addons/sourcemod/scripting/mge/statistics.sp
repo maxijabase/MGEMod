@@ -1,3 +1,7 @@
+
+// ===== MENU SYSTEM =====
+
+// Handles menu interactions for top players panel including pagination navigation
 int Panel_TopPlayers(Menu menu, MenuAction action, int param1, int param2)
 {
     switch (action)
@@ -59,6 +63,7 @@ int Panel_TopPlayers(Menu menu, MenuAction action, int param1, int param2)
     return 0;
 }
 
+// Creates and displays paginated top players panel with ELO rankings
 void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
 {
     if (!IsValidClient(client))
@@ -144,22 +149,10 @@ void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
     delete panel;
 }
 
-Action Command_Top5(int client, int args)
-{
-    if (g_bNoStats || !IsValidClient(client))
-    {
-        PrintToChat(client, "No Stats is true");
-        return Plugin_Continue;
-    }
 
-    g_iTopPlayersPage[client] = 0;
-    char query[512];
-    g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
-    g_DB.Query(SQL_OnTopPlayersReceived, query, client);
-    return Plugin_Handled;
-}
+// ===== DATABASE HANDLERS =====
 
-
+// Processes database query results for top players rankings display
 void SQL_OnTopPlayersReceived(Database db, DBResultSet results, const char[] error, any data)
 {
     int client = data;
@@ -192,6 +185,26 @@ void SQL_OnTopPlayersReceived(Database db, DBResultSet results, const char[] err
     ShowTopPlayersPanel(client, results, rowCount);
 }
 
+
+// ===== PLAYER COMMANDS =====
+
+// Initiates top players query and displays ELO rankings to requesting client
+Action Command_Top5(int client, int args)
+{
+    if (g_bNoStats || !IsValidClient(client))
+    {
+        PrintToChat(client, "No Stats is true");
+        return Plugin_Continue;
+    }
+
+    g_iTopPlayersPage[client] = 0;
+    char query[512];
+    g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
+    g_DB.Query(SQL_OnTopPlayersReceived, query, client);
+    return Plugin_Handled;
+}
+
+// Shows player's own rank or compares with another player's statistics
 Action Command_Rank(int client, int args)
 {
     if (g_bNoStats || !IsValidClient(client))
