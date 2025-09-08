@@ -65,7 +65,7 @@
 	"MyRankNoRating"
 	{
 		"#format"		"{1:i},{2:i}"
-		"en"			"У вас {green}{1}{default} побед и {green}{2}{default} поражений."
+		"ru"			"У вас {green}{1}{default} побед и {green}{2}{default} поражений."
 	}
 	"ClassIsNotAllowed"
 	{
