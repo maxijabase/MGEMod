@@ -2,6 +2,7 @@
 // ===== HUD DISPLAY CORE =====
 
 // Displays comprehensive HUD information to active players including health, scores, and game-specific elements
+// TODO: refactor repeated code with spectator.sp lines 6-131
 void ShowPlayerHud(int client)
 {
     if (!IsValidClient(client))
@@ -168,40 +169,61 @@ void ShowPlayerHud(int client)
 
     if (g_bFourPersonArena[arena_index])
     {
-        if (red_f1)
+        // Display RED team (SLOT_ONE and SLOT_THREE)
+        if (red_f1 || red_f2)
         {
-            if (red_f2)
+            if (red_f1 && red_f2)
             {
+                // Both RED players present
                 if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client] || !g_b2v2Elo)
                     Format(report, sizeof(report), "%s\n«%N» and «%N» : %d", report, red_f1, red_f2, g_iArenaScore[arena_index][SLOT_ONE]);
                 else
                     Format(report, sizeof(report), "%s\n«%N» and «%N» (%d): %d", report, red_f1, red_f2, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
             }
-            else
+            else if (red_f1)
             {
+                // Only first RED player present
                 if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                     Format(report, sizeof(report), "%s\n%N : %d", report, red_f1, g_iArenaScore[arena_index][SLOT_ONE]);
                 else
                     Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f1, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
             }
-
-
-        }
-        if (blu_f1)
-        {
-            if (blu_f2)
+            else if (red_f2)
             {
+                // Only second RED player present
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
+                    Format(report, sizeof(report), "%s\n%N : %d", report, red_f2, g_iArenaScore[arena_index][SLOT_ONE]);
+                else
+                    Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f2, g_iPlayerRating[red_f2], g_iArenaScore[arena_index][SLOT_ONE]);
+            }
+        }
+        
+        // Display BLU team (SLOT_TWO and SLOT_FOUR)
+        if (blu_f1 || blu_f2)
+        {
+            if (blu_f1 && blu_f2)
+            {
+                // Both BLU players present
                 if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client] || !g_b2v2Elo)
                     Format(report, sizeof(report), "%s\n«%N» and «%N» : %d", report, blu_f1, blu_f2, g_iArenaScore[arena_index][SLOT_TWO]);
                 else
                     Format(report, sizeof(report), "%s\n«%N» and «%N» (%d): %d", report, blu_f1, blu_f2, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
             }
-            else
+            else if (blu_f1)
             {
+                // Only first BLU player present
                 if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
                     Format(report, sizeof(report), "%s\n%N : %d", report, blu_f1, g_iArenaScore[arena_index][SLOT_TWO]);
                 else
                     Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f1, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
+            }
+            else if (blu_f2)
+            {
+                // Only second BLU player present
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
+                    Format(report, sizeof(report), "%s\n%N : %d", report, blu_f2, g_iArenaScore[arena_index][SLOT_TWO]);
+                else
+                    Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f2, g_iPlayerRating[blu_f2], g_iArenaScore[arena_index][SLOT_TWO]);
             }
         }
     }
@@ -236,6 +258,25 @@ void ShowPlayerHud(int client)
     }
     SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 255, 255);
     ShowSyncHudText(client, hm_TeammateHP, hp_report);
+}
+
+// Updates HUD display for all players and spectators in a specific arena
+void ShowHudToArena(int arena_index)
+{
+    if (arena_index <= 0 || arena_index > g_iArenaCount)
+        return;
+
+    // Update HUD for all players in the arena
+    for (int i = SLOT_ONE; i <= (g_bFourPersonArena[arena_index] ? SLOT_FOUR : SLOT_TWO); i++)
+    {
+        if (g_iArenaQueue[arena_index][i])
+        {
+            ShowPlayerHud(g_iArenaQueue[arena_index][i]);
+        }
+    }
+    
+    // Update HUD for spectators watching this arena
+    ShowSpecHudToArena(arena_index);
 }
 
 // Updates HUD display for all players and spectators across all arenas

@@ -214,6 +214,7 @@ void UpdateArenaName(int arena)
 // ===== QUEUE MANAGEMENT =====
 
 // Remove player from arena queue with optional statistics calculation and spectator handling
+// TODO: refactor this crap
 void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
 {
     int arena_index = g_iPlayerArena[client];
@@ -340,6 +341,8 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 GetClientName(next_client, playername, sizeof(playername));
 
                 SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
+                
+                ShowHudToArena(arena_index);
             } else {
                 if (foe && IsFakeClient(foe))
                 {
@@ -355,6 +358,8 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 }
 
                 g_iArenaStatus[arena_index] = AS_IDLE;
+                
+                ShowHudToArena(arena_index);
                 return;
             }
         }
@@ -416,6 +421,8 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 GetClientName(next_client, playername, sizeof(playername));
 
                 SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
+                
+                ShowHudToArena(arena_index);
             } else {
                 if (foe && IsFakeClient(foe))
                 {
@@ -425,6 +432,8 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 }
 
                 g_iArenaStatus[arena_index] = AS_IDLE;
+                
+                ShowHudToArena(arena_index);
                 return;
             }
         }
@@ -440,6 +449,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
         g_iArenaQueue[arena_index][after_leaver_slot - 1] = 0;
     }
     
+    ShowHudToArena(arena_index);
 
 }
 
@@ -615,7 +625,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
         }
     }
 
-
+    ShowHudToArena(arena_index);
 
     return;
 }
@@ -1467,16 +1477,7 @@ Action Timer_StartDuel(Handle timer, any arena_index)
     g_iArenaScore[arena_index][SLOT_ONE] = 0;
     g_iArenaScore[arena_index][SLOT_TWO] = 0;
     g_iArenaDuelStartTime[arena_index] = 0; // Reset duel start time
-    ShowPlayerHud(g_iArenaQueue[arena_index][SLOT_ONE]);
-    ShowPlayerHud(g_iArenaQueue[arena_index][SLOT_TWO]);
-
-    if (g_bFourPersonArena[arena_index])
-    {
-        ShowPlayerHud(g_iArenaQueue[arena_index][SLOT_THREE]);
-        ShowPlayerHud(g_iArenaQueue[arena_index][SLOT_FOUR]);
-    }
-
-    ShowSpecHudToArena(arena_index);
+    ShowHudToArena(arena_index);
     
     // Clear 2v2 ready hud text
     Clear2v2ReadyHud(arena_index);

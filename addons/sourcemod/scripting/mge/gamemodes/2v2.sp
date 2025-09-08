@@ -437,7 +437,8 @@ void Handle2v2TeamSwitch(int client, int arena_index, int new_team)
     // Check if we have 2v2 team balance and can start/continue ready process
     Check2v2TeamBalance(arena_index);
     
-
+    // Update HUD for all players in the arena to reflect team changes
+    ShowHudToArena(arena_index);
 }
 
 // Processes team switching requests originating from menu selections
