@@ -1,3 +1,23 @@
+// ===== CLIENT MANAGEMENT =====
+
+// Initialize and reset ammo tracking data for a client when they connect or change arenas
+void ResetClientAmmoCounts(int client)
+{
+    // Crutch.
+    g_iPlayerClip[client][SLOT_ONE] = -1;
+    g_iPlayerClip[client][SLOT_TWO] = -1;
+
+    // Check how much ammo each gun can hold in its clip and store it in a global variable so it can be set to that amount later.
+    if (IsValidEntity(GetPlayerWeaponSlot(client, 0)))
+        g_iPlayerClip[client][SLOT_ONE] = GetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Data, "m_iClip1");
+    if (IsValidEntity(GetPlayerWeaponSlot(client, 1)))
+        g_iPlayerClip[client][SLOT_TWO] = GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Data, "m_iClip1");
+}
+
+
+// ===== GAME MECHANICS =====
+
+// Continuously manage health values in ammomod arenas to prevent one-shot kills
 void ProcessAmmomodHealthManagement()
 {
     for (int client = 1; client <= MaxClients; client++)
@@ -16,6 +36,10 @@ void ProcessAmmomodHealthManagement()
     }
 }
 
+
+// ===== TIMER CALLBACKS =====
+
+// Restore saved ammunition counts to player weapons after a brief delay
 Action Timer_GiveAmmo(Handle timer, int userid)
 {
     int client = GetClientOfUserId(userid);
@@ -43,17 +67,4 @@ Action Timer_GiveAmmo(Handle timer, int userid)
     }
 
     return Plugin_Continue;
-}
-
-void ResetClientAmmoCounts(int client)
-{
-    // Crutch.
-    g_iPlayerClip[client][SLOT_ONE] = -1;
-    g_iPlayerClip[client][SLOT_TWO] = -1;
-
-    // Check how much ammo each gun can hold in its clip and store it in a global variable so it can be set to that amount later.
-    if (IsValidEntity(GetPlayerWeaponSlot(client, 0)))
-        g_iPlayerClip[client][SLOT_ONE] = GetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Data, "m_iClip1");
-    if (IsValidEntity(GetPlayerWeaponSlot(client, 1)))
-        g_iPlayerClip[client][SLOT_TWO] = GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Data, "m_iClip1");
 }
