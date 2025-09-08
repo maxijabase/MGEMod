@@ -1,34 +1,6 @@
-// When the point is no longer touched
-Action OnEndTouchPoint(int entity, int other)
-{
-    int client = other;
+// ===== GAME MECHANICS =====
 
-    if (!IsValidClient(client))
-    {
-        return Plugin_Continue;
-    }
-    int arena_index = g_iPlayerArena[client];
-    int client_slot = g_iPlayerSlot[client];
-
-    g_bPlayerTouchPoint[arena_index][client_slot] = false;
-    return Plugin_Continue;
-}
-
-// When the point is touched
-Action OnTouchPoint(int entity, int other)
-{
-    int client = other;
-
-    if (!IsValidClient(client))
-        return Plugin_Continue;
-
-    int arena_index = g_iPlayerArena[client];
-    int client_slot = g_iPlayerSlot[client];
-
-    g_bPlayerTouchPoint[arena_index][client_slot] = true;
-    return Plugin_Continue;
-}
-
+// Process capture point mechanics across all active KOTH arenas
 void ProcessKothCapturePoints()
 {
     for (int arena_index = 1; arena_index <= g_iArenaCount; ++arena_index)
@@ -40,6 +12,7 @@ void ProcessKothCapturePoints()
     }
 }
 
+// Handle capture logic, timing, and team calculations for a specific arena
 void ProcessKothArenaCapture(int arena_index)
 {
     g_fTotalTime[arena_index] += 7;
@@ -249,6 +222,7 @@ void ProcessKothArenaCapture(int arena_index)
         g_fCappedTime[arena_index]--;
 }
 
+// Complete KOTH match including win conditions, ELO calculations, and queue management
 void EndKoth(any arena_index, any winner_team)
 {
     PlayEndgameSoundsToArena(arena_index, winner_team);
@@ -363,6 +337,44 @@ void EndKoth(any arena_index, any winner_team)
     }
 }
 
+
+// ===== EVENT HANDLERS =====
+
+// When the point is touched
+Action OnTouchPoint(int entity, int other)
+{
+    int client = other;
+
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+
+    int arena_index = g_iPlayerArena[client];
+    int client_slot = g_iPlayerSlot[client];
+
+    g_bPlayerTouchPoint[arena_index][client_slot] = true;
+    return Plugin_Continue;
+}
+
+// When the point is no longer touched
+Action OnEndTouchPoint(int entity, int other)
+{
+    int client = other;
+
+    if (!IsValidClient(client))
+    {
+        return Plugin_Continue;
+    }
+    int arena_index = g_iPlayerArena[client];
+    int client_slot = g_iPlayerSlot[client];
+
+    g_bPlayerTouchPoint[arena_index][client_slot] = false;
+    return Plugin_Continue;
+}
+
+
+// ===== COMMANDS =====
+
+// Allow players to switch current arena to KOTH gamemode
 Action Command_Koth(int client, int args)
 {
     if (!IsValidClient(client))
@@ -408,7 +420,10 @@ Action Command_Koth(int client, int args)
     return Plugin_Handled;
 }
 
-// Returns of a player on the other team is touching the point
+
+// ===== UTILITIES =====
+
+// Check if opposing team members are currently touching the capture point
 bool EnemyTeamTouching(any team, any arena_index)
 {
     if (team == TEAM_RED)
@@ -431,6 +446,10 @@ bool EnemyTeamTouching(any team, any arena_index)
     }
 }
 
+
+// ===== TIMER CALLBACKS =====
+
+// Manage countdown timers, capture progress, overtime logic, and audio cues
 Action Timer_CountDownKoth(Handle timer, any arena_index)
 {
     // If there was time spent on the point/time spent reverting the point add/remove perecent to the point for however long they were/n't standing on it
