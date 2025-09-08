@@ -1,3 +1,7 @@
+
+// ===== ELO CALCULATION CORE =====
+
+// Calculates ELO ratings for 1v1 duels and updates player statistics in database
 void CalcELO(int winner, int loser)
 {
     if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats)
@@ -64,6 +68,7 @@ void CalcELO(int winner, int loser)
     g_DB.Query(SQL_OnGenericQueryFinished, query);
 }
 
+// Calculates ELO ratings for 2v2 duels using team-averaged ratings and updates player statistics
 void CalcELO2(int winner, int winner2, int loser, int loser2)
 {
     if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || IsFakeClient(loser2) || IsFakeClient(winner2))
@@ -154,6 +159,10 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
     g_DB.Query(SQL_OnGenericQueryFinished, query);
 }
 
+
+// ===== PLAYER COMMANDS =====
+
+// Toggles ELO rating display for individual players and saves preference to cookies
 Action Command_ToggleElo(int client, int args)
 {
     if (!IsValidClient(client))
