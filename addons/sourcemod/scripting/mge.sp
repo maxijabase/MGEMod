@@ -12,6 +12,7 @@
 #include <sdkhooks>
 #include <morecolors>
 #include <clientprefs>
+#include <convar_class>
 
 #define PL_VERSION "3.1.0-2v2-beta5"
 
@@ -62,23 +63,25 @@ public void OnPluginStart()
 
     // ConVars
     CreateConVar("sm_mgemod_version", PL_VERSION, "MGEMod version", FCVAR_SPONLY | FCVAR_NOTIFY);
-    gcvar_fragLimit = CreateConVar("mgemod_fraglimit", "3", "Default frag limit in duel", FCVAR_NONE, true, 1.0);
-    gcvar_allowedClasses = CreateConVar("mgemod_allowed_classes", "soldier demoman scout", "Classes that players allowed to choose by default");
-    gcvar_blockFallDamage = CreateConVar("mgemod_blockdmg_fall", "0", "Block falldamage? (0 = Disabled)", FCVAR_NONE, true, 0.0, true, 1.0);
-    gcvar_dbConfig = CreateConVar("mgemod_dbconfig", "mgemod", "Name of database config");
-    gcvar_stats = CreateConVar("mgemod_stats", "1", "Enable/Disable stats.");
-    gcvar_airshotHeight = CreateConVar("mgemod_airshot_height", "80", "The minimum height at which it will count airshot", FCVAR_NONE, true, 10.0, true, 500.0);
-    gcvar_RocketForceX = CreateConVar("mgemod_endif_force_x", "1.1", "The amount by which to multiply the X push force on Endif.", FCVAR_NONE, true, 1.0, true, 10.0);
-    gcvar_RocketForceY = CreateConVar("mgemod_endif_force_y", "1.1", "The amount by which to multiply the Y push force on Endif.", FCVAR_NONE, true, 1.0, true, 10.0);
-    gcvar_RocketForceZ = CreateConVar("mgemod_endif_force_z", "2.15", "The amount by which to multiply the Z push force on Endif.", FCVAR_NONE, true, 1.0, true, 10.0);
-    gcvar_autoCvar = CreateConVar("mgemod_autocvar", "1", "Automatically set recommended game cvars? (0 = Disabled)", FCVAR_NONE, true, 0.0, true, 1.0);
-    gcvar_bballParticle_red = CreateConVar("mgemod_bball_particle_red", "player_intel_trail_red", "Particle effect to attach to Red players in BBall.");
-    gcvar_bballParticle_blue = CreateConVar("mgemod_bball_particle_blue", "player_intel_trail_blue", "Particle effect to attach to Blue players in BBall.");
-    gcvar_WfP = FindConVar("mp_waitingforplayers_cancel");
-    gcvar_midairHP = CreateConVar("mgemod_midair_hp", "5", "", FCVAR_NONE, true, 1.0);
-    gcvar_noDisplayRating = CreateConVar("mgemod_hide_rating", "0", "Hide the in-game display of rating points. They will still be tracked in the database.");
-    gcvar_reconnectInterval = CreateConVar("mgemod_reconnect_interval", "5", "How long (in minutes) to wait between database reconnection attempts.");
-    gcvar_2v2SkipCountdown = CreateConVar("mgemod_2v2_skip_countdown", "0", "Skip countdown between 2v2 rounds? (0 = Normal countdown, 1 = Skip countdown)", FCVAR_NONE, true, 0.0, true, 1.0);
+    gcvar_fragLimit = new Convar("mgemod_fraglimit", "1", "Default frag limit in duel", FCVAR_NONE, true, 1.0);
+    gcvar_allowedClasses = new Convar("mgemod_allowed_classes", "soldier demoman scout", "Classes that players allowed to choose by default");
+    gcvar_blockFallDamage = new Convar("mgemod_blockdmg_fall", "0", "Block falldamage? (0 = Disabled)", FCVAR_NONE, true, 0.0, true, 1.0);
+    gcvar_dbConfig = new Convar("mgemod_dbconfig", "mgemod", "Name of database config");
+    gcvar_stats = new Convar("mgemod_stats", "1", "Enable/Disable stats.");
+    gcvar_airshotHeight = new Convar("mgemod_airshot_height", "80", "The minimum height at which it will count airshot", FCVAR_NONE, true, 10.0, true, 500.0);
+    gcvar_RocketForceX = new Convar("mgemod_endif_force_x", "1.1", "The amount by which to multiply the X push force on Endif.", FCVAR_NONE, true, 1.0, true, 10.0);
+    gcvar_RocketForceY = new Convar("mgemod_endif_force_y", "1.1", "The amount by which to multiply the Y push force on Endif.", FCVAR_NONE, true, 1.0, true, 10.0);
+    gcvar_RocketForceZ = new Convar("mgemod_endif_force_z", "2.15", "The amount by which to multiply the Z push force on Endif.", FCVAR_NONE, true, 1.0, true, 10.0);
+    gcvar_autoCvar = new Convar("mgemod_autocvar", "1", "Automatically set recommended game cvars? (0 = Disabled)", FCVAR_NONE, true, 0.0, true, 1.0);
+    gcvar_bballParticle_red = new Convar("mgemod_bball_particle_red", "player_intel_trail_red", "Particle effect to attach to Red players in BBall.");
+    gcvar_bballParticle_blue = new Convar("mgemod_bball_particle_blue", "player_intel_trail_blue", "Particle effect to attach to Blue players in BBall.");
+    gcvar_midairHP = new Convar("mgemod_midair_hp", "5", "Minimum health for midair detection", FCVAR_NONE, true, 1.0);
+    gcvar_noDisplayRating = new Convar("mgemod_hide_rating", "0", "Hide the in-game display of rating points. They will still be tracked in the database.");
+    gcvar_reconnectInterval = new Convar("mgemod_reconnect_interval", "5", "How long (in minutes) to wait between database reconnection attempts.");
+    gcvar_2v2SkipCountdown = new Convar("mgemod_2v2_skip_countdown", "0", "Skip countdown between 2v2 rounds? (0 = Normal countdown, 1 = Skip countdown)", FCVAR_NONE, true, 0.0, true, 1.0);
+
+    // Create config file
+    Convar.CreateConfig("mge");
 
     // Populate global variables with their corresponding convar values.
     g_iDefaultFragLimit = gcvar_fragLimit.IntValue;
@@ -660,7 +663,7 @@ Action Event_WinPanel(Event event, const char[] name, bool dontBroadcast)
 // Initialize BBall hoops and KOTH capture points when round starts
 Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-    gcvar_WfP.SetInt(1); // Cancel waiting for players
+    FindConVar("mp_waitingforplayers_cancel").SetInt(1); // Cancel waiting for players
 
     // Be totally certain that the models are cached so they can be hooked
     PrecacheModel(MODEL_BRIEFCASE, true);

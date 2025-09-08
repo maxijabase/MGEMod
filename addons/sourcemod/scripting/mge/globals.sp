@@ -75,8 +75,7 @@ char g_sDBConfig[256];
 int g_iReconnectInterval;
 
 // Global CVar Handles
-ConVar
-    gcvar_WfP,
+Convar
     gcvar_fragLimit,
     gcvar_allowedClasses,
     gcvar_blockFallDamage,
