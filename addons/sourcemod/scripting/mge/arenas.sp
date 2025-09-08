@@ -1,3 +1,6 @@
+// ===== PLUGIN CORE LIFECYCLE =====
+
+// Load and parse spawn point configurations from map-specific config files
 bool LoadSpawnPoints()
 {
     char txtfile[256];
@@ -152,6 +155,10 @@ bool LoadSpawnPoints()
     }
 }
 
+
+// ===== ARENA MANAGEMENT =====
+
+// Reset arena state and prepare for next match including spawn points and game settings
 void ResetArena(int arena_index)
 {
     // Tell the game this was a forced suicide and it shouldn't do anything about it
@@ -186,6 +193,7 @@ void ResetArena(int arena_index)
     }
 }
 
+// Update arena display name based on current gamemode and configuration
 void UpdateArenaName(int arena)
 {
     char mode[4], type[8];
@@ -202,6 +210,10 @@ void UpdateArenaName(int arena)
     Format(g_sArenaName[arena], sizeof(g_sArenaName), "%s [%s %s]", g_sArenaOriginalName[arena], mode, type);
 }
 
+
+// ===== QUEUE MANAGEMENT =====
+
+// Remove player from arena queue with optional statistics calculation and spectator handling
 void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
 {
     int arena_index = g_iPlayerArena[client];
@@ -431,6 +443,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
 
 }
 
+// Add player to arena queue with team preference and menu options
 void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPrefTeam = 0, bool show2v2Menu = true)
 {
     if (!IsValidClient(client))
@@ -607,20 +620,10 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
     return;
 }
 
-void SendArenaJoinMessage(const char[] playername, int player_rating, const char[] arena_name, bool show_elo)
-{
-    for (int i = 1; i <= MaxClients; ++i)
-    {
-        if (!IsClientInGame(i))
-            continue;
-            
-        if (show_elo && g_bShowElo[i])
-            MC_PrintToChat(i, "%t", "JoinsArena", playername, player_rating, arena_name);
-        else
-            MC_PrintToChat(i, "%t", "JoinsArenaNoStats", playername, arena_name);
-    }
-}
 
+// ===== MATCH FLOW CONTROL =====
+
+// Initialize countdown sequence and prepare arena for match start
 int StartCountDown(int arena_index)
 {
     int red_f1 = g_iArenaQueue[arena_index][SLOT_ONE]; /* Red (slot one) player. */
@@ -771,6 +774,504 @@ int StartCountDown(int arena_index)
     }
 }
 
+
+// ===== GAME MECHANICS =====
+
+// Play appropriate victory/defeat sounds to all players in an arena
+void PlayEndgameSoundsToArena(any arena_index, any winner_team)
+{
+    int red_1 = g_iArenaQueue[arena_index][SLOT_ONE];
+    int blu_1 = g_iArenaQueue[arena_index][SLOT_TWO];
+    char SoundFileBlu[124];
+    char SoundFileRed[124];
+
+    // If the red team won
+    if (winner_team == 1)
+    {
+        SoundFileRed = "vo/announcer_victory.mp3";
+        SoundFileBlu = "vo/announcer_you_failed.mp3";
+    }
+    // Else the blu team won
+    else
+    {
+        SoundFileBlu = "vo/announcer_victory.mp3";
+        SoundFileRed = "vo/announcer_you_failed.mp3";
+    }
+    if (IsValidClient(red_1))
+        EmitSoundToClient(red_1, SoundFileRed);
+
+    if (IsValidClient(blu_1))
+        EmitSoundToClient(blu_1, SoundFileBlu);
+
+    if (g_bFourPersonArena[arena_index])
+    {
+        int red_2 = g_iArenaQueue[arena_index][SLOT_THREE];
+        int blu_2 = g_iArenaQueue[arena_index][SLOT_FOUR];
+        if (g_iCappingTeam[arena_index] == TEAM_BLU)
+        {
+            if (IsValidClient(red_2))
+                EmitSoundToClient(red_2, SoundFileRed);
+        }
+        else
+        {
+            if (IsValidClient(blu_2))
+                EmitSoundToClient(blu_2, SoundFileBlu);
+        }
+    }
+}
+
+
+// ===== UI AND MENUS =====
+
+// Display main arena selection menu with player listings and options
+void ShowMainMenu(int client, bool listplayers = true)
+{
+    if (!IsValidClient(client))
+        return;
+
+    char title[128];
+    char menu_item[128];
+
+    Menu menu = new Menu(Menu_Main);
+
+    Format(title, sizeof(title), "%T", "MenuTitle", client);
+    menu.SetTitle(title);
+    char si[4];
+
+    for (int i = 1; i <= g_iArenaCount; i++)
+    {
+        // Count total players in the arena regardless of slot order
+        int totalPlayers = 0;
+        for (int NUM = 1; NUM <= MAXPLAYERS; NUM++)
+        {
+            if (g_iArenaQueue[i][NUM] != 0)
+            {
+                totalPlayers++;
+            }
+        }
+
+        // Cap active players shown based on arena type (1v1:2, 2v2:4)
+        int cap = g_bFourPersonArena[i] ? 4 : 2;
+        int active = (totalPlayers < cap) ? totalPlayers : cap;
+        int waiting = (totalPlayers > cap) ? (totalPlayers - cap) : 0;
+
+        if (waiting > 0)
+            Format(menu_item, sizeof(menu_item), "%s (%d)(%d)", g_sArenaName[i], active, waiting);
+        else if (active > 0)
+            Format(menu_item, sizeof(menu_item), "%s (%d)", g_sArenaName[i], active);
+        else
+            Format(menu_item, sizeof(menu_item), "%s", g_sArenaName[i]);
+
+        IntToString(i, si, sizeof(si));
+        menu.AddItem(si, menu_item);
+    }
+
+    Format(menu_item, sizeof(menu_item), "%T", "MenuRemove", client);
+    menu.AddItem("1000", menu_item);
+
+    menu.ExitButton = true;
+    menu.Display(client, 0);
+
+    char report[256];
+
+    // Listing players
+    if (!listplayers)
+        return;
+
+    for (int i = 1; i <= g_iArenaCount; i++)
+    {
+        int red_f1 = g_iArenaQueue[i][SLOT_ONE];
+        int blu_f1 = g_iArenaQueue[i][SLOT_TWO];
+        if (red_f1 > 0 || blu_f1 > 0)
+        {
+            Format(report, sizeof(report), "\x05%s:", g_sArenaName[i]);
+
+            if (!g_bNoDisplayRating)
+            {
+                if (red_f1 > 0 && blu_f1 > 0)
+                    Format(report, sizeof(report), "%s \x04%N \x03(%d) \x05vs \x04%N (%d) \x05", report, red_f1, g_iPlayerRating[red_f1], blu_f1, g_iPlayerRating[blu_f1]);
+                else if (red_f1 > 0)
+                    Format(report, sizeof(report), "%s \x04%N (%d)\x05", report, red_f1, g_iPlayerRating[red_f1]);
+                else if (blu_f1 > 0)
+                    Format(report, sizeof(report), "%s \x04%N (%d)\x05", report, blu_f1, g_iPlayerRating[blu_f1]);
+            } else {
+                if (red_f1 > 0 && blu_f1 > 0)
+                    Format(report, sizeof(report), "%s \x04%N \x05vs \x04%N \x05", report, red_f1, blu_f1);
+                else if (red_f1 > 0)
+                    Format(report, sizeof(report), "%s \x04%N \x05", report, red_f1);
+                else if (blu_f1 > 0)
+                    Format(report, sizeof(report), "%s \x04%N \x05", report, blu_f1);
+            }
+
+            if (g_iArenaQueue[i][SLOT_TWO + 1])
+            {
+                Format(report, sizeof(report), "%s Waiting: ", report);
+                int j = SLOT_TWO + 1;
+                while (g_iArenaQueue[i][j + 1])
+                {
+                    Format(report, sizeof(report), "%s\x04%N \x05, ", report, g_iArenaQueue[i][j]);
+                    j++;
+                }
+                Format(report, sizeof(report), "%s\x04%N", report, g_iArenaQueue[i][j]);
+            }
+            PrintToChat(client, "%s", report);
+        }
+    }
+}
+
+// Handle main menu selections and navigation logic
+int Menu_Main(Menu menu, MenuAction action, int param1, int param2)
+{
+    switch (action)
+    {
+        case MenuAction_Select:
+        {
+            int client = param1;
+            if (!client)return 0;
+            char capt[32];
+            char sanum[32];
+
+            menu.GetItem(param2, sanum, sizeof(sanum), _, capt, sizeof(capt));
+            int arena_index = StringToInt(sanum);
+
+            if (arena_index > 0 && arena_index <= g_iArenaCount)
+            {
+                // Checking rating (but allow re-selection of same arena)
+                if (arena_index != g_iPlayerArena[client])
+                {
+                    int playerrating = g_iPlayerRating[client];
+                    int minrating = g_iArenaMinRating[arena_index];
+                    int maxrating = g_iArenaMaxRating[arena_index];
+
+                    if (minrating > 0 && playerrating < minrating)
+                    {
+                        MC_PrintToChat(client, "%t", "LowRating", playerrating, minrating);
+                        ShowMainMenu(client, false);
+                        return 0;
+                    } else if (maxrating > 0 && playerrating > maxrating) {
+                        MC_PrintToChat(client, "%t", "HighRating", playerrating, maxrating);
+                        ShowMainMenu(client, false);
+                        return 0;
+                    }
+                }
+                // Always call AddInQueue - it handles re-selection logic internally
+                AddInQueue(client, arena_index);
+
+            } else {
+                RemoveFromQueue(client, true);
+            }
+        }
+        case MenuAction_Cancel:
+        {
+        }
+        case MenuAction_End:
+        {
+            delete menu;
+        }
+    }
+
+    return 0;
+}
+
+
+// ===== MESSAGING SYSTEM =====
+
+// Send formatted join message with player rating and arena information
+void SendArenaJoinMessage(const char[] playername, int player_rating, const char[] arena_name, bool show_elo)
+{
+    for (int i = 1; i <= MaxClients; ++i)
+    {
+        if (!IsClientInGame(i))
+            continue;
+            
+        if (show_elo && g_bShowElo[i])
+            MC_PrintToChat(i, "%t", "JoinsArena", playername, player_rating, arena_name);
+        else
+            MC_PrintToChat(i, "%t", "JoinsArenaNoStats", playername, arena_name);
+    }
+}
+
+// Send formatted message to all players in a specific arena
+void PrintToChatArena(int arena_index, const char[] message, any ...)
+{
+    char buffer[256];
+    VFormat(buffer, sizeof(buffer), message, 3);
+    
+    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
+    {
+        int client = g_iArenaQueue[arena_index][i];
+        if (client)
+        {
+            PrintToChat(client, buffer);
+        }
+    }
+}
+
+
+// ===== COMMANDS =====
+
+// Display arena selection menu to players
+Action Command_Menu(int client, int args)
+{
+    // Handle commands "!ammomod" "!add" and such // Building queue's menu and listing arena's
+    int playerPrefTeam = 0;
+
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+
+    char sArg[32];
+    if (GetCmdArg(1, sArg, sizeof(sArg)) > 0)
+    {
+        // If they want to add to a color
+        char cArg[32];
+        if (GetCmdArg(2, cArg, sizeof(cArg)) > 0)
+        {
+            if (StrContains("blu", cArg, false) >= 0)
+            {
+                playerPrefTeam = TEAM_BLU;
+            }
+            else if (StrContains("red", cArg, false) >= 0)
+            {
+                playerPrefTeam = TEAM_RED;
+            }
+        }
+        // Was the argument an arena_index number?
+        int iArg = StringToInt(sArg);
+        if (iArg > 0 && iArg <= g_iArenaCount)
+        {
+            // Always call AddInQueue - it will handle re-selection logic internally
+            CloseClientMenu(client);
+            AddInQueue(client, iArg, true, playerPrefTeam);
+            return Plugin_Handled;
+        }
+
+        // Was the argument an arena name?
+        GetCmdArgString(sArg, sizeof(sArg));
+        int found_arena;
+        for(int i = 1; i <= g_iArenaCount; i++)
+        {
+            if(StrContains(g_sArenaName[i], sArg, false) >= 0)
+            {
+                if (g_iArenaStatus[i] == AS_IDLE) {
+                    found_arena = i;
+                    break;
+                }
+            }
+        }
+        // If there was only one string match, and it was a valid match, place the player in that arena if they aren't already in it.
+        if (found_arena > 0 && found_arena <= g_iArenaCount && found_arena != g_iPlayerArena[client])
+        {
+            CloseClientMenu(client);
+            AddInQueue(client, found_arena, true, playerPrefTeam);
+            return Plugin_Handled;
+        }
+    }
+
+    // Couldn't find a matching arena for the argument.
+    ShowMainMenu(client);
+    return Plugin_Handled;
+}
+
+// Remove player from current arena queue
+Action Command_Remove(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Continue;
+
+    RemoveFromQueue(client, true);
+    return Plugin_Handled;
+}
+
+// Move player to first position in arena queue
+Action Command_First(int client, int args)
+{
+    if (!client || !IsValidClient(client))
+        return Plugin_Continue;
+
+    // Try to find an arena with one person in the queue..
+    for (int i = 1; i <= g_iArenaCount; i++)
+    {
+        if (!g_iArenaQueue[i][SLOT_TWO] && g_iPlayerArena[client] != i)
+        {
+            if (g_iArenaQueue[i][SLOT_ONE])
+            {
+                CloseClientMenu(client);
+                AddInQueue(client, i, true);
+                return Plugin_Handled;
+            }
+        }
+    }
+
+    // Couldn't find an arena with only one person in the queue, so find one with none.
+    if (!g_iPlayerArena[client])
+    {
+        for (int i = 1; i <= g_iArenaCount; i++)
+        {
+            if (!g_iArenaQueue[i][SLOT_TWO] && g_iPlayerArena[client] != i)
+            {
+                CloseClientMenu(client);
+                AddInQueue(client, i, true);
+                return Plugin_Handled;
+            }
+        }
+    }
+
+    // Couldn't find any empty or half-empty arenas, so display the menu.
+    ShowMainMenu(client);
+    return Plugin_Handled;
+}
+
+// Switch current arena to 1v1 MGE mode
+Action Command_OneVsOne(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Handled;
+
+    int arena_index = g_iPlayerArena[client];
+
+    if (!arena_index) {
+        PrintToChat(client, "You are not in an arena!");
+        return Plugin_Handled;
+    }
+
+    if (!g_bFourPersonArena[arena_index]) {
+        PrintToChat(client, "This arena is already in 1v1 mode!");
+        return Plugin_Handled;
+    }
+
+    if (!g_bArenaAllowChange[arena_index]) {
+        PrintToChat(client, "Cannot change to 1v1 in this arena!");
+        return Plugin_Handled;
+    }
+
+    if (g_iArenaStatus[arena_index] != AS_IDLE) {
+        PrintToChat(client, "Cannot switch to 1v1 now!");
+        return Plugin_Handled;
+    }
+
+    if(g_iArenaQueue[arena_index][SLOT_THREE] || g_iArenaQueue[arena_index][SLOT_FOUR]) {
+        PrintToChat(client, "There are more then 2 players in this arena");
+        return Plugin_Handled;
+    }
+
+    g_bFourPersonArena[arena_index] = false;
+    g_iArenaCdTime[arena_index] = DEFAULT_COUNTDOWN_TIME;
+    CreateTimer(1.5, Timer_StartDuel, arena_index);
+    UpdateArenaName(arena_index);
+
+    if(g_iArenaQueue[arena_index][SLOT_ONE]) {
+        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to 1v1 arena!");
+    }
+
+    if(g_iArenaQueue[arena_index][SLOT_TWO]) {
+        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to 1v1 arena!");
+    }
+
+    return Plugin_Handled;
+}
+
+// Switch current arena to 2v2 team mode
+Action Command_TwoVsTwo(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Handled;
+
+    int arena_index = g_iPlayerArena[client];
+
+    if (!arena_index) {
+        PrintToChat(client, "You are not in an arena!");
+        return Plugin_Handled;
+    }
+
+    if(g_bFourPersonArena[arena_index]) {
+        PrintToChat(client, "This arena is already in 2v2 mode!");
+        return Plugin_Handled;
+    }
+
+    if (!g_bArenaAllowChange[arena_index]) {
+        PrintToChat(client, "Cannot change to 2v2 in this arena!");
+        return Plugin_Handled;
+    }
+
+    if (g_iArenaStatus[arena_index] != AS_IDLE) {
+        PrintToChat(client, "Cannot switch to 2v2 now!");
+        return Plugin_Handled;
+    }
+
+    g_bFourPersonArena[arena_index] = true;
+    g_iArenaCdTime[arena_index] = 0;
+    CreateTimer(1.5, Timer_StartDuel, arena_index);
+    UpdateArenaName(arena_index);
+
+    if(g_iArenaQueue[arena_index][SLOT_ONE]) {
+        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to 2v2 arena!");
+    }
+
+    if(g_iArenaQueue[arena_index][SLOT_TWO]) {
+        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to 2v2 arena!");
+    }
+
+    return Plugin_Handled;
+}
+
+// Switch current arena to standard MGE mode
+Action Command_Mge(int client, int args)
+{
+    if (!IsValidClient(client))
+        return Plugin_Handled;
+
+    int arena_index = g_iPlayerArena[client];
+
+    if (!arena_index) {
+        PrintToChat(client, "You are not in an arena!");
+        return Plugin_Handled;
+    }
+
+    if (g_bArenaMGE[arena_index]) {
+        PrintToChat(client, "This arena is already in MGE mode!");
+        return Plugin_Handled;
+    }
+
+    g_bArenaKoth[arena_index] = false;
+    g_bArenaMGE[arena_index] = true;
+    g_fArenaRespawnTime[arena_index] = 0.2;
+    g_iArenaFraglimit[arena_index] = g_iArenaMgelimit[arena_index];
+    CreateTimer(1.5, Timer_StartDuel, arena_index);
+    UpdateArenaName(arena_index);
+
+    if(g_iArenaQueue[arena_index][SLOT_ONE]) {
+        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to MGE mode!");
+    }
+
+    if(g_iArenaQueue[arena_index][SLOT_TWO]) {
+        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to MGE mode");
+    }
+
+    return Plugin_Handled;
+}
+
+// Add bot player to arena queue for testing purposes
+Action Command_AddBot(int client, int args)
+{  
+    // Adding bot to client's arena
+    if (!IsValidClient(client))
+        return Plugin_Handled;
+
+    int arena_index = g_iPlayerArena[client];
+    int player_slot = g_iPlayerSlot[client];
+
+    if (arena_index && (player_slot == SLOT_ONE || player_slot == SLOT_TWO || (g_bFourPersonArena[arena_index] && (player_slot == SLOT_THREE || player_slot == SLOT_FOUR))))
+    {
+        ServerCommand("tf_bot_add");
+        g_bPlayerAskedForBot[client] = true;
+    }
+    return Plugin_Handled;
+}
+
+
+// ===== TIMER CALLBACKS =====
+
+// Handle countdown timer progression and match preparation
 Action Timer_CountDown(Handle timer, any arena_index)
 {
     int red_f1 = g_iArenaQueue[arena_index][SLOT_ONE];
@@ -932,6 +1433,7 @@ Action Timer_CountDown(Handle timer, any arena_index)
     }
 }
 
+// Initialize duel start sequence and player setup
 Action Timer_StartDuel(Handle timer, any arena_index)
 {
     ResetArena(arena_index);
@@ -984,6 +1486,7 @@ Action Timer_StartDuel(Handle timer, any arena_index)
     return Plugin_Continue;
 }
 
+// Regenerate arena entities and restore initial conditions
 Action Timer_RegenArena(Handle timer, any arena_index)
 {
     if (g_iArenaStatus[arena_index] != AS_FIGHT)
@@ -1031,6 +1534,7 @@ Action Timer_RegenArena(Handle timer, any arena_index)
     return Plugin_Continue;
 }
 
+// Reset round state and prepare for next round
 Action Timer_NewRound(Handle timer, any arena_index)
 {
     StartCountDown(arena_index);
@@ -1038,277 +1542,21 @@ Action Timer_NewRound(Handle timer, any arena_index)
     return Plugin_Continue;
 }
 
-void PrintToChatArena(int arena_index, const char[] message, any ...)
+// Add bot to queue after delay to ensure proper initialization
+Action Timer_AddBotInQueue(Handle timer, DataPack pack)
 {
-    char buffer[256];
-    VFormat(buffer, sizeof(buffer), message, 3);
-    
-    for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
-    {
-        int client = g_iArenaQueue[arena_index][i];
-        if (client)
-        {
-            PrintToChat(client, buffer);
-        }
-    }
+    pack.Reset();
+    int client = GetClientOfUserId(pack.ReadCell());
+    int arena_index = pack.ReadCell();
+    AddInQueue(client, arena_index);
+
+    return Plugin_Continue;
 }
 
-Action Command_Menu(int client, int args)
-{
-    // Handle commands "!ammomod" "!add" and such // Building queue's menu and listing arena's
-    int playerPrefTeam = 0;
 
-    if (!IsValidClient(client))
-        return Plugin_Continue;
+// ===== UTILITIES =====
 
-    char sArg[32];
-    if (GetCmdArg(1, sArg, sizeof(sArg)) > 0)
-    {
-        // If they want to add to a color
-        char cArg[32];
-        if (GetCmdArg(2, cArg, sizeof(cArg)) > 0)
-        {
-            if (StrContains("blu", cArg, false) >= 0)
-            {
-                playerPrefTeam = TEAM_BLU;
-            }
-            else if (StrContains("red", cArg, false) >= 0)
-            {
-                playerPrefTeam = TEAM_RED;
-            }
-        }
-        // Was the argument an arena_index number?
-        int iArg = StringToInt(sArg);
-        if (iArg > 0 && iArg <= g_iArenaCount)
-        {
-            // Always call AddInQueue - it will handle re-selection logic internally
-            CloseClientMenu(client);
-            AddInQueue(client, iArg, true, playerPrefTeam);
-            return Plugin_Handled;
-        }
-
-        // Was the argument an arena name?
-        GetCmdArgString(sArg, sizeof(sArg));
-        int found_arena;
-        for(int i = 1; i <= g_iArenaCount; i++)
-        {
-            if(StrContains(g_sArenaName[i], sArg, false) >= 0)
-            {
-                if (g_iArenaStatus[i] == AS_IDLE) {
-                    found_arena = i;
-                    break;
-                }
-            }
-        }
-        // If there was only one string match, and it was a valid match, place the player in that arena if they aren't already in it.
-        if (found_arena > 0 && found_arena <= g_iArenaCount && found_arena != g_iPlayerArena[client])
-        {
-            CloseClientMenu(client);
-            AddInQueue(client, found_arena, true, playerPrefTeam);
-            return Plugin_Handled;
-        }
-    }
-
-    // Couldn't find a matching arena for the argument.
-    ShowMainMenu(client);
-    return Plugin_Handled;
-}
-
-Action Command_Remove(int client, int args)
-{
-    if (!IsValidClient(client))
-        return Plugin_Continue;
-
-    RemoveFromQueue(client, true);
-    return Plugin_Handled;
-}
-
-Action Command_First(int client, int args)
-{
-    if (!client || !IsValidClient(client))
-        return Plugin_Continue;
-
-    // Try to find an arena with one person in the queue..
-    for (int i = 1; i <= g_iArenaCount; i++)
-    {
-        if (!g_iArenaQueue[i][SLOT_TWO] && g_iPlayerArena[client] != i)
-        {
-            if (g_iArenaQueue[i][SLOT_ONE])
-            {
-                CloseClientMenu(client);
-                AddInQueue(client, i, true);
-                return Plugin_Handled;
-            }
-        }
-    }
-
-    // Couldn't find an arena with only one person in the queue, so find one with none.
-    if (!g_iPlayerArena[client])
-    {
-        for (int i = 1; i <= g_iArenaCount; i++)
-        {
-            if (!g_iArenaQueue[i][SLOT_TWO] && g_iPlayerArena[client] != i)
-            {
-                CloseClientMenu(client);
-                AddInQueue(client, i, true);
-                return Plugin_Handled;
-            }
-        }
-    }
-
-    // Couldn't find any empty or half-empty arenas, so display the menu.
-    ShowMainMenu(client);
-    return Plugin_Handled;
-}
-
-void ShowMainMenu(int client, bool listplayers = true)
-{
-    if (!IsValidClient(client))
-        return;
-
-    char title[128];
-    char menu_item[128];
-
-    Menu menu = new Menu(Menu_Main);
-
-    Format(title, sizeof(title), "%T", "MenuTitle", client);
-    menu.SetTitle(title);
-    char si[4];
-
-    for (int i = 1; i <= g_iArenaCount; i++)
-    {
-        // Count total players in the arena regardless of slot order
-        int totalPlayers = 0;
-        for (int NUM = 1; NUM <= MAXPLAYERS; NUM++)
-        {
-            if (g_iArenaQueue[i][NUM] != 0)
-            {
-                totalPlayers++;
-            }
-        }
-
-        // Cap active players shown based on arena type (1v1:2, 2v2:4)
-        int cap = g_bFourPersonArena[i] ? 4 : 2;
-        int active = (totalPlayers < cap) ? totalPlayers : cap;
-        int waiting = (totalPlayers > cap) ? (totalPlayers - cap) : 0;
-
-        if (waiting > 0)
-            Format(menu_item, sizeof(menu_item), "%s (%d)(%d)", g_sArenaName[i], active, waiting);
-        else if (active > 0)
-            Format(menu_item, sizeof(menu_item), "%s (%d)", g_sArenaName[i], active);
-        else
-            Format(menu_item, sizeof(menu_item), "%s", g_sArenaName[i]);
-
-        IntToString(i, si, sizeof(si));
-        menu.AddItem(si, menu_item);
-    }
-
-    Format(menu_item, sizeof(menu_item), "%T", "MenuRemove", client);
-    menu.AddItem("1000", menu_item);
-
-    menu.ExitButton = true;
-    menu.Display(client, 0);
-
-    char report[256];
-
-    // Listing players
-    if (!listplayers)
-        return;
-
-    for (int i = 1; i <= g_iArenaCount; i++)
-    {
-        int red_f1 = g_iArenaQueue[i][SLOT_ONE];
-        int blu_f1 = g_iArenaQueue[i][SLOT_TWO];
-        if (red_f1 > 0 || blu_f1 > 0)
-        {
-            Format(report, sizeof(report), "\x05%s:", g_sArenaName[i]);
-
-            if (!g_bNoDisplayRating)
-            {
-                if (red_f1 > 0 && blu_f1 > 0)
-                    Format(report, sizeof(report), "%s \x04%N \x03(%d) \x05vs \x04%N (%d) \x05", report, red_f1, g_iPlayerRating[red_f1], blu_f1, g_iPlayerRating[blu_f1]);
-                else if (red_f1 > 0)
-                    Format(report, sizeof(report), "%s \x04%N (%d)\x05", report, red_f1, g_iPlayerRating[red_f1]);
-                else if (blu_f1 > 0)
-                    Format(report, sizeof(report), "%s \x04%N (%d)\x05", report, blu_f1, g_iPlayerRating[blu_f1]);
-            } else {
-                if (red_f1 > 0 && blu_f1 > 0)
-                    Format(report, sizeof(report), "%s \x04%N \x05vs \x04%N \x05", report, red_f1, blu_f1);
-                else if (red_f1 > 0)
-                    Format(report, sizeof(report), "%s \x04%N \x05", report, red_f1);
-                else if (blu_f1 > 0)
-                    Format(report, sizeof(report), "%s \x04%N \x05", report, blu_f1);
-            }
-
-            if (g_iArenaQueue[i][SLOT_TWO + 1])
-            {
-                Format(report, sizeof(report), "%s Waiting: ", report);
-                int j = SLOT_TWO + 1;
-                while (g_iArenaQueue[i][j + 1])
-                {
-                    Format(report, sizeof(report), "%s\x04%N \x05, ", report, g_iArenaQueue[i][j]);
-                    j++;
-                }
-                Format(report, sizeof(report), "%s\x04%N", report, g_iArenaQueue[i][j]);
-            }
-            PrintToChat(client, "%s", report);
-        }
-    }
-}
-
-int Menu_Main(Menu menu, MenuAction action, int param1, int param2)
-{
-    switch (action)
-    {
-        case MenuAction_Select:
-        {
-            int client = param1;
-            if (!client)return 0;
-            char capt[32];
-            char sanum[32];
-
-            menu.GetItem(param2, sanum, sizeof(sanum), _, capt, sizeof(capt));
-            int arena_index = StringToInt(sanum);
-
-            if (arena_index > 0 && arena_index <= g_iArenaCount)
-            {
-                // Checking rating (but allow re-selection of same arena)
-                if (arena_index != g_iPlayerArena[client])
-                {
-                    int playerrating = g_iPlayerRating[client];
-                    int minrating = g_iArenaMinRating[arena_index];
-                    int maxrating = g_iArenaMaxRating[arena_index];
-
-                    if (minrating > 0 && playerrating < minrating)
-                    {
-                        MC_PrintToChat(client, "%t", "LowRating", playerrating, minrating);
-                        ShowMainMenu(client, false);
-                        return 0;
-                    } else if (maxrating > 0 && playerrating > maxrating) {
-                        MC_PrintToChat(client, "%t", "HighRating", playerrating, maxrating);
-                        ShowMainMenu(client, false);
-                        return 0;
-                    }
-                }
-                // Always call AddInQueue - it handles re-selection logic internally
-                AddInQueue(client, arena_index);
-
-            } else {
-                RemoveFromQueue(client, true);
-            }
-        }
-        case MenuAction_Cancel:
-        {
-        }
-        case MenuAction_End:
-        {
-            delete menu;
-        }
-    }
-
-    return 0;
-}
-
+// Parse comma-separated class list into boolean array for validation
 void ParseAllowedClasses(const char[] sList, bool[] output)
 {
     int count;
@@ -1336,98 +1584,7 @@ void ParseAllowedClasses(const char[] sList, bool[] output)
     }
 }
 
-Action Command_OneVsOne(int client, int args)
-{
-    if (!IsValidClient(client))
-        return Plugin_Handled;
-
-    int arena_index = g_iPlayerArena[client];
-
-    if (!arena_index) {
-        PrintToChat(client, "You are not in an arena!");
-        return Plugin_Handled;
-    }
-
-    if (!g_bFourPersonArena[arena_index]) {
-        PrintToChat(client, "This arena is already in 1v1 mode!");
-        return Plugin_Handled;
-    }
-
-    if (!g_bArenaAllowChange[arena_index]) {
-        PrintToChat(client, "Cannot change to 1v1 in this arena!");
-        return Plugin_Handled;
-    }
-
-    if (g_iArenaStatus[arena_index] != AS_IDLE) {
-        PrintToChat(client, "Cannot switch to 1v1 now!");
-        return Plugin_Handled;
-    }
-
-    if(g_iArenaQueue[arena_index][SLOT_THREE] || g_iArenaQueue[arena_index][SLOT_FOUR]) {
-        PrintToChat(client, "There are more then 2 players in this arena");
-        return Plugin_Handled;
-    }
-
-    g_bFourPersonArena[arena_index] = false;
-    g_iArenaCdTime[arena_index] = DEFAULT_COUNTDOWN_TIME;
-    CreateTimer(1.5, Timer_StartDuel, arena_index);
-    UpdateArenaName(arena_index);
-
-    if(g_iArenaQueue[arena_index][SLOT_ONE]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to 1v1 arena!");
-    }
-
-    if(g_iArenaQueue[arena_index][SLOT_TWO]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to 1v1 arena!");
-    }
-
-    return Plugin_Handled;
-}
-
-Action Command_TwoVsTwo(int client, int args)
-{
-    if (!IsValidClient(client))
-        return Plugin_Handled;
-
-    int arena_index = g_iPlayerArena[client];
-
-    if (!arena_index) {
-        PrintToChat(client, "You are not in an arena!");
-        return Plugin_Handled;
-    }
-
-    if(g_bFourPersonArena[arena_index]) {
-        PrintToChat(client, "This arena is already in 2v2 mode!");
-        return Plugin_Handled;
-    }
-
-    if (!g_bArenaAllowChange[arena_index]) {
-        PrintToChat(client, "Cannot change to 2v2 in this arena!");
-        return Plugin_Handled;
-    }
-
-    if (g_iArenaStatus[arena_index] != AS_IDLE) {
-        PrintToChat(client, "Cannot switch to 2v2 now!");
-        return Plugin_Handled;
-    }
-
-    g_bFourPersonArena[arena_index] = true;
-    g_iArenaCdTime[arena_index] = 0;
-    CreateTimer(1.5, Timer_StartDuel, arena_index);
-    UpdateArenaName(arena_index);
-
-    if(g_iArenaQueue[arena_index][SLOT_ONE]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to 2v2 arena!");
-    }
-
-    if(g_iArenaQueue[arena_index][SLOT_TWO]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to 2v2 arena!");
-    }
-
-    return Plugin_Handled;
-}
-
-// Checks if an arena can be converted to 1v1 mode
+// Check if an arena can be converted to 1v1 mode and provide reason if not
 stock bool CanConvertArenaTo1v1(int arena_index, int client, char[] reason, int reason_size)
 {
     if (!g_bArenaAllowChange[arena_index]) {
@@ -1488,108 +1645,4 @@ stock bool CanConvertArenaTo1v1(int arena_index, int client, char[] reason, int 
             return false;
         }
     }
-}
-
-Action Command_Mge(int client, int args)
-{
-    if (!IsValidClient(client))
-        return Plugin_Handled;
-
-    int arena_index = g_iPlayerArena[client];
-
-    if (!arena_index) {
-        PrintToChat(client, "You are not in an arena!");
-        return Plugin_Handled;
-    }
-
-    if (g_bArenaMGE[arena_index]) {
-        PrintToChat(client, "This arena is already in MGE mode!");
-        return Plugin_Handled;
-    }
-
-    g_bArenaKoth[arena_index] = false;
-    g_bArenaMGE[arena_index] = true;
-    g_fArenaRespawnTime[arena_index] = 0.2;
-    g_iArenaFraglimit[arena_index] = g_iArenaMgelimit[arena_index];
-    CreateTimer(1.5, Timer_StartDuel, arena_index);
-    UpdateArenaName(arena_index);
-
-    if(g_iArenaQueue[arena_index][SLOT_ONE]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to MGE mode!");
-    }
-
-    if(g_iArenaQueue[arena_index][SLOT_TWO]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to MGE mode");
-    }
-
-    return Plugin_Handled;
-}
-
-void PlayEndgameSoundsToArena(any arena_index, any winner_team)
-{
-    int red_1 = g_iArenaQueue[arena_index][SLOT_ONE];
-    int blu_1 = g_iArenaQueue[arena_index][SLOT_TWO];
-    char SoundFileBlu[124];
-    char SoundFileRed[124];
-
-    // If the red team won
-    if (winner_team == 1)
-    {
-        SoundFileRed = "vo/announcer_victory.mp3";
-        SoundFileBlu = "vo/announcer_you_failed.mp3";
-    }
-    // Else the blu team won
-    else
-    {
-        SoundFileBlu = "vo/announcer_victory.mp3";
-        SoundFileRed = "vo/announcer_you_failed.mp3";
-    }
-    if (IsValidClient(red_1))
-        EmitSoundToClient(red_1, SoundFileRed);
-
-    if (IsValidClient(blu_1))
-        EmitSoundToClient(blu_1, SoundFileBlu);
-
-    if (g_bFourPersonArena[arena_index])
-    {
-        int red_2 = g_iArenaQueue[arena_index][SLOT_THREE];
-        int blu_2 = g_iArenaQueue[arena_index][SLOT_FOUR];
-        if (g_iCappingTeam[arena_index] == TEAM_BLU)
-        {
-            if (IsValidClient(red_2))
-                EmitSoundToClient(red_2, SoundFileRed);
-        }
-        else
-        {
-            if (IsValidClient(blu_2))
-                EmitSoundToClient(blu_2, SoundFileBlu);
-        }
-    }
-}
-
-Action Timer_AddBotInQueue(Handle timer, DataPack pack)
-{
-    pack.Reset();
-    int client = GetClientOfUserId(pack.ReadCell());
-    int arena_index = pack.ReadCell();
-    AddInQueue(client, arena_index);
-
-    return Plugin_Continue;
-}
-
-Action Command_AddBot(int client, int args)
-{  
-    // Adding bot to client's arena
-    if (!IsValidClient(client))
-        return Plugin_Handled;
-
-    int arena_index = g_iPlayerArena[client];
-    int player_slot = g_iPlayerSlot[client];
-
-    if (arena_index && (player_slot == SLOT_ONE || player_slot == SLOT_TWO || (g_bFourPersonArena[arena_index] && (player_slot == SLOT_THREE || player_slot == SLOT_FOUR))))
-    {
-        ServerCommand("tf_bot_add");
-        g_bPlayerAskedForBot[client] = true;
-    }
-    return Plugin_Handled;
 }
