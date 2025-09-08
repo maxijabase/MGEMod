@@ -135,6 +135,7 @@ public void OnPluginStart()
     gcvar_reconnectInterval.AddChangeHook(handler_ConVarChange);
     gcvar_2v2SkipCountdown.AddChangeHook(handler_ConVarChange);
     gcvar_2v2Elo.AddChangeHook(handler_ConVarChange);
+    gcvar_clearProjectiles.AddChangeHook(handler_ConVarChange);
 
     // Client commands
     RegConsoleCmd("mgemod", Command_Menu, "MGEMod Menu");
@@ -518,44 +519,54 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 // ===== CONFIGURATION SYSTEM =====
 
 // Update global variables when convars change
-// TODO: consider refactor
 void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] newValue)
 {
-    if (convar == gcvar_blockFallDamage) {
-        StringToInt(newValue) ? (g_bBlockFallDamage = true) : (g_bBlockFallDamage = false);
-    }
-    else if (convar == gcvar_fragLimit)
-        g_iDefaultFragLimit = StringToInt(newValue);
+    // Boolean conversion helper
+    bool boolValue = view_as<bool>(StringToInt(newValue));
+    
+    // Integer conversion helper  
+    int intValue = StringToInt(newValue);
+    
+    // Float conversion helper
+    float floatValue = StringToFloat(newValue);
+    
+    // Handle each convar type
+    if (convar == gcvar_fragLimit)
+        g_iDefaultFragLimit = intValue;
+    else if (convar == gcvar_allowedClasses)
+        ParseAllowedClasses(newValue, g_tfctClassAllowed);
+    else if (convar == gcvar_blockFallDamage)
+        g_bBlockFallDamage = boolValue;
+    else if (convar == gcvar_dbConfig)
+        strcopy(g_sDBConfig, sizeof(g_sDBConfig), newValue);
+    else if (convar == gcvar_stats)
+        g_bNoStats = !boolValue;
     else if (convar == gcvar_airshotHeight)
-        g_iAirshotHeight = StringToInt(newValue);
+        g_iAirshotHeight = intValue;
     else if (convar == gcvar_midairHP)
-        g_iMidairHP = StringToInt(newValue);
+        g_iMidairHP = intValue;
     else if (convar == gcvar_RocketForceX)
-        g_fRocketForceX = StringToFloat(newValue);
+        g_fRocketForceX = floatValue;
     else if (convar == gcvar_RocketForceY)
-        g_fRocketForceY = StringToFloat(newValue);
+        g_fRocketForceY = floatValue;
     else if (convar == gcvar_RocketForceZ)
-        g_fRocketForceZ = StringToFloat(newValue);
+        g_fRocketForceZ = floatValue;
     else if (convar == gcvar_autoCvar)
-        StringToInt(newValue) ? (g_bAutoCvar = true) : (g_bAutoCvar = false);
+        g_bAutoCvar = boolValue;
     else if (convar == gcvar_bballParticle_red)
         strcopy(g_sBBallParticleRed, sizeof(g_sBBallParticleRed), newValue);
     else if (convar == gcvar_bballParticle_blue)
         strcopy(g_sBBallParticleBlue, sizeof(g_sBBallParticleBlue), newValue);
     else if (convar == gcvar_noDisplayRating)
-        StringToInt(newValue) ? (g_bNoDisplayRating = true) : (g_bNoDisplayRating = false);
-    else if (convar == gcvar_stats)
-        g_bNoStats = gcvar_stats.BoolValue ? false : true;
+        g_bNoDisplayRating = boolValue;
     else if (convar == gcvar_reconnectInterval)
-        g_iReconnectInterval = StringToInt(newValue);
-    else if (convar == gcvar_dbConfig)
-        strcopy(g_sDBConfig, sizeof(g_sDBConfig), newValue);
+        g_iReconnectInterval = intValue;
     else if (convar == gcvar_2v2SkipCountdown)
-        StringToInt(newValue) ? (g_b2v2SkipCountdown = true) : (g_b2v2SkipCountdown = false);
+        g_b2v2SkipCountdown = boolValue;
     else if (convar == gcvar_2v2Elo)
-        StringToInt(newValue) ? (g_b2v2Elo = true) : (g_b2v2Elo = false);
+        g_b2v2Elo = boolValue;
     else if (convar == gcvar_clearProjectiles)
-        StringToInt(newValue) ? (g_bClearProjectiles = true) : (g_bClearProjectiles = false);
+        g_bClearProjectiles = boolValue;
 }
 
 
