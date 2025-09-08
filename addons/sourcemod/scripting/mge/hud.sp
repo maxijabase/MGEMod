@@ -172,7 +172,7 @@ void ShowPlayerHud(int client)
         {
             if (red_f2)
             {
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client] || !g_b2v2Elo)
                     Format(report, sizeof(report), "%s\n«%N» and «%N» : %d", report, red_f1, red_f2, g_iArenaScore[arena_index][SLOT_ONE]);
                 else
                     Format(report, sizeof(report), "%s\n«%N» and «%N» (%d): %d", report, red_f1, red_f2, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
@@ -191,7 +191,7 @@ void ShowPlayerHud(int client)
         {
             if (blu_f2)
             {
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
+                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client] || !g_b2v2Elo)
                     Format(report, sizeof(report), "%s\n«%N» and «%N» : %d", report, blu_f1, blu_f2, g_iArenaScore[arena_index][SLOT_TWO]);
                 else
                     Format(report, sizeof(report), "%s\n«%N» and «%N» (%d): %d", report, blu_f1, blu_f2, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);

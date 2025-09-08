@@ -71,7 +71,7 @@ void CalcELO(int winner, int loser)
 // Calculates ELO ratings for 2v2 duels using team-averaged ratings and updates player statistics
 void CalcELO2(int winner, int winner2, int loser, int loser2)
 {
-    if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || IsFakeClient(loser2) || IsFakeClient(winner2))
+    if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || IsFakeClient(loser2) || IsFakeClient(winner2) || !g_b2v2Elo)
         return;
 
     // Store previous ELO values before calculating new ones
