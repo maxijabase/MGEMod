@@ -233,10 +233,10 @@
 	}
 	"Cmd_Add"
 	{
-		"en"			"[MGE] add\t - Usage: add <arena number/arena name>. Add to an arena."
-		"chi"			"[MGE] add\t - 格式:add <竞技场号/竞技场名称> - 加入指定竞技场"
-		"de"			"[MGE] add\t - Verwendung: add <Arena-Nummer/Arena-Name>. Sich zu einer Arena hinzufügen."
-		"ru"			"[MGE] add\t - Используйте: add <номер арены/имя арены>. Зайти на арену."
+		"en"			"[MGE] add\t - Usage: add <arena number/arena name/@player>. Add to an arena."
+		"chi"			"[MGE] add\t - 格式:add <竞技场号/竞技场名称/@玩家> - 加入指定竞技场"
+		"de"			"[MGE] add\t - Verwendung: add <Arena-Nummer/Arena-Name/@Spieler>. Sich zu einer Arena hinzufügen."
+		"ru"			"[MGE] add\t - Используйте: add <номер арены/имя арены/@игрок>. Зайти на арену."
 	}
 	"Cmd_Remove"
 	{

@@ -136,7 +136,7 @@ public void OnPluginStart()
 
     // Client commands
     RegConsoleCmd("mgemod", Command_Menu, "MGEMod Menu");
-    RegConsoleCmd("add", Command_Menu, "Usage: add <arena number/arena name>. Add to an arena.");
+    RegConsoleCmd("add", Command_Menu, "Usage: add <arena number/arena name/@player>. Add to an arena.");
     RegConsoleCmd("swap", Command_Swap, "Ask your teammate to swap classes with you in ultiduo");
     RegConsoleCmd("remove", Command_Remove, "Remove from current arena.");
     RegConsoleCmd("top5", Command_Top5, "Display the Top players.");

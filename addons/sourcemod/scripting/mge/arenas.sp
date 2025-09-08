@@ -1045,6 +1045,38 @@ Action Command_Menu(int client, int args)
                 playerPrefTeam = TEAM_RED;
             }
         }
+        
+        // Check if the argument starts with @ (target player)
+        if (sArg[0] == '@')
+        {
+            char targetName[32];
+            strcopy(targetName, sizeof(targetName), sArg[1]); // Remove the @ prefix
+            
+            int target = FindTarget(client, targetName, false, false);
+            if (target == -1)
+            {
+                MC_PrintToChat(client, "[MGE] Player not found.");
+                return Plugin_Handled;
+            }
+            
+            int target_arena = g_iPlayerArena[target];
+            if (target_arena == 0)
+            {
+                MC_PrintToChat(client, "[MGE] %N is not in any arena.", target);
+                return Plugin_Handled;
+            }
+            
+            if (target_arena == g_iPlayerArena[client])
+            {
+                MC_PrintToChat(client, "[MGE] You are already in the same arena as %N.", target);
+                return Plugin_Handled;
+            }
+            
+            CloseClientMenu(client);
+            AddInQueue(client, target_arena, true, playerPrefTeam);
+            return Plugin_Handled;
+        }
+        
         // Was the argument an arena_index number?
         int iArg = StringToInt(sArg);
         if (iArg > 0 && iArg <= g_iArenaCount)
