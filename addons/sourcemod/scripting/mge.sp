@@ -14,7 +14,7 @@
 #include <clientprefs>
 #include <convar_class>
 
-#define PL_VERSION "3.1.0-2v2-beta6"
+#define PL_VERSION "3.1.0-2v2-beta7"
 
 #define MAXARENAS 63
 #define MAXSPAWNS 15
