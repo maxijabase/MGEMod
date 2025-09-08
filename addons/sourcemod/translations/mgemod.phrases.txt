@@ -9,211 +9,355 @@
 	"MenuTitle" //No colors here.
 	{
 		"en"			"Join arena..."
+		"chi"			"加入竞技场……"
+		"de"			"Arena betreten..."
+		"ru"			"Выберите арену..."
 	}
 	"MenuRemove" //No colors here.
 	{
 		"en"			"Remove from queue"
+		"chi"			"退出队列"
+		"de"			"Aus Warteschlange entfernen"
+		"ru"			"Удалиться с арены"
 	}
 	"HPLeft"
 	{
 		"#format"		"{1:i}"
 		"en"			"{green}[MGE]{default} Your opponent had {green}{1}{default} health remaining."
+		"chi"			"{green}[MGE]{default} 您的对手还剩 {green}{1}{default} 生命值。"
+		"de"			"{green}[MGE]{default} Dein Gegner überlebte mit {green}{1}{default} HP."
+		"ru"			"{green}[MGE]{default} У вашего оппонента осталось {green}{1}{default} жизней."
 	}
 	"Adv"
 	{
 		"en"			"{olive}Join an arena, type {default}!add\n{olive}For a list of commands, type {default}!mgehelp"
+		"chi"			"{olive}键入 {default}!add{olive} 打开菜单并加入竞技场，键入 {default}!mgehelp {olive}查看帮助。"
+		"de"			"{olive}Um eine Arena zu betreten, schreibe {default}!add\n{olive}Für eine Liste aller Befehle, schreibe {default}!mgehelp"
+		"ru"			"{olive}Для того чтобы зайти на арену напишите в чате {default}!add или /add"
 	}
 	"JoinsArena"
 	{
 		"#format"		"{1:s},{2:i},{3:s}"
 		"en"			"{lightgreen}{1} ({2}) {default}joins arena {green}{3}."
+		"chi"			"{lightgreen}{1}（{2}）{default}加入了竞技场：{green}{3}"
+		"de"			"{lightgreen}{1} ({2}) {default}betritt Arena {green}{3}."
+		"ru"			"{lightgreen}{1} ({2}) {default}заходит на арену {green}{3}."
 	}
 	"JoinsArenaNoStats"
 	{
 		"#format"		"{1:s},{2:s}"
 		"en"			"{lightgreen}{1} {default}joins arena {green}{2}."
+		"chi"			"{lightgreen}{1} {default}加入了竞技场：{green}{2}"
+		"de"			"{lightgreen}{1} {default}betritt Arena {green}{2}."
+		"ru"			"{lightgreen}{1} {default}заходит на арену {green}{2}."
 	}
 	"ChoseArena"
 	{
 		"#format"		"{1:s}"
 		"en"			"You chose arena {green}{1}."
+		"chi"			"您选择了竞技场：{green}{1}"
+		"de"			"Du hast Arena {green}{1} {default} gewählt."
+		"ru"			"Вы выбрали арену {green}{1}."
 	}
 	"NextInLine"
 	{
 		"en"			"You are {green}next{default} in line."
+		"chi"			"您排在{green}下一位{default}上场。"
+		"de"			"Du bist als {green}Nächster{default} an der Reihe."
+		"ru"			"Вы {green}следующий{default} в очереди."
 	}
 	"InLine"
 	{
 		"#format"		"{1:i}"
 		"en"			"You are {green}{1}{default} in line."
+		"chi"			"您排在队列中第 {green}{1}{default} 位。"
+		"de"			"Du bist {green}{1}{default} in der Reihe."
+		"ru"			"Вы {green}{1}{default} в очереди."
 	}
 	"GainedPoints"
 	{
 		"#format"		"{1:i}"
 		"en"			"You gained {green}{1}{default} points."
+		"chi"			"您得到了 {green}{1}{default} 分。"
+		"de"			"Du hast {green}{1}{default} Punkte erhalten."
+		"ru"			"Вы получили {green}{1}{default} очков."
 	}
 	"LostPoints"
 	{
 		"#format"		"{1:i}"
 		"en"			"You lost {green}{1}{default} points."
+		"chi"			"您丢掉了 {green}{1}{default} 分。"
+		"de"			"Du hast {green}{1}{default} Punkte verloren."
+		"ru"			"Вы потеряли {green}{1}{default} очков."
 	}
 	"MyRank"
 	{
 		"#format"		"{1:i},{2:i},{3:i}"
 		"en"			"Your rating is {green}{1}{default}. Wins: {green}{2}{default} , Losses: {green}{3}{default}"
+		"chi"			"您的排名：{green}{1}{default}。胜场数：{green}{2}{default}，负场数：{green}{3}{default}。"
+		"de"			"Deine Wertung: {green}{1}{default}. Siege: {green}{2}{default} , Niederlagen: {green}{3}{default}"
+		"ru"			"Ваш рейтинг равен {green}{1}{default}. Побед: {green}{2}{default} , Поражений: {green}{3}{default}"
 	}
 	"MyRankNoRating"
 	{
 		"#format"		"{1:i},{2:i}"
 		"en"			"You have {green}{1}{default} wins and {green}{2}{default} losses."
+		"chi"			"您的胜场数：{green}{1}{default}，负场数：{green}{2}{default}。"
+		"de"			"{green}{1}{default} Siege und {green}{2}{default} Niederlagen."
+		"ru"			"У вас {green}{1}{default} побед и {green}{2}{default} поражений."
 	}
 	"ClassIsNotAllowed"
 	{
 		"en"			"{olive}This class is not allowed!"
+		"chi"			"{olive}不允许使用该职业。"
+		"de"			"{olive}Diese Klasse ist nicht erlaubt!"
+		"ru"			"{olive}Этот класс не разрешен!"
 	}
 	"LowRating"
 	{
 		"#format"		"{1:i},{2:i}"
 		"en"			"Your rating {green}{1}{default} is too low, minimum is {green}{2}"
+		"chi"			"您的评级 {green}{1}{default} 太低，最低为 {green}{2}"
+		"de"			"Deine Wertung {green}{1}{default} ist zu gering, Minimum ist {green}{2}"
+		"ru"			"Ваш рейтинг {green}{1}{default} слишком мал. Необходимо {green}{2}+"
 	}
 	"HighRating"
 	{
 		"#format"		"{1:i},{2:i}"
 		"en"			"Your rating {green}{1}{default} is too high, maximum is {green}{2}"
+		"chi"			"您的评级 {green}{1}{default} 太高，最高为 {green}{2}"
+		"de"			"Deine Wertung {green}{1}{default} ist zu hoch, Maximum ist {green}{2}"
+		"ru"			"Ваш рейтинг {green}{1}{default} слишком велик. Максимально допустимый {green}{2}"
 	}
 	"XdefeatsY"
 	{
 		"#format"		"{1:s},{2:i},{3:s},{4:i},{5:i},{6:s}"
 		"en"			"{lightgreen}{1}{default} (Score:{2}) defeats {lightgreen}{3}{default} (Score:{4}) in duel to {green}{5}{default} on {green}{6}"
+		"chi"			"{lightgreen}{1}{default} (Score:{2}) 打败了 {lightgreen}{3}{default}（得分：{4}）in duel to {green}{5}{default}（竞技场：{green}{6}）"
+		"de"			"{lightgreen}{1}{default} (Punkte:{2}) besiegt {lightgreen}{3}{default} (Punkte:{4}) in einem Duell bis {green}{5}{default} auf {green}{6}"
+		"ru"			"{lightgreen}{1}{default} (Score:{2}) победил {lightgreen}{3}{default} (Счет:{4}) в дуели до {green}{5}{default} на арене {green}{6}"
 	}
 	"XdefeatsYearly"
 	{
 		"#format"		"{1:s},{2:i},{3:s},{4:i},{5:s}"
 		"en"			"{lightgreen}{1}{default} (Score:{2}) defeats {lightgreen}{3}{default} (Score:{4}) in a duel on {green}{5}"
+		"chi"			"{lightgreen}{1}{default} (Score:{2}) 打败了 {lightgreen}{3}{default}（Score:{4}）（竞技场：{green}{5}）"
+		"de"			"{lightgreen}{1}{default} (Punkte:{2}) besiegt {lightgreen}{3}{default} (Punkte:{4}) in einem Duell auf {green}{5}"
+		"ru"			"{lightgreen}{1}{default} (Счет:{2}) победил {lightgreen}{3}{default} (Счет:{4}) в дуели до {green}{5}"
 	}
 	"SpecRemove"
 	{
 		"en"			"{olive}Can't go in spec while in fight, removing from queue."
+		"chi"			"{olive}对决时不能进入观察员。您已被移出队列。"
+		"de"			"{olive}Wechseln zu Spec im Kampf nicht möglich, entfernt aus Warteschlange."
+		"ru"			"{olive}Нельзя перейти в наблюдатели когда вы на арене, вы удаляетесь с арены."
 	}
 	"ClassChangePoint"
 	{
 		"en"			"{olive}You changed class during a fight, giving your opponent one point."
+		"chi"			"{olive}您在对决中更换了职业，因此罚您一分。"
+		"de"			"{olive}Du hast deine Klasse während des Kampfes gewechselt, dein Gegner erhält einen Punkt."
+		"ru"			"{olive}Вы поменяли класс во время битвы. Оппонент получает одно очко."
 	}
 	"ClassChangePointOpponent"
 	{
 		"en"			"{olive}Your opponent changed class during a fight, giving you one point."
+		"chi"			"{olive}您的对手在对决中更换了职业，因此罚他一分。"
+		"de"			"{olive}Dein Gegner hat die Klasse während des Kampfes gewechselt, du erhältst einen Punkt."
+		"ru"			"{olive}Ваш оппонент поменял класс во время битвы. Вы получаете одно очко."
 	}
 	"Welcome1"
 	{
 		"#format"		"{1:s}"
 		"en"			"{olive}Welcome to MGE version {lightgreen}{1}"
+		"chi"			"{olive}欢迎来玩 MGE，插件版本：{lightgreen}{1}"
+		"de"			"{olive}Willkommen auf MGE version {lightgreen}{1}"
+		"ru"			"{olive}Добро пожаловать на MGE версия {lightgreen}{1}"
 	}
 	"Welcome2"
 	{
 		"en"			"{olive}Map by{default}: {lightgreen}Swaty {default}and {lightgreen}CB"
+		"chi"			"{olive}地图作者{default}：{lightgreen}Swaty{default}、{lightgreen}CB"
+		"de"			"{olive}Map von{default}: {lightgreen}Swaty, Jstn7477 {default}und {lightgreen}CB"
+		"ru"			"{olive}Карта создана{default}: {lightgreen}Swaty, Jstn7477 {default}и {lightgreen}CB"
 	}
 	"Welcome3"
 	{
 		"en"			"{olive}Plugin by{default}: {lightgreen}Lange & Cprice{default}, based on {lightgreen}kAmmomod"
+		"chi"			"{olive}插件作者{default}：{lightgreen}Lange、Cprice{default}，汉化：{lightgreen}888"
+		"de"			"{olive}Plugin von{default}: {lightgreen}Lange{default} und {lightgreen}Cprice{default}, basierend auf {lightgreen}kAmmomod"
+		"ru"			"{olive}Плагин от{default}: {lightgreen}Lange{default} & {lightgreen}Cprice{default}, созданный на основе {lightgreen}kAmmomod"
 	}
 	"Top5Title" //No colors here.
 	{
 		"en"			"Top 5 Players"
+		"chi"			"最顶尖的五名玩家"
+		"de"			"Top 5 Spieler"
+		"ru"			"Пятерка лучших"
 	}
 	"top5error"
 	{
 		"en"			"[MGE] Not enough players in database yet."
+		"chi"			"[MGE] 数据库中尚无玩家数据。"
+		"de"			"[MGE] Noch nicht genügend Spieler in der Datenbank."
+		"ru"			"[MGE] Еще не набралось достаточное количество игроов."
 	}
 	"bballdunk"
 	{
 		"#format"		"{1:s}"
 		"en"			"{lightgreen}You {default}DUNKED ON {lightgreen}{1}{default}!"
+		"chi"			"{lightgreen}您{default}在 {lightgreen}{1}{default} 成功投篮！"
+		"de"			"{lightgreen}Du hast {default}gedunked gegen {lightgreen}{1}{default}!"
+		"ru"			"{lightgreen}Вы {default}одержали победу над {lightgreen}{1}{default}!"
 	}
 	"Cmd_MGECmds"
 	{
 		"en"			"[MGE] Help: Command Information"
+		"chi"			"[MGE] 帮助：命令简介"
+		"de"			"[MGE] Help: Befehl-Infos"
+		"ru"			"[MGE] ПОМОЩЬ: Информация о командах"
 	}
 	"Cmd_SeeConsole"
 	{
 		"en"			"[MGE] See console for output."
+		"chi"			"[MGE] 请查看控制台输出。"
+		"de"			"[MGE] Siehe Konsole für Ausgabe."
+		"ru"			"[MGE] Смотри в консоли."
 	}
 	"Cmd_MGEMod"
 	{
 		"en"			"[MGE] mgemod\t - Menu"
+		"chi"			"[MGE] mgemod\t - 主菜单"
+		"de"			"[MGE] mgemod\t - Menü"
+		"ru"			"[MGE] mgemod\t - Меню"
 	}
 	"Cmd_Add"
 	{
 		"en"			"[MGE] add\t - Usage: add <arena number/arena name>. Add to an arena."
+		"chi"			"[MGE] add\t - 格式:add <竞技场号/竞技场名称> - 加入指定竞技场"
+		"de"			"[MGE] add\t - Verwendung: add <Arena-Nummer/Arena-Name>. Sich zu einer Arena hinzufügen."
+		"ru"			"[MGE] add\t - Используйте: add <номер арены/имя арены>. Зайти на арену."
 	}
 	"Cmd_Remove"
 	{
 		"en"			"[MGE] remove\t - Remove from current arena."
+		"chi"			"[MGE] remove\t - 退出当前竞技场。"
+		"de"			"[MGE] remove\t - Sich von aktueller Arena entfernen."
+		"ru"			"[MGE] remove\t - Удалиться с арены."
 	}
 	"Cmd_First"
 	{
 		"en"			"[MGE] first\t - Join the first available arena."
+		"chi"			"[MGE] first\t - 加入首个可用的竞技场。"
+		"de"			"[MGE] first\t - Erste verfügbare Arena betreten."
+		"ru"			"[MGE] first\t - Присоединиться к любой свободной арене."
 	}
 	"Cmd_Top5"
 	{
 		"en"			"[MGE] top5\t - Display the Top 5 players."
+		"chi"			"[MGE] top5\t - 显示总排名前五的玩家列表。"
+		"de"			"[MGE] top5\t - Top 5 Spieler anzeigen."
+		"ru"			"[MGE] top5\t - Показать пятерку лучших игроков."
 	}
 	"Cmd_Rank"
 	{
 		"en"			"[MGE] rank\t - Usage: rank <player name>. Show that player's rank."
+		"chi"			"[MGE] rank\t - 格式：rank <玩家名称> - 显示指定玩家的排名。"
+		"de"			"[MGE] rank\t - Verwendung: rank <Spielername>. Spieler-Platzierung anzeigen."
+		"ru"			"[MGE] rank\t - Используйте: rank <имя игрока>. Посмотреть статистику игрока."
 	}
 	"Cmd_HitBlip"
 	{
 		"en"			"[MGE] hitblip - Toggle hitblip."
+		"chi"			"[MGE] hitblip - 开启或关闭命中声音。"
+		"de"			"[MGE] hitblip - An- / Ausschalten des Hitblips."
+		"ru"			"[MGE] hitblip - Включить\отключить звук при попадании."
 	}
 	"Cmd_Hud"
 	{
 		"en"			"[MGE] hud\t - Toggle text hud overlay."
+		"chi"			"[MGE] hud\t - 开启或关闭 HUD 文本信息。"
+		"de"			"[MGE] hud - An- / Ausschalten des Text-HUDs."
+		"ru"			"[MGE] hud - Включить\отключить HUD."
 	}
 	"Cmd_Elo"
 	{
 		"en"			"[MGE] elo\t - Toggle ELO display."
+		"chi"			"[MGE] elo\t - 开启或关闭 ELO 显示。"
+		"de"			"[MGE] elo - An- / Ausschalten der ELO-Anzeige."
+		"ru"			"[MGE] elo - Включить\отключить отображение ELO."
 	}
 	"Cmd_Handicap"
 	{
 		"en"			"[MGE] handicap - Reduce your maximum HP. Type '!handicap off' to disable."
+		"chi"			"[MGE] handicap - 开启让步，可以减少您的最大生命值。键入“!handicap off”可以关闭。"
+		"de"			"[MGE] handicap - Setzt deine maxmimale HP herab. Schreibe '!handicap off' um es zu deaktvieren."
+		"ru"			"[MGE] handicap - Уменьшить максимальное здоровье. Напишите '!handicap off' чтобы отключить."
 	}
 	"NoClassChange"
 	{
 		"en"			"{olive}You cannot change class at this time."
+		"chi"			"{olive}当前您不能更换职业。"
+		"de"			"{olive}Klasse wechseln jetzt nicht möglich."
+		"ru"			"{olive}Вы не можете сменить класс прямо сейчас."
 	}
 	"DatabaseDown"
 	{
 		"#format"		"{1:i}"
 		"en"			"Database connection failed, disabling stats.\nA reconnect will be attempted in {1} minutes."
+		"chi"			"Database connection failed, disabling stats.\nA reconnect will be attempted in {1} minutes."
+		"de"			"Datenbankverbindung fehlgeschlagen, Statistiken sind deaktiviert.\n Wiederherstellung der Verbindung wird versucht in {1} Minuten."
+		"ru"			"Не удается присоедниться к базе данных, отключаю статистику.\nПовторная попытка подключения будет через {1} минут."
 	}
 	"StatsRestored"
 	{
 		"en"			"Database connection restored, refreshing stats...\nStats restored."
+		"chi"			"Database connection restored, refreshing stats...\nStats restored."
+		"de"			"Datenbankverbindung wiederhergestellt, aktualisiere Statistiken...\nStatistiken wiederhergestellt."
+		"ru"			"Соединение с базой данных восстановлено, обновление статистики...\nСтатистика возвращена."
 	}
 	"StatsRestoredDown"
 	{
 		"en"			"Database is up, but stats are administratively down."
+		"chi"			"Database is up, but stats are administratively down."
+		"de"			"Datenbank ist online, Statistiken sind jedoch deaktiviert."
+		"ru"			"База данных восстановлена, но статистика выключена."
 	}
 	"MustJoinArena"
 	{
 		"en"			"{olive}You must join an arena to do that."
+		"chi"			"{olive}您必须先加入一个竞技场！"
+		"de"			"{olive}Du musst in einer Arena sein, um das zu tun."
+		"ru"			"{olive}Чтобы выполнить данную команду вы обязаны зайти на арену."
 	}
 	"NoCurrentHandicap"
 	{
 		"#format"		"{1:i}"
 		"en"			"{olive}You currently do not have a handicap."
+		"chi"			"{olive}您目前还没有开启让步呢。"
+		"de"			"{olive}Du hast momentan kein Handicap eingestellt."
+		"ru"			"{olive}На данный момент у вас отключен лимит максимального здоровья."
 	}
 	"CurrentHandicap"
 	{
 		"#format"		"{1:i}"
 		"en"			"{olive}Your current handicap is {lightgreen}{1} {olive}maximum HP."
+		"chi"			"{olive}您当前的让步方案：{lightgreen}{1} {olive}最大生命值。"
+		"de"			"{olive}Dein Handicap beträgt momentan {lightgreen}{1} {olive} HP."
+		"ru"			"{olive}Ваше максимальное здоровье равно {lightgreen}{1} хп."
 	}
 	"InvalidHandicap"
 	{
 		"en"			"{olive}Your desired handicap is invalid. Disabling handicap."
+		"chi"			"{olive}您设定的让步方案无效。让步已关闭。"
+		"de"			"{olive}Dein gewünschtes Handicap ist ungültig. Handicap wird deaktiviert."
+		"ru"			"{olive}Вы выбрали недопустимое значение для максимального здоровья."
 	}
 	"HandicapDisabled"
 	{
 		"en"			"{olive}Handicap disabled."
+		"chi"			"{olive}让步已关闭。"
+		"de"			"{olive}Handicap deaktiviert."
+		"ru"			"{olive}Лимит здоровья отключен."
 	}
 }
