@@ -5,26 +5,35 @@ void PrepareSQL()
 {
     char error[256];
 
-    // Initial mysql connect
-    if (g_DB == null && SQL_CheckConfig(g_sDBConfig))
+    // Check if database config is specified
+    if (strlen(g_sDBConfig) == 0)
     {
-        g_DB = SQL_Connect(g_sDBConfig, /* persistent */ true, error, sizeof(error));
-    }
-
-    // Failed mysql connect for whatever reason (likely no config in databases.cfg)
-    if (g_DB == null)
-    {
-        LogError("Cant use database config <%s> <Error: %s>, trying SQLite <storage-local>...", g_sDBConfig, error);
+        // No config specified - use SQLite as default
+        LogMessage("No database config specified, using SQLite as default");
         g_DB = SQL_Connect("storage-local", true, error, sizeof(error));
-
+        
         if (g_DB == null)
         {
-            SetFailState("Could not connect to database: %s", error);
+            SetFailState("Could not connect to SQLite database: %s", error);
         }
-        else
+    }
+    else
+    {
+        LogMessage("Using specified database config: %s", g_sDBConfig);
+        
+        if (!SQL_CheckConfig(g_sDBConfig))
         {
-            LogMessage("Success, using SQLite <storage-local>", g_sDBConfig, error);
+            SetFailState("Database config '%s' not found in databases.cfg", g_sDBConfig);
         }
+        
+        g_DB = SQL_Connect(g_sDBConfig, true, error, sizeof(error));
+        
+        if (g_DB == null)
+        {
+            SetFailState("Could not connect to specified database config '%s': %s", g_sDBConfig, error);
+        }
+        
+        LogMessage("Successfully connected to database config: %s", g_sDBConfig);
     }
 
     char ident[16];
@@ -93,7 +102,13 @@ void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any dat
                 if (IsValidClient(i))
                 {
                     char steamid_dirty[31], steamid[64], query[256];
-                    GetClientAuthId(i, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty));
+                    
+                    // Get Steam ID and validate the operation succeeded
+                    if (!GetClientAuthId(i, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty))) {
+                        LogError("Failed to get Steam ID for client %d during reconnection - skipping", i);
+                        continue;
+                    }
+
                     db.Escape(steamid_dirty, steamid, sizeof(steamid));
                     strcopy(g_sPlayerSteamID[i], 32, steamid);
                     g_DB.Format(query, sizeof(query), "SELECT rating, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
@@ -169,7 +184,8 @@ void SQL_OnPlayerReceived(Database db, DBResultSet results, const char[] error, 
     
     if (results == null)
     {
-        LogError("SQL_OnPlayerReceived failed: %s", error);
+        LogError("SQL_OnPlayerReceived FAILED for client %d (%s): %s", 
+                 client, g_sPlayerSteamID[client], error);
         return;
     }
 

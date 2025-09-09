@@ -1,5 +1,179 @@
 // ===== PLAYER STATE MANAGEMENT =====
 
+// Initialize basic client data when they connect (regardless of Steam status)
+void HandleClientConnection(int client)
+{
+    if (IsFakeClient(client))
+        return;
+        
+    // Initialize basic client state immediately (Steam-independent)
+    ChangeClientTeam(client, TEAM_SPEC);
+    g_bShowHud[client] = true;
+    g_bPlayerRestoringAmmo[client] = false;
+    g_bShowElo[client] = true;
+    
+    // Clear any inherited statistics data immediately
+    g_iPlayerRating[client] = 0;
+    g_iPlayerWins[client] = 0;
+    g_iPlayerLosses[client] = 0;
+    
+    // Initialize class tracking ArrayList
+    if (g_alPlayerDuelClasses[client] != null)
+        delete g_alPlayerDuelClasses[client];
+    g_alPlayerDuelClasses[client] = new ArrayList();
+    
+    // Try to load player stats (will retry in HandleClientAuthentication if Steam ID not ready)
+    TryLoadPlayerStats(client, false);
+    
+    CreateTimer(5.0, Timer_ShowAdv, GetClientUserId(client));
+    CreateTimer(15.0, Timer_WelcomePlayer, GetClientUserId(client));
+    
+    SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+}
+
+// Handle Steam-authenticated connections and retry ELO loading if needed
+void HandleClientAuthentication(int client)
+{
+    if (IsFakeClient(client))
+    {
+        for (int i = 1; i <= MaxClients; i++)
+        {
+            if (g_bPlayerAskedForBot[i])
+            {
+                int arena_index = g_iPlayerArena[i];
+                DataPack pack = new DataPack();
+                CreateDataTimer(1.5, Timer_AddBotInQueue, pack);
+                pack.WriteCell(GetClientUserId(client));
+                pack.WriteCell(arena_index);
+                g_iPlayerRating[client] = 1551;
+                g_bPlayerAskedForBot[i] = false;
+                break;
+            }
+        }
+    }
+    else
+    {
+        // Steam authentication successful - retry stats loading if it failed before
+        TryLoadPlayerStats(client, true);
+    }
+}
+
+// Handle client disconnection and cleanup
+void HandleClientDisconnection(int client)
+{
+    // We ignore the kick queue check for this function only so that clients that get kicked still get their elo calculated
+    if (IsValidClient(client, true) && g_iPlayerArena[client])
+    {
+        RemoveFromQueue(client, true);
+    }
+    else
+    {
+        int
+            arena_index = g_iPlayerArena[client],
+            player_slot = g_iPlayerSlot[client],
+            foe_slot = (player_slot == SLOT_ONE || player_slot == SLOT_THREE) ? SLOT_TWO : SLOT_ONE,
+            foe = g_iArenaQueue[arena_index][foe_slot];
+
+        // Turn all this logic into a helper method
+        int player_teammate, foe2;
+
+        if (g_bFourPersonArena[arena_index])
+        {
+            player_teammate = getTeammate(player_slot, arena_index);
+            foe2 = getTeammate(foe_slot, arena_index);
+        }
+
+        g_iPlayerArena[client] = 0;
+        g_iPlayerSlot[client] = 0;
+        g_iArenaQueue[arena_index][player_slot] = 0;
+        g_iPlayerHandicap[client] = 0;
+        
+        // Cleanup class tracking ArrayList
+        if (g_alPlayerDuelClasses[client] != null)
+        {
+            delete g_alPlayerDuelClasses[client];
+            g_alPlayerDuelClasses[client] = null;
+        }
+        
+        // Clear 2v2 ready status
+        g_bPlayer2v2Ready[client] = false;
+        
+        // Clear player statistics to prevent inheritance by new clients with same ID
+        g_iPlayerRating[client] = 0;
+        g_iPlayerWins[client] = 0;
+        g_iPlayerLosses[client] = 0;
+        
+        // Clear hud text if arena was in ready state
+        if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
+        {
+            Clear2v2ReadyHud(arena_index);
+        }
+
+        // Bot cleanup logic (queue advancement is handled by RemoveFromQueue)
+        if (foe && IsFakeClient(foe))
+        {
+            ConVar cvar = FindConVar("tf_bot_quota");
+            int quota = cvar.IntValue;
+            ServerCommand("tf_bot_quota %d", quota - 1);
+        }
+
+        if (foe2 && IsFakeClient(foe2))
+        {
+            ConVar cvar = FindConVar("tf_bot_quota");
+            int quota = cvar.IntValue;
+            ServerCommand("tf_bot_quota %d", quota - 1);
+        }
+
+        if (player_teammate && IsFakeClient(player_teammate))
+        {
+            ConVar cvar = FindConVar("tf_bot_quota");
+            int quota = cvar.IntValue;
+            ServerCommand("tf_bot_quota %d", quota - 1);
+        }
+
+        // Ensure any 2v2 waiting/spec players are restored on disconnect
+        if (g_bFourPersonArena[arena_index])
+        {
+            Restore2v2WaitingSpectators(arena_index);
+            CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
+        }
+
+        g_iArenaStatus[arena_index] = AS_IDLE;
+        return;
+    }
+}
+
+// Attempts to load player statistics from database with Steam ID validation
+void TryLoadPlayerStats(int client, bool isRetry)
+{
+    if (g_bNoStats || !IsValidClient(client))
+        return;
+    
+    // Skip if stats already loaded successfully (non-zero rating)
+    if (g_iPlayerRating[client] > 0) {
+        if (isRetry) {
+            LogMessage("Stats already loaded for client %d, skipping retry", client);
+        }
+        return;
+    }
+    
+    char steamid_dirty[31], steamid[64], query[256];
+    
+    // Get Steam ID and validate the operation succeeded
+    if (!GetClientAuthId(client, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty))) {
+        if (isRetry) {
+            LogError("Failed to get Steam ID for client %d even after Steam auth - stats loading failed", client);
+        }
+        return;
+    }
+    
+    g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
+    strcopy(g_sPlayerSteamID[client], 32, steamid);
+    
+    g_DB.Format(query, sizeof(query), "SELECT rating, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
+    g_DB.Query(SQL_OnPlayerReceived, query, client);
+}
+
 // Resets player state including health, class, team assignment, and teleports to spawn
 int ResetPlayer(int client)
 {

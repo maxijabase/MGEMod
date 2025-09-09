@@ -18,16 +18,6 @@ The plugin is ready to be a drop-in replacement for the standard MGE version. Da
 
 ## Pending bug fixes and ideas
 
-### ELO Corruption
-
-Players can have their ratings reset to default values due to database connection issues. When MySQL fails, the plugin falls back to SQLite, then when MySQL reconnects, it re-queries all players and overwrites their cached ratings with SQLite fallback data.
-
-**Fix options:**
-- Database Queue System - Store pending queries locally and process when connection restored
-- Fix Reconnection Logic - Only query players who need it and add ELO validation  
-- Eliminate Database Switching - Remove SQLite fallback entirely
-- Minimal Fix - Comment out problematic re-query loop
-
 ### Hot Reload Support
 
 The plugin may have bugs when hot-reloaded (reloaded without server restart) due to incomplete cleanup of player states, arena data, and database connections. This can cause players to get stuck in arenas, lose their ratings, or experience other state inconsistencies. Hot reload support is halfway through, either complete or remove.

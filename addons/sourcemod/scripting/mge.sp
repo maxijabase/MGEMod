@@ -14,7 +14,7 @@
 #include <clientprefs>
 #include <convar_class>
 
-#define PL_VERSION "3.1.0-2v2-beta7"
+#define PL_VERSION "3.1.0-2v2-beta8"
 
 #define MAXARENAS 63
 #define MAXSPAWNS 15
@@ -343,135 +343,22 @@ public void OnClientCookiesCached(int client)
         g_bShowElo[client] = (StringToInt(cookieValue) == 1);
 }
 
-// Initialize client data, ratings, and bot handling when clients connect
-// TODO: This needs to not be here. This will break when steam is down, this probably has other issues as well
-// TODO: Most of this should be in OnClientPutInServer
+// Initialize basic client data when they connect (regardless of Steam status)
+public void OnClientPutInServer(int client)
+{
+    HandleClientConnection(client);
+}
+
+// Handle Steam-authenticated connections and retry ELO loading if needed
 public void OnClientPostAdminCheck(int client)
 {
-    if (IsFakeClient(client))
-    {
-        for (int i = 1; i <= MaxClients; i++)
-        {
-            if (g_bPlayerAskedForBot[i])
-            {
-                int arena_index = g_iPlayerArena[i];
-                DataPack pack = new DataPack();
-                CreateDataTimer(1.5, Timer_AddBotInQueue, pack);
-                pack.WriteCell(GetClientUserId(client));
-                pack.WriteCell(arena_index);
-                g_iPlayerRating[client] = 1551;
-                g_bPlayerAskedForBot[i] = false;
-                break;
-            }
-        }
-    }
-    else
-    {
-        ChangeClientTeam(client, TEAM_SPEC);
-        CreateTimer(5.0, Timer_ShowAdv, GetClientUserId(client)); /* Show advice to type !add in chat */
-        g_bShowHud[client] = true;
-        g_bPlayerRestoringAmmo[client] = false;
-        g_bShowElo[client] = true;
-        
-        // Initialize class tracking ArrayList
-        if (g_alPlayerDuelClasses[client] != null)
-            delete g_alPlayerDuelClasses[client];
-        g_alPlayerDuelClasses[client] = new ArrayList();
-        
-        CreateTimer(15.0, Timer_WelcomePlayer, GetClientUserId(client));
-
-        if (!g_bNoStats)
-        {
-            char steamid_dirty[31], steamid[64], query[256];
-            GetClientAuthId(client, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty));
-            g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
-            strcopy(g_sPlayerSteamID[client], 32, steamid);
-            g_DB.Format(query, sizeof(query), "SELECT rating, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
-            g_DB.Query(SQL_OnPlayerReceived, query, client);
-        }
-    }
-
-    SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+    HandleClientAuthentication(client);
 }
 
 // Clean up client data, handle arena cleanup, and manage bot removal on disconnect
 public void OnClientDisconnect(int client)
 {
-    // We ignore the kick queue check for this function only so that clients that get kicked still get their elo calculated
-    if (IsValidClient(client, true) && g_iPlayerArena[client])
-    {
-        RemoveFromQueue(client, true);
-    }
-    else
-    {
-        int
-            arena_index = g_iPlayerArena[client],
-            player_slot = g_iPlayerSlot[client],
-            foe_slot = (player_slot == SLOT_ONE || player_slot == SLOT_THREE) ? SLOT_TWO : SLOT_ONE,
-            foe = g_iArenaQueue[arena_index][foe_slot];
-
-        // Turn all this logic into a helper meathod
-        int player_teammate, foe2;
-
-        if (g_bFourPersonArena[arena_index])
-        {
-            player_teammate = getTeammate(player_slot, arena_index);
-            foe2 = getTeammate(foe_slot, arena_index);
-        }
-
-        g_iPlayerArena[client] = 0;
-        g_iPlayerSlot[client] = 0;
-        g_iArenaQueue[arena_index][player_slot] = 0;
-        g_iPlayerHandicap[client] = 0;
-        
-        // Cleanup class tracking ArrayList
-        if (g_alPlayerDuelClasses[client] != null)
-        {
-            delete g_alPlayerDuelClasses[client];
-            g_alPlayerDuelClasses[client] = null;
-        }
-        
-        // Clear 2v2 ready status
-        g_bPlayer2v2Ready[client] = false;
-        
-        // Clear hud text if arena was in ready state
-        if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
-        {
-            Clear2v2ReadyHud(arena_index);
-        }
-
-        // Bot cleanup logic (queue advancement is handled by RemoveFromQueue)
-        if (foe && IsFakeClient(foe))
-        {
-            ConVar cvar = FindConVar("tf_bot_quota");
-            int quota = cvar.IntValue;
-            ServerCommand("tf_bot_quota %d", quota - 1);
-        }
-
-        if (foe2 && IsFakeClient(foe2))
-        {
-            ConVar cvar = FindConVar("tf_bot_quota");
-            int quota = cvar.IntValue;
-            ServerCommand("tf_bot_quota %d", quota - 1);
-        }
-
-        if (player_teammate && IsFakeClient(player_teammate))
-        {
-            ConVar cvar = FindConVar("tf_bot_quota");
-            int quota = cvar.IntValue;
-            ServerCommand("tf_bot_quota %d", quota - 1);
-        }
-
-        // Ensure any 2v2 waiting/spec players are restored on disconnect
-        if (g_bFourPersonArena[arena_index])
-        {
-            Restore2v2WaitingSpectators(arena_index);
-            CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
-        }
-
-        g_iArenaStatus[arena_index] = AS_IDLE;
-        return;
-    }
+    HandleClientDisconnection(client);
 }
 
 
