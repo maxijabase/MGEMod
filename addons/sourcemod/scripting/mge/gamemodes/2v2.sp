@@ -328,7 +328,7 @@ void Show2v2ReadyHud(int arena_index, int ready_count)
     for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
     {
         int client = g_iArenaQueue[arena_index][i];
-        if (client)
+        if (client && IsValidClient(client))
         {
             char hudtext[256];
             char status_indicator[32];
@@ -360,7 +360,7 @@ void Clear2v2ReadyHud(int arena_index)
     for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
     {
         int client = g_iArenaQueue[arena_index][i];
-        if (client)
+        if (client && IsValidClient(client))
         {
             PrintHintText(client, "");
             StopSound(client, SNDCHAN_STATIC, "UI/hint.wav");
@@ -847,26 +847,26 @@ Action Timer_Refresh2v2Hud(Handle timer, any arena_index)
     if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
     {
         int ready_count = 0;
-        int total_players = 0;
+        int valid_players = 0;
         
         for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
         {
             int client = g_iArenaQueue[arena_index][i];
-            if (client)
+            if (client && IsValidClient(client))
             {
-                total_players++;
+                valid_players++;
                 if (g_bPlayer2v2Ready[client])
                     ready_count++;
             }
         }
         
-        if (total_players == 4)
+        if (valid_players == 4)
         {
             Show2v2ReadyHud(arena_index, ready_count);
         }
         else
         {
-            // Not enough players, stop the timer
+            // Not enough valid players, stop the timer
             return Plugin_Stop;
         }
     }
