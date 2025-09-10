@@ -20,13 +20,13 @@ int Panel_TopPlayers(Menu menu, MenuAction action, int param1, int param2)
                     case 1: // Previous Page
                     {
                         g_iTopPlayersPage[param1]--;
-                        g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
+                        GetSelectTopPlayersQuery(query, sizeof(query));
                         g_DB.Query(SQL_OnTopPlayersReceived, query, param1);
                     }
                     case 2: // Next Page
                     {
                         g_iTopPlayersPage[param1]++;
-                        g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
+                        GetSelectTopPlayersQuery(query, sizeof(query));
                         g_DB.Query(SQL_OnTopPlayersReceived, query, param1);
                     }
                     case 3: // Close
@@ -199,7 +199,7 @@ Action Command_Top5(int client, int args)
 
     g_iTopPlayersPage[client] = 0;
     char query[512];
-    g_DB.Format(query, sizeof(query), "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
+    GetSelectTopPlayersQuery(query, sizeof(query));
     g_DB.Query(SQL_OnTopPlayersReceived, query, client);
     return Plugin_Handled;
 }

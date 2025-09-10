@@ -39,6 +39,15 @@ enum
 #define MODEL_AMMOPACK          "models/items/ammopack_small.mdl"
 #define MODEL_LARGE_AMMOPACK    "models/items/ammopack_large.mdl"
 
+// Database types
+enum DatabaseType {
+    DB_SQLITE = 0,
+    DB_MYSQL = 1,
+    DB_POSTGRESQL = 2
+}
+
+DatabaseType g_DatabaseType;
+
 bool
     g_bNoStats,
     g_bNoDisplayRating;

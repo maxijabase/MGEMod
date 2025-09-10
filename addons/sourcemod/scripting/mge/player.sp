@@ -149,14 +149,6 @@ void TryLoadPlayerStats(int client, bool isRetry)
     if (g_bNoStats || !IsValidClient(client))
         return;
     
-    // Skip if stats already loaded successfully (non-zero rating)
-    if (g_iPlayerRating[client] > 0) {
-        if (isRetry) {
-            LogMessage("Stats already loaded for client %d, skipping retry", client);
-        }
-        return;
-    }
-    
     char steamid_dirty[31], steamid[64], query[256];
     
     // Get Steam ID and validate the operation succeeded
@@ -168,9 +160,18 @@ void TryLoadPlayerStats(int client, bool isRetry)
     }
     
     g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
+    
+    // Skip if stats already loaded successfully for this specific Steam ID
+    if (g_iPlayerRating[client] > 0 && StrEqual(g_sPlayerSteamID[client], steamid)) {
+        if (isRetry) {
+            LogMessage("Stats already loaded for client %d (%s), skipping retry", client, steamid);
+        }
+        return;
+    }
+    
     strcopy(g_sPlayerSteamID[client], 32, steamid);
     
-    g_DB.Format(query, sizeof(query), "SELECT rating, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
+    GetSelectPlayerStatsQuery(query, sizeof(query), steamid);
     g_DB.Query(SQL_OnPlayerReceived, query, client);
 }
 

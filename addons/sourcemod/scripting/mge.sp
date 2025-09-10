@@ -26,7 +26,6 @@
 #include "mge/globals.sp"
 
 // Modules
-#include "mge/migrations.sp"
 #include "mge/elo.sp"
 #include "mge/sql.sp"
 #include "mge/hud.sp"
@@ -34,6 +33,7 @@
 #include "mge/player.sp"
 #include "mge/spectator.sp"
 #include "mge/statistics.sp"
+#include "mge/migrations.sp"
 
 #include "mge/gamemodes/bball.sp"
 #include "mge/gamemodes/koth.sp"
