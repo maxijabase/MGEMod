@@ -963,6 +963,13 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
     int arena_index = g_iPlayerArena[victim];
     int victim_slot = g_iPlayerSlot[victim];
 
+    // Reset victim's velocity to prevent momentum carryover to respawn
+    if (IsValidClient(victim) && arena_index > 0)
+    {
+        float vel[3] = { 0.0, 0.0, 0.0 };
+        TeleportEntity(victim, NULL_VECTOR, NULL_VECTOR, vel);
+    }
+
 
     int killer_slot = (victim_slot == SLOT_ONE || victim_slot == SLOT_THREE) ? SLOT_TWO : SLOT_ONE;
     int killer = g_iArenaQueue[arena_index][killer_slot];
