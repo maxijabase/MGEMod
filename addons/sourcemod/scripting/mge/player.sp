@@ -207,6 +207,10 @@ int ResetPlayer(int client)
             TF2_SetPlayerClass(client, class);
 
         TF2_RespawnPlayer(client);
+        
+        // Reset velocity immediately to prevent momentum carryover from death
+        float vel[3] = { 0.0, 0.0, 0.0 };
+        TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, vel);
     } else {
         TF2_RegeneratePlayer(client);
         ExtinguishEntity(client);
