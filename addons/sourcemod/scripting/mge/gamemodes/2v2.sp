@@ -216,6 +216,9 @@ void Start2v2ReadySystem(int arena_index)
     // Set arena status to waiting for ready
     g_iArenaStatus[arena_index] = AS_WAITING_READY;
 
+    // Call 2v2 ready start forward
+    CallForward_On2v2ReadyStart(arena_index);
+
     // Reset all players and show ready menu
     for (int i = SLOT_ONE; i <= SLOT_FOUR; i++)
     {
@@ -275,6 +278,9 @@ int Menu_2v2Ready(Menu menu, MenuAction action, int param1, int param2)
 
             bool ready = StringToInt(info) == 1;
             g_bPlayer2v2Ready[client] = ready;
+
+            // Call 2v2 player ready forward
+            CallForward_On2v2PlayerReady(client, arena_index, ready);
 
             Update2v2ReadyStatus(arena_index);
         }
@@ -690,6 +696,9 @@ Action Command_Ready(int client, int args)
 
     // Toggle ready status
     g_bPlayer2v2Ready[client] = !g_bPlayer2v2Ready[client];
+
+    // Call 2v2 player ready forward  
+    CallForward_On2v2PlayerReady(client, arena_index, g_bPlayer2v2Ready[client]);
 
     Update2v2ReadyStatus(arena_index);
     return Plugin_Handled;

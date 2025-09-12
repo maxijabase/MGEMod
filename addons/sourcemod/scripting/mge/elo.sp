@@ -19,8 +19,11 @@ void CalcELO(int winner, int loser)
     k = (g_iPlayerRating[loser] >= 2400) ? 10 : 15;
     int loserscore = RoundFloat(k * El);
     g_iPlayerRating[loser] -= loserscore;
-
+    
+    // Call ELO change forwards
     int arena_index = g_iPlayerArena[winner];
+    CallForward_OnPlayerELOChange(winner, winner_previous_elo, g_iPlayerRating[winner], arena_index);
+    CallForward_OnPlayerELOChange(loser, loser_previous_elo, g_iPlayerRating[loser], arena_index);
     int time = GetTime();
     char query[1024], sCleanArenaname[128], sCleanMapName[128];
 
@@ -83,11 +86,16 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
     int loserscore = RoundFloat(k * El);
     g_iPlayerRating[loser] -= loserscore;
     g_iPlayerRating[loser2] -= loserscore;
+    
+    // Call ELO change forwards for all players
+    int arena_index = g_iPlayerArena[winner];
+    CallForward_OnPlayerELOChange(winner, winner_previous_elo, g_iPlayerRating[winner], arena_index);
+    CallForward_OnPlayerELOChange(winner2, winner2_previous_elo, g_iPlayerRating[winner2], arena_index);
+    CallForward_OnPlayerELOChange(loser, loser_previous_elo, g_iPlayerRating[loser], arena_index);
+    CallForward_OnPlayerELOChange(loser2, loser2_previous_elo, g_iPlayerRating[loser2], arena_index);
 
     int winner_team_slot = (g_iPlayerSlot[winner] > 2) ? (g_iPlayerSlot[winner] - 2) : g_iPlayerSlot[winner];
     int loser_team_slot = (g_iPlayerSlot[loser] > 2) ? (g_iPlayerSlot[loser] - 2) : g_iPlayerSlot[loser];
-
-    int arena_index = g_iPlayerArena[winner];
     int time = GetTime();
     char query[1024], sCleanArenaname[128], sCleanMapName[128];
 

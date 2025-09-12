@@ -42,17 +42,14 @@ void PrepareSQL()
     if (StrEqual(ident, "mysql", false))
     {
         g_DatabaseType = DB_MYSQL;
-        g_bUseSQLite = false;
     }
     else if (StrEqual(ident, "sqlite", false))
     {
         g_DatabaseType = DB_SQLITE;
-        g_bUseSQLite = true;
     }
     else if (StrEqual(ident, "pgsql", false))
     {
         g_DatabaseType = DB_POSTGRESQL;
-        g_bUseSQLite = false;
     }
     else
     {

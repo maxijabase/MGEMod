@@ -223,6 +223,11 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
     {
         return;
     }
+    
+    // Call OnPlayerArenaRemove forward - allow blocking
+    Action result = CallForward_OnPlayerArenaRemove(client, arena_index);
+    if (result >= Plugin_Handled)
+        return;
 
     int player_slot = g_iPlayerSlot[client];
     g_iPlayerArena[client] = 0;
@@ -450,7 +455,9 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
     }
     
     ShowHudToArena(arena_index);
-
+    
+    // Call OnPlayerArenaRemoved forward
+    CallForward_OnPlayerArenaRemoved(client, arena_index);
 }
 
 // Add player to arena queue with team preference and menu options
@@ -552,9 +559,18 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
     {
         RemoveFromQueue(client, true);
     }
+    
+    // Call OnPlayerArenaAdd forward - allow blocking
+    Action result = CallForward_OnPlayerArenaAdd(client, arena_index, player_slot);
+    if (result >= Plugin_Handled)
+        return;
+    
     g_iPlayerArena[client] = arena_index;
     g_iPlayerSlot[client] = player_slot;
     g_iArenaQueue[arena_index][player_slot] = client;
+    
+    // Call OnPlayerArenaAdded forward
+    CallForward_OnPlayerArenaAdded(client, arena_index, player_slot);
 
     SetPlayerToAllowedClass(client, arena_index);
 
@@ -1390,6 +1406,9 @@ Action Timer_CountDown(Handle timer, any arena_index)
                 PrintCenterText(blu_f2, msg);
                 ShowCountdownToSpec(arena_index, msg);
 
+                // Call 2v2 match start forward
+                CallForward_On2v2MatchStart(arena_index, red_f1, red_f2, blu_f1, blu_f2);
+
                 // For bball.
                 if (g_bArenaBBall[arena_index])
                 {
@@ -1459,6 +1478,9 @@ Action Timer_CountDown(Handle timer, any arena_index)
                 PrintCenterText(red_f1, msg);
                 PrintCenterText(blu_f1, msg);
                 ShowCountdownToSpec(arena_index, msg);
+
+                // Call match start forward
+                CallForward_On1v1MatchStart(arena_index, red_f1, blu_f1);
 
                 // For bball.
                 if (g_bArenaBBall[arena_index])

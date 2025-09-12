@@ -997,6 +997,12 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
         SetEntProp(attacker, Prop_Data, "m_iHealth", raised_hp);
     }
 
+    // Call arena player death forward
+    if (arena_index > 0)
+    {
+        CallForward_OnArenaPlayerDeath(victim, attacker, arena_index);
+    }
+
     if (g_iArenaStatus[arena_index] < AS_FIGHT || g_iArenaStatus[arena_index] > AS_FIGHT)
     {
         CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(victim));
@@ -1067,6 +1073,19 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
         }
 
         MC_PrintToChatAll("%t", "XdefeatsY", killer_name, g_iArenaScore[arena_index][killer_team_slot], victim_name, g_iArenaScore[arena_index][victim_team_slot], fraglimit, g_sArenaName[arena_index]);
+
+        // Call match end forwards
+        if (!g_bFourPersonArena[arena_index])
+        {
+            CallForward_On1v1MatchEnd(arena_index, killer, victim, g_iArenaScore[arena_index][killer_team_slot], g_iArenaScore[arena_index][victim_team_slot]);
+        }
+        else
+        {
+            int winning_team = (killer_team_slot == SLOT_ONE) ? TEAM_RED : TEAM_BLU;
+            CallForward_On2v2MatchEnd(arena_index, winning_team, g_iArenaScore[arena_index][killer_team_slot], g_iArenaScore[arena_index][victim_team_slot], 
+                                    g_iArenaQueue[arena_index][SLOT_ONE], g_iArenaQueue[arena_index][SLOT_THREE],
+                                    g_iArenaQueue[arena_index][SLOT_TWO], g_iArenaQueue[arena_index][SLOT_FOUR]);
+        }
 
         if (!g_bNoStats && !g_bFourPersonArena[arena_index])
             CalcELO(killer, victim);

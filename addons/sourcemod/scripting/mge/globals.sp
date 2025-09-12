@@ -1,33 +1,3 @@
-// Arena slots
-enum
-{
-    SLOT_ONE = 1,
-    SLOT_TWO,
-    SLOT_THREE,
-    SLOT_FOUR
-};
-
-// Teams
-enum
-{
-    TEAM_NONE = TFTeam_Unassigned,
-    TEAM_SPEC = TFTeam_Spectator,
-    TEAM_RED = TFTeam_Red,
-    TEAM_BLU = TFTeam_Blue
-};
-
-// Arena status
-enum
-{
-    AS_IDLE = 0,
-    AS_PRECOUNTDOWN,
-    AS_COUNTDOWN,
-    AS_FIGHT,
-    AS_AFTERFIGHT,
-    AS_REPORTED,
-    AS_WAITING_READY
-};
-
 // For neutral cap points
 #define NEUTRAL 1
 
@@ -68,7 +38,6 @@ Cookie g_hShowEloCookie;
 char g_sMapName[256];
 
 bool g_bBlockFallDamage,
-     g_bUseSQLite,
      g_bAutoCvar,
      g_b2v2SkipCountdown,
      g_b2v2Elo,
@@ -273,3 +242,16 @@ char stockSounds[][] =  // Sounds that do not need to be downloaded.
     "vo/announcer_you_failed.mp3",
     "items/spawn_item.wav"
 };
+
+GlobalForward g_hOnPlayerArenaAdd;
+GlobalForward g_hOnPlayerArenaAdded;
+GlobalForward g_hOnPlayerArenaRemove;
+GlobalForward g_hOnPlayerArenaRemoved;
+GlobalForward g_hOn1v1MatchStart;
+GlobalForward g_hOn1v1MatchEnd;
+GlobalForward g_hOn2v2MatchStart;
+GlobalForward g_hOn2v2MatchEnd;
+GlobalForward g_hOnArenaPlayerDeath;
+GlobalForward g_hOnPlayerELOChange;
+GlobalForward g_hOn2v2ReadyStart;
+GlobalForward g_hOn2v2PlayerReady;

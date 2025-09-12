@@ -13,6 +13,7 @@
 #include <morecolors>
 #include <clientprefs>
 #include <convar_class>
+#include <mge>
 
 #define PL_VERSION "3.1.0-2v2-beta8"
 
@@ -41,6 +42,10 @@
 #include "mge/gamemodes/ammomod.sp"
 #include "mge/gamemodes/endif.sp"
 
+// API
+#include "mge/api/forwards.sp"
+#include "mge/api/natives.sp"
+
 public Plugin myinfo =
 {
     name        = "MGE",
@@ -49,6 +54,7 @@ public Plugin myinfo =
     version     =  PL_VERSION,
     url         = "https://github.com/sapphonie/MGEMod"
 }
+
 
 // ===== PLUGIN CORE LIFECYCLE =====
 
