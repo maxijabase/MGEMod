@@ -1,9 +1,7 @@
 // ===== API FORWARD DECLARATIONS =====
 
-// Initialize all API forwards for other plugins to hook into
-public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+void RegisterForwards()
 {
-    // Forward declarations
     g_hOnPlayerArenaAdd = new GlobalForward("MGE_OnPlayerArenaAdd", ET_Hook, Param_Cell, Param_Cell, Param_Cell);
     g_hOnPlayerArenaAdded = new GlobalForward("MGE_OnPlayerArenaAdded", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
     g_hOnPlayerArenaRemove = new GlobalForward("MGE_OnPlayerArenaRemove", ET_Hook, Param_Cell, Param_Cell);
@@ -16,13 +14,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
     g_hOnPlayerELOChange = new GlobalForward("MGE_OnPlayerELOChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
     g_hOn2v2ReadyStart = new GlobalForward("MGE_On2v2ReadyStart", ET_Ignore, Param_Cell);
     g_hOn2v2PlayerReady = new GlobalForward("MGE_On2v2PlayerReady", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
-    
-    // Register all natives
-    RegisterNatives();
-    
-    RegPluginLibrary("mgemod");
-    
-    return APLRes_Success;
 }
 
 // ===== FORWARD CALL HELPERS =====

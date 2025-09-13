@@ -58,6 +58,27 @@ public Plugin myinfo =
 
 // ===== PLUGIN CORE LIFECYCLE =====
 
+// Initialize all API forwards for other plugins to hook into
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
+{
+    EngineVersion engine = GetEngineVersion();
+    if (engine != Engine_TF2)
+    {
+        SetFailState("This plugin is for Team Fortress 2 only.");
+    }
+
+    // Forward declarations
+    RegisterForwards();
+    
+    // Register all natives
+    RegisterNatives();
+    
+    // Register plugin library
+    RegPluginLibrary("mge");
+    
+    return APLRes_Success;
+}
+
 // Initialize the plugin, register commands, create convars, and set up core systems
 public void OnPluginStart()
 {
