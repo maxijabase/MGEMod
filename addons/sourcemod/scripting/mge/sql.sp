@@ -8,8 +8,6 @@ void PrepareSQL()
     // Check if database config is specified
     if (strlen(g_sDBConfig) == 0)
     {
-        // No config specified - use SQLite as default
-        LogMessage("No database config specified, using SQLite as default");
         g_DB = SQL_Connect("storage-local", true, error, sizeof(error));
         
         if (g_DB == null)
@@ -19,8 +17,6 @@ void PrepareSQL()
     }
     else
     {
-        LogMessage("Using specified database config: %s", g_sDBConfig);
-        
         if (!SQL_CheckConfig(g_sDBConfig))
         {
             SetFailState("Database config '%s' not found in databases.cfg", g_sDBConfig);
@@ -32,8 +28,6 @@ void PrepareSQL()
         {
             SetFailState("Could not connect to specified database config '%s': %s", g_sDBConfig, error);
         }
-        
-        LogMessage("Successfully connected to database config: %s", g_sDBConfig);
     }
 
     char ident[16];
@@ -56,6 +50,8 @@ void PrepareSQL()
         SetFailState("Unsupported database type: %s", ident);
     }
 
+    LogMessage("Successfully connected to database config '%s' [%s]", g_sDBConfig, ident);
+
     // Create tables using abstraction layer
     char query[1024];
     
@@ -68,12 +64,10 @@ void PrepareSQL()
     GetCreateTableQuery_Duels2v2(query, sizeof(query));
     g_DB.Query(SQL_OnGenericQueryFinished, query);
     
-    // PostgreSQL gets modern schema immediately, including indexes
     if (g_DatabaseType == DB_POSTGRESQL)
     {
         g_DB.Query(SQL_OnGenericQueryFinished, "CREATE UNIQUE INDEX IF NOT EXISTS idx_stats_steamid ON mgemod_stats (steamid)");
         
-        // Mark legacy migrations 001-004 as completed since PostgreSQL gets modern schema immediately
         int currentTime = GetTime();
         char migrationQuery[256];
         g_DB.Format(migrationQuery, sizeof(migrationQuery), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('001_add_class_columns', %d) ON CONFLICT (migration_name) DO NOTHING", currentTime);
