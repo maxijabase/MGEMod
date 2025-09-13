@@ -66,7 +66,7 @@ void ShowSpecHudToClient(int client)
     }
     else
     {
-        Format(report, sizeof(report), "Arena[%s]", g_sArenaName[arena_index]);
+        Format(report, sizeof(report), "%s", g_sArenaName[arena_index]);
     }
 
     if (g_bFourPersonArena[arena_index])
