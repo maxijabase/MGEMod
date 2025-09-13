@@ -68,12 +68,6 @@ void RunMigration(const char[] migrationName)
         g_migrationProgress.SetValue(migrationName, 12);
         Migration_004_AddEloTracking();
     }
-    // Future migrations should be added here with full g_DatabaseType support:
-    // else if (StrEqual(migrationName, "005_example_migration"))
-    // {
-    //     g_migrationProgress.SetValue(migrationName, stepCount);
-    //     Migration_005_ExampleMigration(); // This should handle all 3 database types
-    // }
 }
 
 // Executes individual migration steps with progress tracking and error handling

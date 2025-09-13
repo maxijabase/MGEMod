@@ -932,4 +932,77 @@
 		"ru"			"СИНИЕ"
 		"es"			"AZUL"
 	}
+	"YouHaveTheIntel"
+	{
+		"en"			"You have the intel!"
+		"chi"			"您拿到了情报箱！"
+		"de"			"Du hast den Koffer!"
+		"ru"			"У вас есть чемодан!"
+		"es"			"¡Tienes la intel!"
+	}
+	"TeammateHasTheIntel"
+	{
+		"en"			"Your teammate has the intel!"
+		"chi"			"您的队友拿到了情报箱！"
+		"de"			"Dein Teamkamerad hat den Koffer!"
+		"ru"			"У вашего товарища есть чемодан!"
+		"es"			"¡Tu compañero tiene la intel!"
+	}
+	"EnemyHasTheIntel"
+	{
+		"en"			"Enemy has the intel!"
+		"chi"			"敌人拿到了情报箱！"
+		"de"			"Der Gegner hat den Koffer!"
+		"ru"			"У врага есть чемодан!"
+		"es"			"¡El enemigo tiene la intel!"
+	}
+	"GetTheIntel"
+	{
+		"en"			"Get the intel!"
+		"chi"			"拿到情报箱！"
+		"de"			"Hol den Koffer!"
+		"ru"			"Получите чемодан!"
+		"es"			"¡Consigue la intel!"
+	}
+	"EloRankingsTitle"
+	{
+		"en"			"ELO Rankings - Top Players"
+		"chi"			"ELO 排名 - 顶尖玩家"
+		"de"			"ELO-Rangliste - Top-Spieler"
+		"ru"			"Рейтинг ELO - Лучшие игроки"
+		"es"			"Rankings ELO - Mejores Jugadores"
+	}
+	"PageInfo"
+	{
+		"#format"		"{1:i},{2:i},{3:i}"
+		"en"			"Page {1} of {2} ({3} total players)"
+		"chi"			"第 {1} 页，共 {2} 页（总共 {3} 名玩家）"
+		"de"			"Seite {1} von {2} ({3} Spieler insgesamt)"
+		"ru"			"Страница {1} из {2} (всего {3} игроков)"
+		"es"			"Página {1} de {2} ({3} jugadores en total)"
+	}
+	"PreviousPage"
+	{
+		"en"			"Previous Page"
+		"chi"			"上一页"
+		"de"			"Vorherige Seite"
+		"ru"			"Предыдущая страница"
+		"es"			"Página Anterior"
+	}
+	"NextPage"
+	{
+		"en"			"Next Page"
+		"chi"			"下一页"
+		"de"			"Nächste Seite"
+		"ru"			"Следующая страница"
+		"es"			"Página Siguiente"
+	}
+	"Close"
+	{
+		"en"			"Close"
+		"chi"			"关闭"
+		"de"			"Schließen"
+		"ru"			"Закрыть"
+		"es"			"Cerrar"
+	}
 }

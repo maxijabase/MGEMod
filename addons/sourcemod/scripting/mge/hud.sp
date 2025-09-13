@@ -109,21 +109,26 @@ void ShowPlayerHud(int client)
     {
         if (g_iArenaStatus[arena_index] == AS_FIGHT)
         {
+            char hud_text[128];
             if (g_bPlayerHasIntel[client])
             {
-                ShowSyncHudText(client, hm_HP, "You have the intel!", g_iPlayerHP[client]);
+                Format(hud_text, sizeof(hud_text), "%T", "YouHaveTheIntel", client);
+                ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
             }
             else if (g_bFourPersonArena[arena_index] && g_bPlayerHasIntel[client_teammate])
             {
-                ShowSyncHudText(client, hm_HP, "Your teammate has the intel!", g_iPlayerHP[client]);
+                Format(hud_text, sizeof(hud_text), "%T", "TeammateHasTheIntel", client);
+                ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
             }
             else if (g_bPlayerHasIntel[client_foe] || (g_bFourPersonArena[arena_index] && g_bPlayerHasIntel[client_foe2]))
             {
-                ShowSyncHudText(client, hm_HP, "Enemy has the intel!", g_iPlayerHP[client]);
+                Format(hud_text, sizeof(hud_text), "%T", "EnemyHasTheIntel", client);
+                ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
             }
             else
             {
-                ShowSyncHudText(client, hm_HP, "Get the intel!", g_iPlayerHP[client]);
+                Format(hud_text, sizeof(hud_text), "%T", "GetTheIntel", client);
+                ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
             }
         }
         else

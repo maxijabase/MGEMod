@@ -17,13 +17,13 @@ void Show2v2SelectionMenu(int client, int arena_index)
     
     if (already_in_arena)
     {
-        char current_team[16];
-        Format(current_team, sizeof(current_team), (current_slot == SLOT_ONE || current_slot == SLOT_THREE) ? "RED" : "BLU");
-        Format(title, sizeof(title), "2v2 Arena Management (Currently on %s team):", current_team);
+        char current_team[32];
+        Format(current_team, sizeof(current_team), "%T", (current_slot == SLOT_ONE || current_slot == SLOT_THREE) ? "TeamRed" : "TeamBlu", client);
+        Format(title, sizeof(title), "%T", "2v2ArenaManagementTitle", client, current_team);
     }
     else
     {
-        Format(title, sizeof(title), "You selected a 2v2 arena. What would you like to do?");
+        Format(title, sizeof(title), "%T", "2v2ArenaSelectionTitle", client);
     }
     menu.SetTitle(title);
 
@@ -52,21 +52,21 @@ void Show2v2SelectionMenu(int client, int arena_index)
     
     if (can_convert_to_1v1)
     {
-        Format(menu_item, sizeof(menu_item), "Join normally and switch arena to 1v1");
+        Format(menu_item, sizeof(menu_item), "%T", "JoinNormallySwitch1v1", client);
         menu.AddItem("1", menu_item);
     }
     else
     {
-        Format(menu_item, sizeof(menu_item), "Switch to 1v1 (disabled - %s)", disable_reason);
+        Format(menu_item, sizeof(menu_item), "%T", "Switch1v1Disabled", client, disable_reason);
         menu.AddItem("1", menu_item, ITEMDRAW_DISABLED);
     }
 
     // Option 2: Join RED team
-    Format(menu_item, sizeof(menu_item), "Join RED [%d]", red_count);
+    Format(menu_item, sizeof(menu_item), "%T", "JoinRedTeam", client, red_count);
     menu.AddItem("2", menu_item);
 
     // Option 3: Join BLU team
-    Format(menu_item, sizeof(menu_item), "Join BLU [%d]", blu_count);
+    Format(menu_item, sizeof(menu_item), "%T", "JoinBluTeam", client, blu_count);
     menu.AddItem("3", menu_item);
 
     menu.ExitBackButton = true;
@@ -251,11 +251,14 @@ void Show2v2ReadyMenu(int client)
     char title[128];
     Menu menu = new Menu(Menu_2v2Ready);
 
-    Format(title, sizeof(title), "Ready for 2v2 match?");
+    Format(title, sizeof(title), "%T", "Ready2v2MatchTitle", client);
     menu.SetTitle(title);
 
-    menu.AddItem("1", "Yes, I'm ready!");
-    menu.AddItem("0", "No, not ready");
+    char yes_text[64], no_text[64];
+    Format(yes_text, sizeof(yes_text), "%T", "YesImReady", client);
+    Format(no_text, sizeof(no_text), "%T", "NoNotReady", client);
+    menu.AddItem("1", yes_text);
+    menu.AddItem("0", no_text);
 
     menu.ExitButton = true;
     menu.Display(client, 0);
@@ -412,8 +415,8 @@ void Handle2v2TeamSwitch(int client, int arena_index, int new_team)
     // If no slot available on target team, prevent switch
     if (new_slot == 0)
     {
-        char team_name[16];
-        Format(team_name, sizeof(team_name), (new_team == TEAM_RED) ? "RED" : "BLU");
+        char team_name[32];
+        Format(team_name, sizeof(team_name), "%T", (new_team == TEAM_RED) ? "TeamRed" : "TeamBlu", client);
         MC_PrintToChat(client, "%t", "CannotSwitchTeamNoSlots", team_name);
         return;
     }
@@ -433,9 +436,9 @@ void Handle2v2TeamSwitch(int client, int arena_index, int new_team)
     CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
     
     char name[MAX_NAME_LENGTH];
-    char team_name[16];
+    char team_name[32];
     GetClientName(client, name, sizeof(name));
-    Format(team_name, sizeof(team_name), (new_team == TEAM_RED) ? "RED" : "BLU");
+    Format(team_name, sizeof(team_name), "%T", (new_team == TEAM_RED) ? "TeamRed" : "TeamBlu", client);
     
     PrintToChatArena(arena_index, "%t", "PlayerSwitchedTeam", name, team_name);
     
@@ -460,8 +463,8 @@ void Handle2v2TeamSwitchFromMenu(int client, int arena_index, int target_team)
         if (current_team == target_team)
         {
             // Player is already on the selected team, just show confirmation
-            char team_name[16];
-            Format(team_name, sizeof(team_name), (target_team == TEAM_RED) ? "RED" : "BLU");
+            char team_name[32];
+            Format(team_name, sizeof(team_name), "%T", (target_team == TEAM_RED) ? "TeamRed" : "TeamBlu", client);
             MC_PrintToChat(client, "%t", "AlreadyOnTeam", team_name);
             return;
         }
@@ -620,10 +623,13 @@ void ShowSwapMenu(int client)
 
     Menu menu = new Menu(SwapMenuHandler);
 
-    Format(title, sizeof(title), "Would you like to swap classes with your teammate?", client);
+    Format(title, sizeof(title), "%T", "SwapClassesWithTeammate", client);
     menu.SetTitle(title);
-    menu.AddItem("yes", "Yes");
-    menu.AddItem("no", "No");
+    char yes_text[64], no_text[64];
+    Format(yes_text, sizeof(yes_text), "%T", "Yes", client);
+    Format(no_text, sizeof(no_text), "%T", "No", client);
+    menu.AddItem("yes", yes_text);
+    menu.AddItem("no", no_text);
     menu.ExitButton = false;
     menu.Display(client, 20);
 }

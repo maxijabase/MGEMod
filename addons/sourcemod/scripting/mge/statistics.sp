@@ -70,7 +70,9 @@ void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
         return;
 
     Panel panel = new Panel();
-    panel.SetTitle("ELO Rankings - Top Players\n");
+    char title[128];
+    Format(title, sizeof(title), "%T\n", "EloRankingsTitle", client);
+    panel.SetTitle(title);
 
     int playersPerPage = 10;
     int totalPages = (totalRows + playersPerPage - 1) / playersPerPage;
@@ -90,7 +92,7 @@ void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
         endIndex = totalRows;
 
     char line[256];
-    Format(line, sizeof(line), "Page %d of %d (%d total players)\n", currentPage + 1, totalPages, totalRows);
+    Format(line, sizeof(line), "%T\n", "PageInfo", client, currentPage + 1, totalPages, totalRows);
     panel.DrawText(line);
     panel.DrawText(" ");
 
@@ -131,20 +133,25 @@ void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
 
     panel.DrawText(" ");
     
+    char prev_text[64], next_text[64], close_text[64];
+    Format(prev_text, sizeof(prev_text), "%T", "PreviousPage", client);
+    Format(next_text, sizeof(next_text), "%T", "NextPage", client);
+    Format(close_text, sizeof(close_text), "%T", "Close", client);
+    
     if (totalPages > 1)
     {
         if (currentPage > 0)
-            panel.DrawItem("Previous Page");
+            panel.DrawItem(prev_text);
         else
-            panel.DrawItem("Previous Page", ITEMDRAW_DISABLED);
+            panel.DrawItem(prev_text, ITEMDRAW_DISABLED);
             
         if (currentPage < totalPages - 1)
-            panel.DrawItem("Next Page");
+            panel.DrawItem(next_text);
         else
-            panel.DrawItem("Next Page", ITEMDRAW_DISABLED);
+            panel.DrawItem(next_text, ITEMDRAW_DISABLED);
     }
     
-    panel.DrawItem("Close");
+    panel.DrawItem(close_text);
     panel.Send(client, Panel_TopPlayers, MENU_TIME_FOREVER);
     delete panel;
 }

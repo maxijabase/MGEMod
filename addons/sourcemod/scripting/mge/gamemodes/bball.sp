@@ -69,7 +69,7 @@ Action OnTouchIntel(int entity, int other)
     int arena_index = g_iPlayerArena[client];
     g_bPlayerHasIntel[client] = true;
     char msg[64];
-    Format(msg, sizeof(msg), "You have the intel!");
+    Format(msg, sizeof(msg), "%T", "YouHaveTheIntel", client);
     PrintCenterText(client, msg);
 
     if (entity == g_iBBallIntel[arena_index] && IsValidEdict(g_iBBallIntel[arena_index]) && g_iBBallIntel[arena_index] > 0)
