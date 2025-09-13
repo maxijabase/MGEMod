@@ -479,7 +479,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             }
             else if (show2v2Menu && playerPrefTeam == 0)
             {
-                MC_PrintToChat(client, "You are already in %s", g_sArenaName[arena_index]);
+                MC_PrintToChat(client, "%t", "AlreadyInArena", g_sArenaName[arena_index]);
                 return;
             }
             // Intentional action (team switch / re-slot) within same arena: clear old slot now
@@ -1081,13 +1081,13 @@ Action Command_Menu(int client, int args)
             int target_arena = g_iPlayerArena[target];
             if (target_arena == 0)
             {
-                MC_PrintToChat(client, "[MGE] %N is not in any arena.", target);
+                MC_PrintToChat(client, "%t", "PlayerNotInAnyArena", target);
                 return Plugin_Handled;
             }
             
             if (target_arena == g_iPlayerArena[client])
             {
-                MC_PrintToChat(client, "[MGE] You are already in the same arena as %N.", target);
+                MC_PrintToChat(client, "%t", "AlreadySameArena", target);
                 return Plugin_Handled;
             }
             
@@ -1191,27 +1191,27 @@ Action Command_OneVsOne(int client, int args)
     int arena_index = g_iPlayerArena[client];
 
     if (!arena_index) {
-        PrintToChat(client, "You are not in an arena!");
+        MC_PrintToChat(client, "%t", "NotInArena");
         return Plugin_Handled;
     }
 
     if (!g_bFourPersonArena[arena_index]) {
-        PrintToChat(client, "This arena is already in 1v1 mode!");
+        MC_PrintToChat(client, "%t", "ArenaAlready1v1");
         return Plugin_Handled;
     }
 
     if (!g_bArenaAllowChange[arena_index]) {
-        PrintToChat(client, "Cannot change to 1v1 in this arena!");
+        MC_PrintToChat(client, "%t", "Cannot1v1InArena");
         return Plugin_Handled;
     }
 
     if (g_iArenaStatus[arena_index] != AS_IDLE) {
-        PrintToChat(client, "Cannot switch to 1v1 now!");
+        MC_PrintToChat(client, "%t", "CannotSwitch1v1Now");
         return Plugin_Handled;
     }
 
     if(g_iArenaQueue[arena_index][SLOT_THREE] || g_iArenaQueue[arena_index][SLOT_FOUR]) {
-        PrintToChat(client, "There are more then 2 players in this arena");
+        MC_PrintToChat(client, "%t", "MoreThan2Players");
         return Plugin_Handled;
     }
 
@@ -1221,11 +1221,11 @@ Action Command_OneVsOne(int client, int args)
     UpdateArenaName(arena_index);
 
     if(g_iArenaQueue[arena_index][SLOT_ONE]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to 1v1 arena!");
+        MC_PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "%t", "ChangedArenaTo1v1");
     }
 
     if(g_iArenaQueue[arena_index][SLOT_TWO]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to 1v1 arena!");
+        MC_PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "%t", "ChangedArenaTo1v1");
     }
 
     return Plugin_Handled;
@@ -1240,22 +1240,22 @@ Action Command_TwoVsTwo(int client, int args)
     int arena_index = g_iPlayerArena[client];
 
     if (!arena_index) {
-        PrintToChat(client, "You are not in an arena!");
+        MC_PrintToChat(client, "%t", "NotInArena");
         return Plugin_Handled;
     }
 
     if(g_bFourPersonArena[arena_index]) {
-        PrintToChat(client, "This arena is already in 2v2 mode!");
+        MC_PrintToChat(client, "%t", "ArenaAlready2v2");
         return Plugin_Handled;
     }
 
     if (!g_bArenaAllowChange[arena_index]) {
-        PrintToChat(client, "Cannot change to 2v2 in this arena!");
+        MC_PrintToChat(client, "%t", "Cannot2v2InArena");
         return Plugin_Handled;
     }
 
     if (g_iArenaStatus[arena_index] != AS_IDLE) {
-        PrintToChat(client, "Cannot switch to 2v2 now!");
+        MC_PrintToChat(client, "%t", "CannotSwitch2v2Now");
         return Plugin_Handled;
     }
 
@@ -1265,11 +1265,11 @@ Action Command_TwoVsTwo(int client, int args)
     UpdateArenaName(arena_index);
 
     if(g_iArenaQueue[arena_index][SLOT_ONE]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to 2v2 arena!");
+        MC_PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "%t", "ChangedArenaTo2v2");
     }
 
     if(g_iArenaQueue[arena_index][SLOT_TWO]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to 2v2 arena!");
+        MC_PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "%t", "ChangedArenaTo2v2");
     }
 
     return Plugin_Handled;
@@ -1284,12 +1284,12 @@ Action Command_Mge(int client, int args)
     int arena_index = g_iPlayerArena[client];
 
     if (!arena_index) {
-        PrintToChat(client, "You are not in an arena!");
+        MC_PrintToChat(client, "%t", "NotInArena");
         return Plugin_Handled;
     }
 
     if (g_bArenaMGE[arena_index]) {
-        PrintToChat(client, "This arena is already in MGE mode!");
+        MC_PrintToChat(client, "%t", "ArenaAlreadyMGE");
         return Plugin_Handled;
     }
 
@@ -1301,11 +1301,11 @@ Action Command_Mge(int client, int args)
     UpdateArenaName(arena_index);
 
     if(g_iArenaQueue[arena_index][SLOT_ONE]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to MGE mode!");
+        MC_PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "%t", "ChangedArenaToMGE");
     }
 
     if(g_iArenaQueue[arena_index][SLOT_TWO]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to MGE mode");
+        MC_PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "%t", "ChangedArenaToMGE");
     }
 
     return Plugin_Handled;

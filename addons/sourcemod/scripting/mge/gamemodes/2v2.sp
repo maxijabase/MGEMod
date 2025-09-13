@@ -92,7 +92,7 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
                 // Fallback validation for stale menus - check if conversion is still valid
                 char reason[64];
                 if (!CanConvertArenaTo1v1(arena_index, client, reason, sizeof(reason))) {
-                    PrintToChat(client, "Cannot convert to 1v1 - %s", reason);
+                    MC_PrintToChat(client, "%t", "CannotConvertTo1v1", reason);
                     return 0;
                 }
                 
@@ -104,11 +104,11 @@ int Menu_2v2Selection(Menu menu, MenuAction action, int param1, int param2)
                 
                 // Notify players about mode change (same as !1v1 command)
                 if(g_iArenaQueue[arena_index][SLOT_ONE]) {
-                    PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to 1v1 arena!");
+                    MC_PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "%t", "ChangedArenaTo1v1");
                 }
                 
                 if(g_iArenaQueue[arena_index][SLOT_TWO]) {
-                    PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to 1v1 arena!");
+                    MC_PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "%t", "ChangedArenaTo1v1");
                 }
                 
                 // If player is not already in the arena, add them
@@ -231,7 +231,7 @@ void Start2v2ReadySystem(int arena_index)
     }
 
     // Notify players about ready state
-    PrintToChatArena(arena_index, "All 4 players joined! Please ready up to start the match.");
+    PrintToChatArena(arena_index, "%t", "All4PlayersJoined");
     Update2v2ReadyStatus(arena_index);
     
     // Start hud text refresh timer
@@ -318,7 +318,7 @@ void Update2v2ReadyStatus(int arena_index)
         if (ready_count == 4)
         {
             // All players ready, start the match
-            PrintToChatArena(arena_index, "All players ready! Starting match...");
+            PrintToChatArena(arena_index, "%t", "AllPlayersReady");
             CreateTimer(1.5, Timer_StartDuel, arena_index);
         }
     }
@@ -415,7 +415,7 @@ void Handle2v2TeamSwitch(int client, int arena_index, int new_team)
     {
         char team_name[16];
         Format(team_name, sizeof(team_name), (new_team == TEAM_RED) ? "RED" : "BLU");
-        PrintToChat(client, "Cannot switch to %s team - no available slots!", team_name);
+        MC_PrintToChat(client, "%t", "CannotSwitchTeamNoSlots", team_name);
         return;
     }
     
@@ -438,7 +438,7 @@ void Handle2v2TeamSwitch(int client, int arena_index, int new_team)
     GetClientName(client, name, sizeof(name));
     Format(team_name, sizeof(team_name), (new_team == TEAM_RED) ? "RED" : "BLU");
     
-    PrintToChatArena(arena_index, "%s switched to %s team", name, team_name);
+    PrintToChatArena(arena_index, "%t", "PlayerSwitchedTeam", name, team_name);
     
     // Check if we have 2v2 team balance and can start/continue ready process
     Check2v2TeamBalance(arena_index);
@@ -463,7 +463,7 @@ void Handle2v2TeamSwitchFromMenu(int client, int arena_index, int target_team)
             // Player is already on the selected team, just show confirmation
             char team_name[16];
             Format(team_name, sizeof(team_name), (target_team == TEAM_RED) ? "RED" : "BLU");
-            PrintToChat(client, "You are already on the %s team!", team_name);
+            MC_PrintToChat(client, "%t", "AlreadyOnTeam", team_name);
             return;
         }
         
@@ -529,7 +529,7 @@ void Check2v2TeamBalance(int arena_index)
             {
                 Restore2v2WaitingSpectators(arena_index);
             }
-            PrintToChatArena(arena_index, "Team balance lost (RED: %d, BLU: %d). Need exactly 2 players per team.", red_count, blu_count);
+            PrintToChatArena(arena_index, "%t", "TeamBalanceLost", red_count, blu_count);
         }
     }
 }
@@ -675,19 +675,19 @@ Action Command_Ready(int client, int args)
     int arena_index = g_iPlayerArena[client];
     if (!arena_index)
     {
-        PrintToChat(client, "You are not in an arena!");
+        MC_PrintToChat(client, "%t", "NotInArena");
         return Plugin_Handled;
     }
 
     if (!g_bFourPersonArena[arena_index])
     {
-        PrintToChat(client, "Ready command is only available in 2v2 arenas!");
+        MC_PrintToChat(client, "%t", "ReadyOnlyFor2v2");
         return Plugin_Handled;
     }
 
     if (g_iArenaStatus[arena_index] != AS_WAITING_READY)
     {
-        PrintToChat(client, "Arena is not waiting for ready confirmation!");
+        MC_PrintToChat(client, "%t", "ArenaNotWaitingReady");
         return Plugin_Handled;
     }
 
@@ -704,121 +704,6 @@ Action Command_Ready(int client, int args)
     return Plugin_Handled;
 }
 
-// Handles the !force2v2 admin command for automatically setting up 2v2 matches
-Action Command_Force2v2(int client, int args)
-{
-    if (!IsValidClient(client))
-        return Plugin_Handled;
-
-    // Count total players in server
-    int total_players = 0;
-    int valid_players[MAXPLAYERS + 1];
-    
-    for (int i = 1; i <= MaxClients; i++)
-    {
-        if (IsValidClient(i) && !IsFakeClient(i))
-        {
-            valid_players[total_players] = i;
-            total_players++;
-        }
-    }
-
-    if (total_players < 4)
-    {
-        PrintToChat(client, "Need at least 4 players for 2v2. Found %d players.", total_players);
-        return Plugin_Handled;
-    }
-
-    // Find available 2v2 arena
-    int target_arena = -1;
-    for (int i = 1; i <= g_iArenaCount; i++)
-    {
-        if (g_bFourPersonArena[i] && g_iArenaStatus[i] == AS_IDLE)
-        {
-            // Check if arena has space
-            int arena_players = 0;
-            for (int j = SLOT_ONE; j <= SLOT_FOUR; j++)
-            {
-                if (g_iArenaQueue[i][j])
-                    arena_players++;
-            }
-            
-            if (arena_players == 0)
-            {
-                target_arena = i;
-                break;
-            }
-        }
-    }
-
-    if (target_arena == -1)
-    {
-        PrintToChat(client, "No available 2v2 arenas found!");
-        return Plugin_Handled;
-    }
-
-    // Remove all players from their current arenas first
-    for (int i = 0; i < total_players; i++)
-    {
-        int player = valid_players[i];
-        if (g_iPlayerArena[player])
-        {
-            RemoveFromQueue(player, true);
-        }
-    }
-
-    // Add first 4 players to the 2v2 arena
-    int red_team[2];
-    int blu_team[2];
-    red_team[0] = valid_players[0];
-    red_team[1] = valid_players[1];
-    blu_team[0] = valid_players[2];
-    blu_team[1] = valid_players[3];
-
-    // Add RED team players
-    g_iPlayerArena[red_team[0]] = target_arena;
-    g_iPlayerSlot[red_team[0]] = SLOT_ONE;
-    g_iArenaQueue[target_arena][SLOT_ONE] = red_team[0];
-    SetPlayerToAllowedClass(red_team[0], target_arena);
-
-    g_iPlayerArena[red_team[1]] = target_arena;
-    g_iPlayerSlot[red_team[1]] = SLOT_THREE;
-    g_iArenaQueue[target_arena][SLOT_THREE] = red_team[1];
-    SetPlayerToAllowedClass(red_team[1], target_arena);
-
-    // Add BLU team players
-    g_iPlayerArena[blu_team[0]] = target_arena;
-    g_iPlayerSlot[blu_team[0]] = SLOT_TWO;
-    g_iArenaQueue[target_arena][SLOT_TWO] = blu_team[0];
-    SetPlayerToAllowedClass(blu_team[0], target_arena);
-
-    g_iPlayerArena[blu_team[1]] = target_arena;
-    g_iPlayerSlot[blu_team[1]] = SLOT_FOUR;
-    g_iArenaQueue[target_arena][SLOT_FOUR] = blu_team[1];
-    SetPlayerToAllowedClass(blu_team[1], target_arena);
-
-    // Notify all players
-    char red_names[128], blu_names[128];
-    char name1[MAX_NAME_LENGTH], name2[MAX_NAME_LENGTH], name3[MAX_NAME_LENGTH], name4[MAX_NAME_LENGTH];
-    
-    GetClientName(red_team[0], name1, sizeof(name1));
-    GetClientName(red_team[1], name2, sizeof(name2));
-    GetClientName(blu_team[0], name3, sizeof(name3));
-    GetClientName(blu_team[1], name4, sizeof(name4));
-    
-    Format(red_names, sizeof(red_names), "%s & %s", name1, name2);
-    Format(blu_names, sizeof(blu_names), "%s & %s", name3, name4);
-
-    PrintToChatAll("Admin force-added players to 2v2 arena: %s", g_sArenaName[target_arena]);
-    PrintToChatAll("RED Team: %s", red_names);
-    PrintToChatAll("BLU Team: %s", blu_names);
-
-    // Start the 2v2 ready system
-    Start2v2ReadySystem(target_arena);
-
-    return Plugin_Handled;
-}
-
 // Handles the !swap command for initiating class swaps in ultiduo arenas
 Action Command_Swap(int client, int args)
 {
@@ -827,7 +712,7 @@ Action Command_Swap(int client, int args)
 
     if (!g_bCanPlayerSwap[client])
     {
-        PrintToChat(client, "You must wait 60 seconds between swap attempts!");
+        MC_PrintToChat(client, "%t", "SwapCooldown");
         return Plugin_Handled;
     }
     else
@@ -918,7 +803,7 @@ Action Timer_Restart2v2Ready(Handle timer, any arena_index)
         // Ensure any players that were placed into spectator (waiting) are restored
         Restore2v2WaitingSpectators(arena_index);
         Start2v2ReadySystem(arena_index);
-        PrintToChatArena(arena_index, "Match finished! Please ready up for the next round.");
+        PrintToChatArena(arena_index, "%t", "MatchFinishedReadyUp");
     }
     else
     {

@@ -329,6 +329,8 @@ Action Command_ToggleHud(int client, int args)
         HideHud(client);
     }
 
-    PrintToChat(client, "\x01HUD is \x04%sabled\x01.", g_bShowHud[client] ? "en":"dis");
+    char status_text[32];
+    Format(status_text, sizeof(status_text), "%T", g_bShowHud[client] ? "EnabledLabel" : "DisabledLabel", client);
+    MC_PrintToChat(client, "%t", "HudToggle", status_text);
     return Plugin_Handled;
 }

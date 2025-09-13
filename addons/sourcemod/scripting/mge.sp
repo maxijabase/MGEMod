@@ -178,10 +178,6 @@ public void OnPluginStart()
     RegConsoleCmd("ready", Command_Ready, "Mark yourself as ready for 2v2 match");
     RegConsoleCmd("r", Command_Ready, "Mark yourself as ready for 2v2 match");
     
-    // Force 2v2 Command 
-    // TODO: remove
-    RegAdminCmd("force2v2", Command_Force2v2, ADMFLAG_BAN, "Force add all players to a 2v2 arena");
-
     AddCommandListener(Command_DropItem, "dropitem");
 
     // HUD synchronizers
@@ -195,7 +191,7 @@ public void OnPluginStart()
     // Set up the log file for debug logging
     BuildPath(Path_SM, g_sLogFile, sizeof(g_sLogFile), "logs/mgemod.log");
 
-    PrintToChatAll("[MGEMod] Plugin reloaded. Slaying all players to avoid bugs.");
+    MC_PrintToChatAll("%t", "PluginReloaded");
 
     for (int i = 1; i <= MaxClients; i++)
     {

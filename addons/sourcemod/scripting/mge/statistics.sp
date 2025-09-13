@@ -193,7 +193,7 @@ Action Command_Top5(int client, int args)
 {
     if (g_bNoStats || !IsValidClient(client))
     {
-        PrintToChat(client, "No Stats is true");
+        MC_PrintToChat(client, "%t", "NoStatsTrue");
         return Plugin_Continue;
     }
 
@@ -229,9 +229,9 @@ Action Command_Rank(int client, int args)
                 MC_PrintToChat(client, "%t", "MyRank", g_iPlayerRating[client], g_iPlayerWins[client], g_iPlayerLosses[client]);
         } else if (targ != -1) {
             if (g_bNoDisplayRating || !g_bShowElo[client])
-                PrintToChat(client, "\x03%N\x01 has \x04%i\x01 wins and \x04%i\x01 losses. You have a \x04%i%%\x01 chance of beating him.", targ, g_iPlayerWins[targ], g_iPlayerLosses[targ], RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targ] - g_iPlayerRating[client])) / 400) + 1)) * 100));
+                MC_PrintToChat(client, "%t", "WinChanceMessage", targ, g_iPlayerWins[targ], g_iPlayerLosses[targ], RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targ] - g_iPlayerRating[client])) / 400) + 1)) * 100));
             else
-                PrintToChat(client, "\x03%N\x01's rating is \x04%i\x01. You have a \x04%i%%\x01 chance of beating him.", targ, g_iPlayerRating[targ], RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targ] - g_iPlayerRating[client])) / 400) + 1)) * 100));
+                MC_PrintToChat(client, "%t", "WinChanceRatingMessage", targ, g_iPlayerRating[targ], RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targ] - g_iPlayerRating[client])) / 400) + 1)) * 100));
         }
     }
 

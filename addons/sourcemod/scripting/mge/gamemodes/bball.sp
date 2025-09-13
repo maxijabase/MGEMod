@@ -141,8 +141,6 @@ Action OnTouchHoop(int entity, int other)
         foe_teammate = getTeammate(foe_slot, arena_index);
     }
 
-
-
     if (!IsValidClient(foe) || !g_bArenaBBall[arena_index])
         return Plugin_Continue;
 

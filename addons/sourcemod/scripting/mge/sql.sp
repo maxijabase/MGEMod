@@ -172,14 +172,14 @@ void SQL_OnTestReceived(Database db, DBResultSet results, const char[] error, an
     if (db == null)
     {
         LogError("[Test] Query failed: database connection lost");
-        PrintToChat(client, "[Test] Database connection lost");
+        MC_PrintToChat(client, "%t", "DatabaseConnectionLost");
         return;
     }
     
     if (results == null)
     {
         LogError("[Test] Query failed: %s", error);
-        PrintToChat(client, "[Test] Query failed: %s", error);
+        MC_PrintToChat(client, "%t", "QueryFailed", error);
         return;
     }
 
@@ -190,9 +190,9 @@ void SQL_OnTestReceived(Database db, DBResultSet results, const char[] error, an
     }
 
     if (results.FetchRow())
-        PrintToChat(client, "\x01Database is \x04Up\x01.");
+        MC_PrintToChat(client, "%t", "DatabaseUp");
     else
-        PrintToChat(client, "\x01Database is \x04Down\x01.");
+        MC_PrintToChat(client, "%t", "DatabaseDown");
 }
 
 // Handles player statistics retrieval from database and creates new player records if needed

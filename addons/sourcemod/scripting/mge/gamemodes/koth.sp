@@ -383,22 +383,22 @@ Action Command_Koth(int client, int args)
     int arena_index = g_iPlayerArena[client];
 
     if (!arena_index) {
-        PrintToChat(client, "You are not in an arena!");
+        MC_PrintToChat(client, "%t", "NotInArena");
         return Plugin_Handled;
     }
 
     if (g_bArenaKoth[arena_index]) {
-        PrintToChat(client, "This arena is already in KOTH mode!");
+        MC_PrintToChat(client, "%t", "ArenaAlreadyKOTH");
         return Plugin_Handled;
     }
 
     if (!g_bArenaAllowKoth[arena_index]) {
-        PrintToChat(client, "Cannot change to KOTH mode in this arena!");
+        MC_PrintToChat(client, "%t", "CannotKOTHInArena");
         return Plugin_Handled;
     }
 
     if (g_iArenaStatus[arena_index] != AS_IDLE) {
-        PrintToChat(client, "Cannot switch to KOTH now!");
+        MC_PrintToChat(client, "%t", "CannotSwitchKOTHNow");
         return Plugin_Handled;
     }
 
@@ -410,11 +410,11 @@ Action Command_Koth(int client, int args)
     UpdateArenaName(arena_index);
 
     if(g_iArenaQueue[arena_index][SLOT_ONE]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "Changed current arena to KOTH mode!");
+        MC_PrintToChat(g_iArenaQueue[arena_index][SLOT_ONE], "%t", "ChangedArenaToKOTH");
     }
 
     if(g_iArenaQueue[arena_index][SLOT_TWO]) {
-        PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "Changed current arena to KOTH mode");
+        MC_PrintToChat(g_iArenaQueue[arena_index][SLOT_TWO], "%t", "ChangedArenaToKOTH");
     }
 
     return Plugin_Handled;

@@ -258,7 +258,7 @@ void SetPlayerToAllowedClass(int client, int arena_index)
                     if (view_as<TFClassType>(i) == g_tfctPlayerClass[client_teammate])
                     {
                         // Tell the player what he did wrong
-                        MC_PrintToChat(client, "Your team already has that class!");
+                        MC_PrintToChat(client, "%t", "TeamAlreadyHasClass");
                         // Change him classes and set his class to the only one available
                         if (g_tfctPlayerClass[client_teammate] == TFClass_Soldier)
                         {
@@ -456,7 +456,7 @@ Action Command_JoinTeam(int client, int args)
         else
         {
             // Warn players who are already on a team that they can't manually switch
-            MC_PrintToChat(client, "You cannot manually join teams. Use !add to join an arena or !remove to leave.");
+            MC_PrintToChat(client, "%t", "CannotJoinTeamsManually");
 
             // Spawn exploit prevention (moved from Event_PlayerTeam)
             if (arena_index == 0)
@@ -507,7 +507,7 @@ Action Command_JoinClass(int client, int args)
                     if (new_class == g_tfctPlayerClass[client_teammate])
                     {
                         // Tell the player what he did wrong
-                        MC_PrintToChat(client, "Your team already has that class!");
+                        MC_PrintToChat(client, "%t", "TeamAlreadyHasClass");
                         return Plugin_Handled;
                     }
                     else
@@ -546,7 +546,7 @@ Action Command_JoinClass(int client, int args)
                 if (new_class == g_tfctPlayerClass[client_teammate])
                 {
                     // Tell the player what he did wrong
-                    MC_PrintToChat(client, "Your team already has that class!");
+                    MC_PrintToChat(client, "%t", "TeamAlreadyHasClass");
                     return Plugin_Handled;
                 }
                 else
@@ -567,7 +567,7 @@ Action Command_JoinClass(int client, int args)
                         // Class changes only allowed during waiting phase
                         if (g_iArenaStatus[arena_index] != AS_WAITING_READY && g_iArenaStatus[arena_index] != AS_IDLE)
                         {
-                            MC_PrintToChat(client, "Class changes are only allowed while waiting for 2v2 match to start!");
+                            MC_PrintToChat(client, "%t", "ClassChangesOnlyWhileWaiting");
                             return Plugin_Handled;
                         }
                     }
@@ -576,7 +576,7 @@ Action Command_JoinClass(int client, int args)
                         // Class changes allowed during countdown, but slay during fight
                         if (g_iArenaStatus[arena_index] == AS_FIGHT)
                         {
-                            MC_PrintToChat(client, "Class change during fight! You will be slayed and respawn next round.");
+                            MC_PrintToChat(client, "%t", "ClassChangeDuringFightSlay");
                             ForcePlayerSuicide(client);
                             if (g_tfctPlayerClass[client] == TFClass_Engineer && new_class != TFClass_Engineer)
                             {
@@ -596,7 +596,7 @@ Action Command_JoinClass(int client, int args)
                     if (!g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] == AS_FIGHT && 
                         (g_iArenaScore[arena_index][SLOT_ONE] != 0 || g_iArenaScore[arena_index][SLOT_TWO] != 0))
                     {
-                        MC_PrintToChat(client, "Class changes are disabled during fights in this arena!");
+                        MC_PrintToChat(client, "%t", "ClassChangesDisabledDuringFight");
                         return Plugin_Handled;
                     }
                 }
@@ -1305,7 +1305,7 @@ Action Timer_Tele(Handle timer, int userid)
             {
                 // Just in case.
                 RemoveEntity(i);
-                PrintToChat(client, "[MGE] Arena = EndIf and you have the Manntreads. Automatically removing you from the queue.");
+                MC_PrintToChat(client, "%t", "EndIfManntreadsRemoval");
                 // Run elo calc so clients can't be cheeky if they're losing
                 RemoveFromQueue(client, true);
             }

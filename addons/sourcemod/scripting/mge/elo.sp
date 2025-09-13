@@ -159,6 +159,8 @@ Action Command_ToggleElo(int client, int args)
     // Save the preference to client cookie
     g_hShowEloCookie.Set(client, g_bShowElo[client] ? "1" : "0");
 
-    PrintToChat(client, "\x01ELO display is \x04%sabled\x01.", g_bShowElo[client] ? "en":"dis");
+    char status_text[32];
+    Format(status_text, sizeof(status_text), "%T", g_bShowElo[client] ? "EnabledLabel" : "DisabledLabel", client);
+    MC_PrintToChat(client, "%t", "EloToggle", status_text);
     return Plugin_Handled;
 }

@@ -1,24 +1,20 @@
-// colors:
-// player names - {lightgreen}
-// arena name - {greeen}
-// info/tip - {olive}
-// numbers - {green}
-
 "Phrases"
 {
-	"MenuTitle" //No colors here.
+	"MenuTitle"
 	{
 		"en"			"Join arena..."
 		"chi"			"加入竞技场……"
 		"de"			"Arena betreten..."
 		"ru"			"Выберите арену..."
+		"es"			"Unirse a una arena..."
 	}
-	"MenuRemove" //No colors here.
+	"MenuRemove"
 	{
 		"en"			"Remove from queue"
 		"chi"			"退出队列"
 		"de"			"Aus Warteschlange entfernen"
 		"ru"			"Удалиться с арены"
+		"es"			"Retirarse de la cola"
 	}
 	"HPLeft"
 	{
@@ -27,188 +23,213 @@
 		"chi"			"{green}[MGE]{default} 您的对手还剩 {green}{1}{default} 生命值。"
 		"de"			"{green}[MGE]{default} Dein Gegner überlebte mit {green}{1}{default} HP."
 		"ru"			"{green}[MGE]{default} У вашего оппонента осталось {green}{1}{default} жизней."
+		"es"			"{green}[MGE]{default} Tu oponente tenía {green}{1}{default} de vida restante."
 	}
 	"Adv"
 	{
-		"en"			"{olive}Join an arena, type {default}!add\n{olive}For a list of commands, type {default}!mgehelp"
-		"chi"			"{olive}键入 {default}!add{olive} 打开菜单并加入竞技场，键入 {default}!mgehelp {olive}查看帮助。"
-		"de"			"{olive}Um eine Arena zu betreten, schreibe {default}!add\n{olive}Für eine Liste aller Befehle, schreibe {default}!mgehelp"
-		"ru"			"{olive}Для того чтобы зайти на арену напишите в чате {default}!add или /add"
+		"en"			"{green}[MGE]{default} Join an arena, type !add\nFor a list of commands, type !mgehelp"
+		"chi"			"{green}[MGE]{default} 键入 !add 打开菜单并加入竞技场，键入 !mgehelp 查看帮助。"
+		"de"			"{green}[MGE]{default} Um eine Arena zu betreten, schreibe !add\nFür eine Liste aller Befehle, schreibe !mgehelp"
+		"ru"			"{green}[MGE]{default} Для того чтобы зайти на арену напишите в чате !add или /add"
+		"es"			"{green}[MGE]{default} Unirse a una arena, escribe !add\nPara una lista de comandos, escribe !mgehelp"
 	}
 	"JoinsArena"
 	{
 		"#format"		"{1:s},{2:i},{3:s}"
-		"en"			"{lightgreen}{1} ({2}) {default}joins arena {green}{3}."
-		"chi"			"{lightgreen}{1}（{2}）{default}加入了竞技场：{green}{3}"
-		"de"			"{lightgreen}{1} ({2}) {default}betritt Arena {green}{3}."
-		"ru"			"{lightgreen}{1} ({2}) {default}заходит на арену {green}{3}."
+		"en"			"{green}[MGE]{default} {lightgreen}{1} ({2}) {default}joins arena {green}{3}."
+		"chi"			"{green}[MGE]{default} {lightgreen}{1}（{2}）{default}加入了竞技场：{green}{3}"
+		"de"			"{green}[MGE]{default} {lightgreen}{1} ({2}) {default}betritt Arena {green}{3}."
+		"ru"			"{green}[MGE]{default} {lightgreen}{1} ({2}) {default}заходит на арену {green}{3}."
+		"es"			"{green}[MGE]{default} {lightgreen}{1} ({2}) {default}se unió a la arena {green}{3}."
 	}
 	"JoinsArenaNoStats"
 	{
 		"#format"		"{1:s},{2:s}"
-		"en"			"{lightgreen}{1} {default}joins arena {green}{2}."
-		"chi"			"{lightgreen}{1} {default}加入了竞技场：{green}{2}"
-		"de"			"{lightgreen}{1} {default}betritt Arena {green}{2}."
-		"ru"			"{lightgreen}{1} {default}заходит на арену {green}{2}."
+		"en"			"{green}[MGE]{default} {lightgreen}{1} {default}joins arena {green}{2}."
+		"chi"			"{green}[MGE]{default} {lightgreen}{1} {default}加入了竞技场：{green}{2}"
+		"de"			"{green}[MGE]{default} {lightgreen}{1} {default}betritt Arena {green}{2}."
+		"ru"			"{green}[MGE]{default} {lightgreen}{1} {default}заходит на арену {green}{2}."
+		"es"			"{green}[MGE]{default} {lightgreen}{1} {default}se unió a la arena {green}{2}."
 	}
 	"ChoseArena"
 	{
 		"#format"		"{1:s}"
-		"en"			"You chose arena {green}{1}."
-		"chi"			"您选择了竞技场：{green}{1}"
-		"de"			"Du hast Arena {green}{1} {default} gewählt."
-		"ru"			"Вы выбрали арену {green}{1}."
+		"en"			"{green}[MGE]{default} You chose arena {green}{1}{default}."
+		"chi"			"{green}[MGE]{default} 您选择了竞技场：{green}{1}{default}"
+		"de"			"{green}[MGE]{default} Du hast Arena {green}{1}{default} gewählt."
+		"ru"			"{green}[MGE]{default} Вы выбрали арену {green}{1}{default}."
+		"es"			"{green}[MGE]{default} Has elegido la arena {green}{1}{default}."
 	}
 	"NextInLine"
 	{
-		"en"			"You are {green}next{default} in line."
-		"chi"			"您排在{green}下一位{default}上场。"
-		"de"			"Du bist als {green}Nächster{default} an der Reihe."
-		"ru"			"Вы {green}следующий{default} в очереди."
+		"en"			"{green}[MGE]{default} You are {green}next{default} in line."
+		"chi"			"{green}[MGE]{default} 您排在{green}下一位{default}上场。"
+		"de"			"{green}[MGE]{default} Du bist als {green}Nächster{default} an der Reihe."
+		"ru"			"{green}[MGE]{default} Вы {green}следующий{default} в очереди."
+		"es"			"{green}[MGE]{default} Eres {green}el siguiente{default} en la cola."
 	}
 	"InLine"
 	{
 		"#format"		"{1:i}"
-		"en"			"You are {green}{1}{default} in line."
-		"chi"			"您排在队列中第 {green}{1}{default} 位。"
-		"de"			"Du bist {green}{1}{default} in der Reihe."
-		"ru"			"Вы {green}{1}{default} в очереди."
+		"en"			"{green}[MGE]{default} You are {green}{1}{default} in line."
+		"chi"			"{green}[MGE]{default} 您排在队列中第 {green}{1}{default} 位。"
+		"de"			"{green}[MGE]{default} Du bist {green}{1}{default} in der Reihe."
+		"ru"			"{green}[MGE]{default} Вы {green}{1}{default} в очереди."
+		"es"			"{green}[MGE]{default} Eres {green}{1}º{default} en la cola."
 	}
 	"GainedPoints"
 	{
 		"#format"		"{1:i}"
-		"en"			"You gained {green}{1}{default} points."
-		"chi"			"您得到了 {green}{1}{default} 分。"
-		"de"			"Du hast {green}{1}{default} Punkte erhalten."
-		"ru"			"Вы получили {green}{1}{default} очков."
+		"en"			"{green}[MGE]{default} You gained {green}{1}{default} points."
+		"chi"			"{green}[MGE]{default} 您得到了 {green}{1}{default} 分。"
+		"de"			"{green}[MGE]{default} Du hast {green}{1}{default} Punkte erhalten."
+		"ru"			"{green}[MGE]{default} Вы получили {green}{1}{default} очков."
+		"es"			"{green}[MGE]{default} Has ganado {green}{1}{default} puntos."
 	}
 	"LostPoints"
 	{
 		"#format"		"{1:i}"
-		"en"			"You lost {green}{1}{default} points."
-		"chi"			"您丢掉了 {green}{1}{default} 分。"
-		"de"			"Du hast {green}{1}{default} Punkte verloren."
-		"ru"			"Вы потеряли {green}{1}{default} очков."
+		"en"			"{green}[MGE]{default} You lost {green}{1}{default} points."
+		"chi"			"{green}[MGE]{default} 您丢掉了 {green}{1}{default} 分。"
+		"de"			"{green}[MGE]{default} Du hast {green}{1}{default} Punkte verloren."
+		"ru"			"{green}[MGE]{default} Вы потеряли {green}{1}{default} очков."
+		"es"			"{green}[MGE]{default} Has perdido {green}{1}{default} puntos."
 	}
 	"MyRank"
 	{
 		"#format"		"{1:i},{2:i},{3:i}"
-		"en"			"Your rating is {green}{1}{default}. Wins: {green}{2}{default} , Losses: {green}{3}{default}"
-		"chi"			"您的排名：{green}{1}{default}。胜场数：{green}{2}{default}，负场数：{green}{3}{default}。"
-		"de"			"Deine Wertung: {green}{1}{default}. Siege: {green}{2}{default} , Niederlagen: {green}{3}{default}"
-		"ru"			"Ваш рейтинг равен {green}{1}{default}. Побед: {green}{2}{default} , Поражений: {green}{3}{default}"
+		"en"			"{green}[MGE]{default} Your rating is {green}{1}{default}. Wins: {green}{2}{default}. Losses: {green}{3}{default}"
+		"chi"			"{green}[MGE]{default} 您的排名：{green}{1}{default}。胜场数：{green}{2}{default}，负场数：{green}{3}{default}。"
+		"de"			"{green}[MGE]{default} Deine Wertung: {green}{1}{default}. Siege: {green}{2}{default}. Niederlagen: {green}{3}{default}"
+		"ru"			"{green}[MGE]{default} Ваш рейтинг равен {green}{1}{default}. Побед: {green}{2}{default}. Поражений: {green}{3}{default}"
+		"es"			"{green}[MGE]{default} Tu rating es {green}{1}{default}. Ganados: {green}{2}{default}. Perdidos: {green}{3}{default}"
 	}
 	"MyRankNoRating"
 	{
 		"#format"		"{1:i},{2:i}"
-		"en"			"You have {green}{1}{default} wins and {green}{2}{default} losses."
-		"chi"			"您的胜场数：{green}{1}{default}，负场数：{green}{2}{default}。"
-		"de"			"{green}{1}{default} Siege und {green}{2}{default} Niederlagen."
-		"ru"			"У вас {green}{1}{default} побед и {green}{2}{default} поражений."
+		"en"			"{green}[MGE]{default} You have {green}{1}{default} wins and {green}{2}{default} losses."
+		"chi"			"{green}[MGE]{default} 您的胜场数：{green}{1}{default}，负场数：{green}{2}{default}。"
+		"de"			"{green}[MGE]{default} {green}{1}{default} Siege und {green}{2}{default} Niederlagen."
+		"ru"			"{green}[MGE]{default} У вас {green}{1}{default} побед и {green}{2}{default} поражений."
+		"es"			"{green}[MGE]{default} Tienes {green}{1}{default} victorias y {green}{2}{default} derrotas."
 	}
 	"ClassIsNotAllowed"
 	{
-		"en"			"{olive}This class is not allowed!"
-		"chi"			"{olive}不允许使用该职业。"
-		"de"			"{olive}Diese Klasse ist nicht erlaubt!"
-		"ru"			"{olive}Этот класс не разрешен!"
+		"en"			"{green}[MGE]{default} This class is not allowed!"
+		"chi"			"{green}[MGE]{default} 不允许使用该职业。"
+		"de"			"{green}[MGE]{default} Diese Klasse ist nicht erlaubt!"
+		"ru"			"{green}[MGE]{default} Этот класс не разрешен!"
+		"es"			"{green}[MGE]{default} ¡Esta clase no está permitida!"
 	}
 	"LowRating"
 	{
 		"#format"		"{1:i},{2:i}"
-		"en"			"Your rating {green}{1}{default} is too low, minimum is {green}{2}"
-		"chi"			"您的评级 {green}{1}{default} 太低，最低为 {green}{2}"
-		"de"			"Deine Wertung {green}{1}{default} ist zu gering, Minimum ist {green}{2}"
-		"ru"			"Ваш рейтинг {green}{1}{default} слишком мал. Необходимо {green}{2}+"
+		"en"			"{green}[MGE]{default} Your rating {green}{1}{default} is too low, minimum is {green}{2}"
+		"chi"			"{green}[MGE]{default} 您的评级 {green}{1}{default} 太低，最低为 {green}{2}"
+		"de"			"{green}[MGE]{default} Deine Wertung {green}{1}{default} ist zu gering, Minimum ist {green}{2}"
+		"ru"			"{green}[MGE]{default} Ваш рейтинг {green}{1}{default} слишком мал. Необходимо {green}{2}+"
+		"es"			"{green}[MGE]{default} Tu rating {green}{1}{default} es demasiado bajo, el mínimo es {green}{2}"
 	}
 	"HighRating"
 	{
 		"#format"		"{1:i},{2:i}"
-		"en"			"Your rating {green}{1}{default} is too high, maximum is {green}{2}"
-		"chi"			"您的评级 {green}{1}{default} 太高，最高为 {green}{2}"
-		"de"			"Deine Wertung {green}{1}{default} ist zu hoch, Maximum ist {green}{2}"
-		"ru"			"Ваш рейтинг {green}{1}{default} слишком велик. Максимально допустимый {green}{2}"
+		"en"			"{green}[MGE]{default} Your rating {green}{1}{default} is too high, maximum is {green}{2}"
+		"chi"			"{green}[MGE]{default} 您的评级 {green}{1}{default} 太高，最高为 {green}{2}"
+		"de"			"{green}[MGE]{default} Deine Wertung {green}{1}{default} ist zu hoch, Maximum ist {green}{2}"
+		"ru"			"{green}[MGE]{default} Ваш рейтинг {green}{1}{default} слишком велик. Максимально допустимый {green}{2}"
+		"es"			"{green}[MGE]{default} Tu rating {green}{1}{default} es demasiado alto, el máximo es {green}{2}"
 	}
 	"XdefeatsY"
 	{
 		"#format"		"{1:s},{2:i},{3:s},{4:i},{5:i},{6:s}"
-		"en"			"{lightgreen}{1}{default} (Score:{2}) defeats {lightgreen}{3}{default} (Score:{4}) in duel to {green}{5}{default} on {green}{6}"
-		"chi"			"{lightgreen}{1}{default} (Score:{2}) 打败了 {lightgreen}{3}{default}（得分：{4}）in duel to {green}{5}{default}（竞技场：{green}{6}）"
-		"de"			"{lightgreen}{1}{default} (Punkte:{2}) besiegt {lightgreen}{3}{default} (Punkte:{4}) in einem Duell bis {green}{5}{default} auf {green}{6}"
-		"ru"			"{lightgreen}{1}{default} (Score:{2}) победил {lightgreen}{3}{default} (Счет:{4}) в дуели до {green}{5}{default} на арене {green}{6}"
+		"en"			"{green}[MGE]{default} {lightgreen}{1}{default} (Score: {green}{2}{default}) defeats {lightgreen}{3}{default} (Score: {green}{4}{default}) in duel to {green}{5}{default} on {green}{6}"
+		"chi"			"{green}[MGE]{default} {lightgreen}{1}{default} (Score: {2}) 打败了 {lightgreen}{3}{default}（得分：{4}）in duel to {green}{5}{default}（竞技场：{green}{6}）"
+		"de"			"{green}[MGE]{default} {lightgreen}{1}{default} (Punkte: {2}) besiegt {lightgreen}{3}{default} (Punkte: {4}) in einem Duell bis {green}{5}{default} auf {green}{6}"
+		"ru"			"{green}[MGE]{default} {lightgreen}{1}{default} (Score: {2}) победил {lightgreen}{3}{default} (Счет: {4}) в дуели до {green}{5}{default} на арене {green}{6}"
+		"es"			"{green}[MGE]{default} {lightgreen}{1}{default} (Puntos: {2}) derrota a {lightgreen}{3}{default} (Puntos: {4}) en duelo a {green}{5}{default} en {green}{6}"
 	}
 	"XdefeatsYearly"
 	{
 		"#format"		"{1:s},{2:i},{3:s},{4:i},{5:s}"
-		"en"			"{lightgreen}{1}{default} (Score:{2}) defeats {lightgreen}{3}{default} (Score:{4}) in a duel on {green}{5}"
-		"chi"			"{lightgreen}{1}{default} (Score:{2}) 打败了 {lightgreen}{3}{default}（Score:{4}）（竞技场：{green}{5}）"
-		"de"			"{lightgreen}{1}{default} (Punkte:{2}) besiegt {lightgreen}{3}{default} (Punkte:{4}) in einem Duell auf {green}{5}"
-		"ru"			"{lightgreen}{1}{default} (Счет:{2}) победил {lightgreen}{3}{default} (Счет:{4}) в дуели до {green}{5}"
+		"en"			"{lightgreen}{1}{default} (Score: {green}{2}{default}) defeats {lightgreen}{3}{default} (Score: {green}{4}{default}) in a duel on {green}{5}"
+		"chi"			"{lightgreen}{1}{default} (Score: {2}) 打败了 {lightgreen}{3}{default}（Score:{4}）（竞技场：{green}{5}）"
+		"de"			"{lightgreen}{1}{default} (Punkte: {2}) besiegt {lightgreen}{3}{default} (Punkte:{4}) in einem Duell auf {green}{5}"
+		"ru"			"{lightgreen}{1}{default} (Счет: {2}) победил {lightgreen}{3}{default} (Счет:{4}) в дуели до {green}{5}"
+		"es"			"{lightgreen}{1}{default} (Puntos: {2}) derrota a {lightgreen}{3}{default} (Puntos: {4}) en duelo en {green}{5}"
 	}
 	"SpecRemove"
 	{
-		"en"			"{olive}Can't go in spec while in fight, removing from queue."
-		"chi"			"{olive}对决时不能进入观察员。您已被移出队列。"
-		"de"			"{olive}Wechseln zu Spec im Kampf nicht möglich, entfernt aus Warteschlange."
-		"ru"			"{olive}Нельзя перейти в наблюдатели когда вы на арене, вы удаляетесь с арены."
+		"en"			"{green}[MGE]{default} Can't go in spec while in fight, removing from queue."
+		"chi"			"{green}[MGE]{default} 对决时不能进入观察员。您已被移出队列。"
+		"de"			"{green}[MGE]{default} Wechseln zu Spec im Kampf nicht möglich, entfernt aus Warteschlange."
+		"ru"			"{green}[MGE]{default} Нельзя перейти в наблюдатели когда вы на арене, вы удаляетесь с арены."
+		"es"			"{green}[MGE]{default} No se puede ir a spec mientras estás en un duelo, se te ha removido de la cola."
 	}
 	"ClassChangePoint"
 	{
-		"en"			"{olive}You changed class during a fight, giving your opponent one point."
-		"chi"			"{olive}您在对决中更换了职业，因此罚您一分。"
-		"de"			"{olive}Du hast deine Klasse während des Kampfes gewechselt, dein Gegner erhält einen Punkt."
-		"ru"			"{olive}Вы поменяли класс во время битвы. Оппонент получает одно очко."
+		"en"			"{green}[MGE]{default} You changed class during a fight, giving your opponent one point."
+		"chi"			"{green}[MGE]{default} 您在对决中更换了职业，因此罚您一分。"
+		"de"			"{green}[MGE]{default} Du hast deine Klasse während des Kampfes gewechselt, dein Gegner erhält einen Punkt."
+		"ru"			"{green}[MGE]{default} Вы поменяли класс во время битвы. Оппонент получает одно очко."
+		"es"			"{green}[MGE]{default} Has cambiado de clase durante un duelo, tu oponente obtiene un punto."
 	}
 	"ClassChangePointOpponent"
 	{
-		"en"			"{olive}Your opponent changed class during a fight, giving you one point."
-		"chi"			"{olive}您的对手在对决中更换了职业，因此罚他一分。"
-		"de"			"{olive}Dein Gegner hat die Klasse während des Kampfes gewechselt, du erhältst einen Punkt."
-		"ru"			"{olive}Ваш оппонент поменял класс во время битвы. Вы получаете одно очко."
+		"en"			"{green}[MGE]{default} Your opponent changed class during a fight, giving you one point."
+		"chi"			"{green}[MGE]{default} 您的对手在对决中更换了职业，因此罚他一分。"
+		"de"			"{green}[MGE]{default} Dein Gegner hat die Klasse während des Kampfes gewechselt, du erhältst einen Punkt."
+		"ru"			"{green}[MGE]{default} Ваш оппонент поменял класс во время битвы. Вы получаете одно очко."
+		"es"			"{green}[MGE]{default} Tu oponente ha cambiado de clase durante un duelo, obtienes un punto."
 	}
 	"Welcome1"
 	{
 		"#format"		"{1:s}"
-		"en"			"{olive}Welcome to MGE version {lightgreen}{1}"
-		"chi"			"{olive}欢迎来玩 MGE，插件版本：{lightgreen}{1}"
-		"de"			"{olive}Willkommen auf MGE version {lightgreen}{1}"
-		"ru"			"{olive}Добро пожаловать на MGE версия {lightgreen}{1}"
+		"en"			"{green}[MGE]{default} Welcome to MGE version {lightgreen}{1}"
+		"chi"			"{green}[MGE]{default} 欢迎来玩 MGE，插件版本：{lightgreen}{1}"
+		"de"			"{green}[MGE]{default} Willkommen auf MGE version {lightgreen}{1}"
+		"ru"			"{green}[MGE]{default} Добро пожаловать на MGE версия {lightgreen}{1}"
+		"es"			"{green}[MGE]{default} Bienvenido a MGE versión {lightgreen}{1}"
 	}
 	"Welcome2"
 	{
-		"en"			"{olive}Map by{default}: {lightgreen}Swaty {default}and {lightgreen}CB"
-		"chi"			"{olive}地图作者{default}：{lightgreen}Swaty{default}、{lightgreen}CB"
-		"de"			"{olive}Map von{default}: {lightgreen}Swaty, Jstn7477 {default}und {lightgreen}CB"
-		"ru"			"{olive}Карта создана{default}: {lightgreen}Swaty, Jstn7477 {default}и {lightgreen}CB"
+		"en"			"{green}[MGE]{default} Map by: {lightgreen}Swaty and {lightgreen}CB"
+		"chi"			"{green}[MGE]{default} 地图作者：{lightgreen}Swaty{default}、{lightgreen}CB"
+		"de"			"{green}[MGE]{default} Map von: {lightgreen}Swaty, Jstn7477 {default}und {lightgreen}CB"
+		"ru"			"{green}[MGE]{default} Карта создана: {lightgreen}Swaty, Jstn7477 {default}и {lightgreen}CB"
+		"es"			"{green}[MGE]{default} Mapa por: {lightgreen}Swaty, CB"
 	}
 	"Welcome3"
 	{
-		"en"			"{olive}Plugin by{default}: {lightgreen}Lange & Cprice{default}, based on {lightgreen}kAmmomod"
-		"chi"			"{olive}插件作者{default}：{lightgreen}Lange、Cprice{default}，汉化：{lightgreen}888"
-		"de"			"{olive}Plugin von{default}: {lightgreen}Lange{default} und {lightgreen}Cprice{default}, basierend auf {lightgreen}kAmmomod"
-		"ru"			"{olive}Плагин от{default}: {lightgreen}Lange{default} & {lightgreen}Cprice{default}, созданный на основе {lightgreen}kAmmomod"
+		"en"			"{green}[MGE]{default} Plugin by: {lightgreen}Lange & Cprice{default}, based on {lightgreen}kAmmomod"
+		"chi"			"{green}[MGE]{default} 插件作者：{lightgreen}Lange、Cprice{default}，汉化：{lightgreen}888"
+		"de"			"{green}[MGE]{default} Plugin von: {lightgreen}Lange{default} und {lightgreen}Cprice{default}, basierend auf {lightgreen}kAmmomod"
+		"ru"			"{green}[MGE]{default} Плагин от: {lightgreen}Lange{default} & {lightgreen}Cprice{default}, созданный на основе {lightgreen}kAmmomod"
+		"es"			"{green}[MGE]{default} Plugin por: {lightgreen}Lange{default} & {lightgreen}Cprice{default}, basado en {lightgreen}kAmmomod"
 	}
-	"Top5Title" //No colors here.
+	"Top5Title"
 	{
 		"en"			"Top 5 Players"
 		"chi"			"最顶尖的五名玩家"
 		"de"			"Top 5 Spieler"
 		"ru"			"Пятерка лучших"
+		"es"			"Top 5 Jugadores"
 	}
 	"top5error"
 	{
-		"en"			"[MGE] Not enough players in database yet."
-		"chi"			"[MGE] 数据库中尚无玩家数据。"
-		"de"			"[MGE] Noch nicht genügend Spieler in der Datenbank."
-		"ru"			"[MGE] Еще не набралось достаточное количество игроов."
+		"en"			"{green}[MGE]{default} Not enough players in database yet."
+		"chi"			"{green}[MGE]{default} 数据库中尚无玩家数据。"
+		"de"			"{green}[MGE]{default} Noch nicht genügend Spieler in der Datenbank."
+		"ru"			"{green}[MGE]{default} Еще не набралось достаточное количество игроов."
+		"es"			"{green}[MGE]{default} No hay suficientes jugadores en la base de datos todavía."
 	}
 	"bballdunk"
 	{
 		"#format"		"{1:s}"
-		"en"			"{lightgreen}You {default}DUNKED ON {lightgreen}{1}{default}!"
-		"chi"			"{lightgreen}您{default}在 {lightgreen}{1}{default} 成功投篮！"
-		"de"			"{lightgreen}Du hast {default}gedunked gegen {lightgreen}{1}{default}!"
-		"ru"			"{lightgreen}Вы {default}одержали победу над {lightgreen}{1}{default}!"
+		"en"			"{green}[MGE]{default} You DUNKED ON {lightgreen}{1}{default}!"
+		"chi"			"{green}[MGE]{default} 您在 {lightgreen}{1}{default} 成功投篮！"
+		"de"			"{green}[MGE]{default} Du hast gegen {lightgreen}{1}{default}!"
+		"ru"			"{green}[MGE]{default} Вы одержали победу над {lightgreen}{1}{default}!"
+		"es"			"{green}[MGE]{default} Has CLAVADO a {lightgreen}{1}{default}!"
 	}
 	"Cmd_MGECmds"
 	{
@@ -216,6 +237,7 @@
 		"chi"			"[MGE] 帮助：命令简介"
 		"de"			"[MGE] Help: Befehl-Infos"
 		"ru"			"[MGE] ПОМОЩЬ: Информация о командах"
+		"es"			"[MGE] Ayuda: Información de comandos"
 	}
 	"Cmd_SeeConsole"
 	{
@@ -223,6 +245,7 @@
 		"chi"			"[MGE] 请查看控制台输出。"
 		"de"			"[MGE] Siehe Konsole für Ausgabe."
 		"ru"			"[MGE] Смотри в консоли."
+		"es"			"[MGE] Mira la consola para ver resultado."
 	}
 	"Cmd_MGEMod"
 	{
@@ -230,6 +253,7 @@
 		"chi"			"[MGE] mgemod\t - 主菜单"
 		"de"			"[MGE] mgemod\t - Menü"
 		"ru"			"[MGE] mgemod\t - Меню"
+		"es"			"[MGE] mgemod\t - Menú"
 	}
 	"Cmd_Add"
 	{
@@ -237,6 +261,7 @@
 		"chi"			"[MGE] add\t - 格式:add <竞技场号/竞技场名称/@玩家> - 加入指定竞技场"
 		"de"			"[MGE] add\t - Verwendung: add <Arena-Nummer/Arena-Name/@Spieler>. Sich zu einer Arena hinzufügen."
 		"ru"			"[MGE] add\t - Используйте: add <номер арены/имя арены/@игрок>. Зайти на арену."
+		"es"			"[MGE] add\t - Uso: add <número/nombre de arena/@jugador>. Unirse a una arena."
 	}
 	"Cmd_Remove"
 	{
@@ -244,6 +269,7 @@
 		"chi"			"[MGE] remove\t - 退出当前竞技场。"
 		"de"			"[MGE] remove\t - Sich von aktueller Arena entfernen."
 		"ru"			"[MGE] remove\t - Удалиться с арены."
+		"es"			"[MGE] remove\t - Salir de la arena actual."
 	}
 	"Cmd_First"
 	{
@@ -251,6 +277,7 @@
 		"chi"			"[MGE] first\t - 加入首个可用的竞技场。"
 		"de"			"[MGE] first\t - Erste verfügbare Arena betreten."
 		"ru"			"[MGE] first\t - Присоединиться к любой свободной арене."
+		"es"			"[MGE] first\t - Unirse a la primera arena disponible."
 	}
 	"Cmd_Top5"
 	{
@@ -258,6 +285,7 @@
 		"chi"			"[MGE] top5\t - 显示总排名前五的玩家列表。"
 		"de"			"[MGE] top5\t - Top 5 Spieler anzeigen."
 		"ru"			"[MGE] top5\t - Показать пятерку лучших игроков."
+		"es"			"[MGE] top5\t - Mostrar los 5 mejores jugadores."
 	}
 	"Cmd_Rank"
 	{
@@ -265,13 +293,7 @@
 		"chi"			"[MGE] rank\t - 格式：rank <玩家名称> - 显示指定玩家的排名。"
 		"de"			"[MGE] rank\t - Verwendung: rank <Spielername>. Spieler-Platzierung anzeigen."
 		"ru"			"[MGE] rank\t - Используйте: rank <имя игрока>. Посмотреть статистику игрока."
-	}
-	"Cmd_HitBlip"
-	{
-		"en"			"[MGE] hitblip - Toggle hitblip."
-		"chi"			"[MGE] hitblip - 开启或关闭命中声音。"
-		"de"			"[MGE] hitblip - An- / Ausschalten des Hitblips."
-		"ru"			"[MGE] hitblip - Включить\отключить звук при попадании."
+		"es"			"[MGE] rank\t - Uso: rank <nombre del jugador>. Mostrar el ranking de ese jugador."
 	}
 	"Cmd_Hud"
 	{
@@ -279,6 +301,7 @@
 		"chi"			"[MGE] hud\t - 开启或关闭 HUD 文本信息。"
 		"de"			"[MGE] hud - An- / Ausschalten des Text-HUDs."
 		"ru"			"[MGE] hud - Включить\отключить HUD."
+		"es"			"[MGE] hud - Activar/desactivar el HUD."
 	}
 	"Cmd_Elo"
 	{
@@ -286,6 +309,7 @@
 		"chi"			"[MGE] elo\t - 开启或关闭 ELO 显示。"
 		"de"			"[MGE] elo - An- / Ausschalten der ELO-Anzeige."
 		"ru"			"[MGE] elo - Включить\отключить отображение ELO."
+		"es"			"[MGE] elo - Activar/desactivar el ELO."
 	}
 	"Cmd_Handicap"
 	{
@@ -293,71 +317,478 @@
 		"chi"			"[MGE] handicap - 开启让步，可以减少您的最大生命值。键入“!handicap off”可以关闭。"
 		"de"			"[MGE] handicap - Setzt deine maxmimale HP herab. Schreibe '!handicap off' um es zu deaktvieren."
 		"ru"			"[MGE] handicap - Уменьшить максимальное здоровье. Напишите '!handicap off' чтобы отключить."
+		"es"			"[MGE] handicap - Reducir tu máximo de HP. Escribe '!handicap off' para desactivar."
 	}
 	"NoClassChange"
 	{
-		"en"			"{olive}You cannot change class at this time."
-		"chi"			"{olive}当前您不能更换职业。"
-		"de"			"{olive}Klasse wechseln jetzt nicht möglich."
-		"ru"			"{olive}Вы не можете сменить класс прямо сейчас."
+		"en"			"{green}[MGE]{default} You cannot change class at this time."
+		"chi"			"{green}[MGE]{default} 当前您不能更换职业。"
+		"de"			"{green}[MGE]{default} Klasse wechseln jetzt nicht möglich."
+		"ru"			"{green}[MGE]{default} Вы не можете сменить класс прямо сейчас."
+		"es"			"{green}[MGE]{default} No puedes cambiar de clase en este momento."
 	}
 	"DatabaseDown"
 	{
 		"#format"		"{1:i}"
-		"en"			"Database connection failed, disabling stats.\nA reconnect will be attempted in {1} minutes."
-		"chi"			"Database connection failed, disabling stats.\nA reconnect will be attempted in {1} minutes."
-		"de"			"Datenbankverbindung fehlgeschlagen, Statistiken sind deaktiviert.\n Wiederherstellung der Verbindung wird versucht in {1} Minuten."
-		"ru"			"Не удается присоедниться к базе данных, отключаю статистику.\nПовторная попытка подключения будет через {1} минут."
+		"en"			"{green}[MGE]{default} Database connection failed, disabling stats.\nA reconnect will be attempted in {green}{1}{default} minutes."
+		"chi"			"{green}[MGE]{default} 数据库连接失败，禁用统计数据。\n将在 {green}{1}{default} 分钟后尝试重新连接。"
+		"de"			"{green}[MGE]{default} Datenbankverbindung fehlgeschlagen, Statistiken sind deaktiviert.\n Wiederherstellung der Verbindung wird versucht in {green}{1}{default} Minuten."
+		"ru"			"{green}[MGE]{default} Не удается присоедниться к базе данных, отключаю статистику.\nПовторная попытка подключения будет через {green}{1}{default} минут."
+		"es"			"{green}[MGE]{default} Conexión con la base de datos falló, desactivando puntos.\nSe intentará reconectar en {green}{1}{default} minutos."
 	}
 	"StatsRestored"
 	{
-		"en"			"Database connection restored, refreshing stats...\nStats restored."
-		"chi"			"Database connection restored, refreshing stats...\nStats restored."
-		"de"			"Datenbankverbindung wiederhergestellt, aktualisiere Statistiken...\nStatistiken wiederhergestellt."
-		"ru"			"Соединение с базой данных восстановлено, обновление статистики...\nСтатистика возвращена."
+		"en"			"{green}[MGE]{default} Database connection restored, stats restored."
+		"chi"			"{green}[MGE]{default} 数据库连接已恢复，统计数据已恢复。"
+		"de"			"{green}[MGE]{default} Datenbankverbindung wiederhergestellt, aktualisiere Statistiken...\nStatistiken wiederhergestellt."
+		"ru"			"{green}[MGE]{default} Соединение с базой данных восстановлено, обновление статистики...\nСтатистика возвращена."
+		"es"			"{green}[MGE]{default} Conexión con la base de datos restaurada, puntos restaurados."
 	}
 	"StatsRestoredDown"
 	{
-		"en"			"Database is up, but stats are administratively down."
-		"chi"			"Database is up, but stats are administratively down."
-		"de"			"Datenbank ist online, Statistiken sind jedoch deaktiviert."
-		"ru"			"База данных восстановлена, но статистика выключена."
+		"en"			"{green}[MGE]{default} Database is up, but stats are administratively down."
+		"chi"			"{green}[MGE]{default} 数据库已上线，但统计数据已禁用。"
+		"de"			"{green}[MGE]{default} Datenbank ist online, Statistiken sind jedoch deaktiviert."
+		"ru"			"{green}[MGE]{default} База данных восстановлена, но статистика выключена."
+		"es"			"{green}[MGE]{default} La base de datos está en línea, pero las estadísticas están desactivadas."
 	}
 	"MustJoinArena"
 	{
-		"en"			"{olive}You must join an arena to do that."
-		"chi"			"{olive}您必须先加入一个竞技场！"
-		"de"			"{olive}Du musst in einer Arena sein, um das zu tun."
-		"ru"			"{olive}Чтобы выполнить данную команду вы обязаны зайти на арену."
+		"en"			"{green}[MGE]{default} You must join an arena to do that."
+		"chi"			"{green}[MGE]{default} 您必须先加入一个竞技场！"
+		"de"			"{green}[MGE]{default} Du musst in einer Arena sein, um das zu tun."
+		"ru"			"{green}[MGE]{default} Чтобы выполнить данную команду вы обязаны зайти на арену."
+		"es"			"{green}[MGE]{default} Debes unirte a una arena para hacer eso."
 	}
 	"NoCurrentHandicap"
 	{
 		"#format"		"{1:i}"
-		"en"			"{olive}You currently do not have a handicap."
-		"chi"			"{olive}您目前还没有开启让步呢。"
-		"de"			"{olive}Du hast momentan kein Handicap eingestellt."
-		"ru"			"{olive}На данный момент у вас отключен лимит максимального здоровья."
+		"en"			"{green}[MGE]{default} You currently do not have a handicap."
+		"chi"			"{green}[MGE]{default} 您目前还没有开启让步呢。"
+		"de"			"{green}[MGE]{default} Du hast momentan kein Handicap eingestellt."
+		"ru"			"{green}[MGE]{default} На данный момент у вас отключен лимит максимального здоровья."
+		"es"			"{green}[MGE]{default} No tienes actualmente un handicap."
 	}
 	"CurrentHandicap"
 	{
 		"#format"		"{1:i}"
-		"en"			"{olive}Your current handicap is {lightgreen}{1} {olive}maximum HP."
-		"chi"			"{olive}您当前的让步方案：{lightgreen}{1} {olive}最大生命值。"
-		"de"			"{olive}Dein Handicap beträgt momentan {lightgreen}{1} {olive} HP."
-		"ru"			"{olive}Ваше максимальное здоровье равно {lightgreen}{1} хп."
+		"en"			"{green}[MGE]{default} Your current handicap is {green}{1}{default} maximum HP."
+		"chi"			"{green}[MGE]{default} 您当前的让步方案：{green}{1}{default} 最大生命值。"
+		"de"			"{green}[MGE]{default} Dein Handicap beträgt momentan {green}{1}{default} HP."
+		"ru"			"{green}[MGE]{default} Ваше максимальное здоровье равно {green}{1}{default} хп."
+		"es"			"{green}[MGE]{default} Tu handicap actual es {green}{1}{default} máximo de HP."
 	}
 	"InvalidHandicap"
 	{
-		"en"			"{olive}Your desired handicap is invalid. Disabling handicap."
-		"chi"			"{olive}您设定的让步方案无效。让步已关闭。"
-		"de"			"{olive}Dein gewünschtes Handicap ist ungültig. Handicap wird deaktiviert."
-		"ru"			"{olive}Вы выбрали недопустимое значение для максимального здоровья."
+		"en"			"{green}[MGE]{default} Your desired handicap is invalid. Disabling handicap."
+		"chi"			"{green}[MGE]{default} 您设定的让步方案无效。让步已关闭。"
+		"de"			"{green}[MGE]{default} Dein gewünschtes Handicap ist ungültig. Handicap wird deaktiviert."
+		"ru"			"{green}[MGE]{default} Вы выбрали недопустимое значение для максимального здоровья."
+		"es"			"{green}[MGE]{default} Tu handicap actual es inválido. Handicap desactivado."
 	}
 	"HandicapDisabled"
 	{
-		"en"			"{olive}Handicap disabled."
-		"chi"			"{olive}让步已关闭。"
-		"de"			"{olive}Handicap deaktiviert."
-		"ru"			"{olive}Лимит здоровья отключен."
+		"en"			"{green}[MGE]{default} Handicap disabled."
+		"chi"			"{green}[MGE]{default} 让步已关闭。"
+		"de"			"{green}[MGE]{default} Handicap deaktiviert."
+		"ru"			"{green}[MGE]{default} Лимит здоровья отключен."
+		"es"			"{green}[MGE]{default} Handicap desactivado."
+	}
+	"PluginReloaded"
+	{
+		"en"			"{green}[MGE]{default} Plugin reloaded. Slaying all players to avoid bugs."
+		"chi"			"{green}[MGE]{default} 插件已重新加载。杀死所有玩家以避免错误。"
+		"de"			"{green}[MGE]{default} Plugin neu geladen. Alle Spieler werden getötet, um Bugs zu vermeiden."
+		"ru"			"{green}[MGE]{default} Плагин перезагружен. Убиваю всех игроков, чтобы избежать ошибок."
+		"es"			"{green}[MGE]{default} Plugin recargado. Matando a todos los jugadores para evitar errores."
+	}
+	"TeamAlreadyHasClass"
+	{
+		"en"			"{green}[MGE]{default} Your team already has that class!"
+		"chi"			"{green}[MGE]{default} 您的队伍已经有该职业了！"
+		"de"			"{green}[MGE]{default} Dein Team hat diese Klasse bereits!"
+		"ru"			"{green}[MGE]{default} В вашей команде уже есть этот класс!"
+		"es"			"{green}[MGE]{default} Tu equipo ya tiene esa clase!"
+	}
+	"CannotJoinTeamsManually"
+	{
+		"en"			"{green}[MGE]{default} You cannot manually join teams. Use !add to join an arena or !remove to leave."
+		"chi"			"{green}[MGE]{default} 您不能手动加入队伍。使用 !add 加入竞技场或 !remove 离开。"
+		"de"			"{green}[MGE]{default} Du kannst Teams nicht manuell beitreten. Verwende !add um einer Arena beizutreten oder !remove zum Verlassen."
+		"ru"			"{green}[MGE]{default} Вы не можете вручную присоединиться к командам. Используйте !add, чтобы присоединиться к арене, или !remove, чтобы покинуть её."
+		"es"			"{green}[MGE]{default} No puedes unirte a equipos manualmente. Usa !add para unirte a una arena o !remove para salir."
+	}
+	"ClassChangesOnlyWhileWaiting"
+	{
+		"en"			"{green}[MGE]{default} Class changes are only allowed while waiting for 2v2 match to start!"
+		"chi"			"{green}[MGE]{default} 只有在等待 2v2 比赛开始时才允许更换职业！"
+		"de"			"{green}[MGE]{default} Klassenwechsel sind nur erlaubt, während auf den Start des 2v2-Matches gewartet wird!"
+		"ru"			"{green}[MGE]{default} Смена класса разрешена только во время ожидания начала 2v2 матча!"
+		"es"			"{green}[MGE]{default} Las clases se pueden cambiar solo mientras esperas a que comience el partido 2v2!"
+	}
+	"ClassChangeDuringFightSlay"
+	{
+		"en"			"{green}[MGE]{default} Class change during fight! You will be slayed and respawn next round."
+		"chi"			"{green}[MGE]{default} 在战斗中更换职业！您将被杀死并在下一轮重生。"
+		"de"			"{green}[MGE]{default} Klassenwechsel während des Kampfes! Du wirst getötet und in der nächsten Runde respawnen."
+		"ru"			"{green}[MGE]{default} Смена класса во время боя! Вы будете убиты и возродитесь в следующем раунде."
+		"es"			"{green}[MGE]{default} Cambio de clase durante el combate! Serás matado y reaparecerás en la siguiente ronda."
+	}
+	"ClassChangesDisabledDuringFight"
+	{
+		"en"			"{green}[MGE]{default} Class changes are disabled during fights in this arena!"
+		"chi"			"{green}[MGE]{default} 在此竞技场的战斗中禁止更换职业！"
+		"de"			"{green}[MGE]{default} Klassenwechsel sind während Kämpfen in dieser Arena deaktiviert!"
+		"ru"			"{green}[MGE]{default} Смена класса отключена во время боев на этой арене!"
+		"es"			"{green}[MGE]{default} ¡Cambio de clase desactivado durante los combates en esta arena!"
+	}
+	"EndIfManntreadsRemoval"
+	{
+		"en"			"{green}[MGE]{default} Arena = EndIf and you have the Manntreads. Automatically removing you from the queue."
+		"chi"			"{green}[MGE]{default} 竞技场 = EndIf 且您拥有踏靴。自动将您从队列中移除。"
+		"de"			"{green}[MGE]{default} Arena = EndIf und du hast die Manntreads. Du wirst automatisch aus der Warteschlange entfernt."
+		"ru"			"{green}[MGE]{default} Арена = EndIf и у вас есть Manntreads. Автоматически удаляю вас из очереди."
+		"es"			"{green}[MGE]{default} Arena = EndIf y tienes los Manntreads. Serás removido automáticamente de la cola."
+	}
+	"DatabaseConnectionLost"
+	{
+		"en"			"{green}[MGE]{default} Database connection lost"
+		"chi"			"{green}[MGE]{default} 数据库连接丢失"
+		"de"			"{green}[MGE]{default} Datenbankverbindung verloren"
+		"ru"			"{green}[MGE]{default} Соединение с базой данных потеряно"
+		"es"			"{green}[MGE]{default} Conexión con la base de datos perdida"
+	}
+	"QueryFailed"
+	{
+		"#format"		"{1:s}"
+		"en"			"{green}[MGE]{default} Query failed: {1}"
+		"chi"			"{green}[MGE]{default} 查询失败：{1}"
+		"de"			"{green}[MGE]{default} Abfrage fehlgeschlagen: {1}"
+		"ru"			"{green}[MGE]{default} Запрос не удался: {1}"
+		"es"			"{green}[MGE]{default} Consulta fallida: {1}"
+	}
+	"DatabaseUp"
+	{
+		"en"			"{green}[MGE]{default} Database is {green}Up{default}."
+		"chi"			"{green}[MGE]{default} 数据库{green}已连接{default}。"
+		"de"			"{green}[MGE]{default} Datenbank ist {green}Online{default}."
+		"ru"			"{green}[MGE]{default} База данных {green}работает{default}."
+		"es"			"{green}[MGE]{default} La base de datos {green}está funcionando{default}."
+	}
+	"DatabaseDown"
+	{
+		"en"			"{green}[MGE]{default} Database is {red}Down{default}."
+		"chi"			"{green}[MGE]{default} 数据库{red}已断开{default}。"
+		"de"			"{green}[MGE]{default} Datenbank ist {red}Offline{default}."
+		"ru"			"{green}[MGE]{default} База данных {red}не работает{default}."
+		"es"			"{green}[MGE]{default} La base de datos {red}no está funcionando{default}."
+	}
+	"CannotConvertTo1v1"
+	{
+		"#format"		"{1:s}"
+		"en"			"Cannot convert to 1v1 - {1}"
+		"chi"			"无法转换为 1v1 - {1}"
+		"de"			"Kann nicht zu 1v1 konvertieren - {1}"
+		"ru"			"Не удается преобразовать в 1v1 - {1}"
+		"es"			"No se puede convertir a 1v1 - {1}"
+	}
+	"ChangedArenaTo1v1"
+	{
+		"en"			"{green}[MGE]{default} Changed current arena to 1v1 arena!"
+		"chi"			"{green}[MGE]{default} 已将当前竞技场更改为 1v1 竞技场！"
+		"de"			"{green}[MGE]{default} Aktuelle Arena zu 1v1-Arena geändert!"
+		"ru"			"{green}[MGE]{default} Изменена текущая арена на арену 1v1!"
+		"es"			"{green}[MGE]{default} Cambiada la arena actual a una arena 1v1!"
+	}
+	"All4PlayersJoined"
+	{
+		"en"			"{green}[MGE]{default} All 4 players joined! Please ready up to start the match."
+		"chi"			"{green}[MGE]{default} 所有 4 名玩家已加入！请准备好开始比赛。"
+		"de"			"{green}[MGE]{default} Alle 4 Spieler sind beigetreten! Bitte macht euch bereit, um das Match zu starten."
+		"ru"			"{green}[MGE]{default} Все 4 игрока присоединились! Пожалуйста, приготовьтесь к началу матча."
+		"es"			"{green}[MGE]{default} ¡Todos los 4 jugadores se han unido! Por favor, prepárate para empezar el duelo."
+	}
+	"AllPlayersReady"
+	{
+		"en"			"{green}[MGE]{default} All players ready! Starting match..."
+		"chi"			"{green}[MGE]{default} 所有玩家已准备就绪！开始比赛..."
+		"de"			"{green}[MGE]{default} Alle Spieler bereit! Starte Match..."
+		"ru"			"{green}[MGE]{default} Все игроки готовы! Начинаю матч..."
+		"es"			"{green}[MGE]{default} ¡Todos los jugadores están listos! Iniciando el duelo..."
+	}
+	"CannotSwitchTeamNoSlots"
+	{
+		"#format"		"{1:s}"
+		"en"			"{green}[MGE]{default} Cannot switch to {1} team - no available slots!"
+		"chi"			"{green}[MGE]{default} 无法切换到 {1} 队 - 没有可用位置！"
+		"de"			"{green}[MGE]{default} Kann nicht zum {1}-Team wechseln - keine verfügbaren Plätze!"
+		"ru"			"{green}[MGE]{default} Не удается переключиться в команду {1} - нет свободных мест!"
+		"es"			"{green}[MGE]{default} No se puede cambiar al equipo {1} - ¡no hay espacios disponibles!"
+	}
+	"PlayerSwitchedTeam"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{green}[MGE]{default} {lightgreen}{1}{default} switched to {green}{2}{default} team"
+		"chi"			"{green}[MGE]{default} {lightgreen}{1}{default} 切换到了 {green}{2}{default} 队"
+		"de"			"{green}[MGE]{default} {lightgreen}{1}{default} wechselte zum {green}{2}{default}-Team"
+		"ru"			"{green}[MGE]{default} {lightgreen}{1}{default} переключился в команду {green}{2}{default}"
+		"es"			"{green}[MGE]{default} {lightgreen}{1}{default} cambió al equipo {green}{2}{default}"
+	}
+	"AlreadyOnTeam"
+	{
+		"#format"		"{1:s}"
+		"en"			"{green}[MGE]{default} You are already on the {1} team!"
+		"chi"			"{green}[MGE]{default} 您已经在 {1} 队了！"
+		"de"			"{green}[MGE]{default} Du bist bereits im {1}-Team!"
+		"ru"			"{green}[MGE]{default} Вы уже в команде {1}!"
+		"es"			"{green}[MGE]{default} ¡Ya estás en el equipo {1}!"
+	}
+	"TeamBalanceLost"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"{green}[MGE]{default} Team balance lost (RED: {1}, BLU: {2}). Need exactly 2 players per team."
+		"chi"			"{green}[MGE]{default} 队伍平衡丢失（红队：{1}，蓝队：{2}）。每队需要恰好 2 名玩家。"
+		"de"			"{green}[MGE]{default} Teambalance verloren (ROT: {1}, BLAU: {2}). Benötige genau 2 Spieler pro Team."
+		"ru"			"{green}[MGE]{default} Баланс команд нарушен (КРАСНЫЕ: {1}, СИНИЕ: {2}). Нужно ровно по 2 игрока в каждой команде."
+		"es"			"{green}[MGE]{default} Balance de equipos perdido (ROJO: {1}, AZUL: {2}). Se necesitan exactamente 2 jugadores por equipo."
+	}
+	"NotInArena"
+	{
+		"en"			"{green}[MGE]{default} You are not in an arena!"
+		"chi"			"{green}[MGE]{default} 您不在竞技场中！"
+		"de"			"{green}[MGE]{default} Du bist nicht in einer Arena!"
+		"ru"			"{green}[MGE]{default} Вы не на арене!"
+		"es"			"{green}[MGE]{default} ¡No estás en una arena!"
+	}
+	"ReadyOnlyFor2v2"
+	{
+		"en"			"{green}[MGE]{default} Ready command is only available in 2v2 arenas!"
+		"chi"			"{green}[MGE]{default} 准备命令仅在 2v2 竞技场中可用！"
+		"de"			"{green}[MGE]{default} Ready-Befehl ist nur in 2v2-Arenen verfügbar!"
+		"ru"			"{green}[MGE]{default} Команда готовности доступна только на аренах 2v2!"
+		"es"			"{green}[MGE]{default} ¡El comando Ready solo está disponible en arenas 2v2!"
+	}
+	"ArenaNotWaitingReady"
+	{
+		"en"			"{green}[MGE]{default} Arena is not waiting for ready confirmation!"
+		"chi"			"{green}[MGE]{default} 竞技场不在等待准备确认！"
+		"de"			"{green}[MGE]{default} Arena wartet nicht auf Ready-Bestätigung!"
+		"ru"			"{green}[MGE]{default} Арена не ожидает подтверждения готовности!"
+		"es"			"{green}[MGE]{default} ¡La arena no está esperando la confirmación de ready!"
+	}
+	"SwapCooldown"
+	{
+		"en"			"{green}[MGE]{default} You must wait {green}60{default} seconds between swap attempts!"
+		"chi"			"{green}[MGE]{default} 您必须在交换尝试之间等待 {green}60{default} 秒！"
+		"de"			"{green}[MGE]{default} Du musst {green}60{default} Sekunden zwischen Tauschversuchen warten!"
+		"ru"			"{green}[MGE]{default} Вы должны ждать {green}60{default} секунд между попытками обмена!"
+		"es"			"{green}[MGE]{default} ¡Debes esperar {green}60{default} segundos entre intentos de cambio!"
+	}
+	"MatchFinishedReadyUp"
+	{
+		"en"			"{green}[MGE]{default} Match finished! Please ready up for the next round."
+		"chi"			"{green}[MGE]{default} 比赛结束！请为下一轮做好准备。"
+		"de"			"{green}[MGE]{default} Match beendet! Bitte macht euch für die nächste Runde bereit."
+		"ru"			"{green}[MGE]{default} Матч окончен! Пожалуйста, приготовьтесь к следующему раунду."
+		"es"			"{green}[MGE]{default} ¡El partido ha terminado! Por favor, prepárate para la siguiente ronda."
+	}
+	"EloToggle"
+	{
+		"#format"		"{1:s}"
+		"en"			"{green}[MGE]{default} ELO display is {green}{1}{default}."
+		"chi"			"{green}[MGE]{default} ELO 显示已{green}{1}{default}。"
+		"de"			"{green}[MGE]{default} ELO-Anzeige ist {green}{1}{default}."
+		"ru"			"{green}[MGE]{default} Отображение ELO {green}{1}{default}."
+		"es"			"{green}[MGE]{default} El ELO está {green}{1}{default}."
+	}
+	"HudToggle"
+	{
+		"#format"		"{1:s}"
+		"en"			"{green}[MGE]{default} HUD is {green}{1}{default}."
+		"chi"			"{green}[MGE]{default} HUD 已{green}{1}{default}。"
+		"de"			"{green}[MGE]{default} HUD ist {green}{1}{default}."
+		"ru"			"{green}[MGE]{default} HUD {green}{1}{default}."
+		"es"			"{green}[MGE]{default} El HUD está {green}{1}{default}."
+	}
+	"AlreadyInArena"
+	{
+		"#format"		"{1:s}"
+		"en"			"{green}[MGE]{default} You are already in {green}{1}{default}."
+		"chi"			"{green}[MGE]{default} 您已经在 {green}{1}{default} 中了。"
+		"de"			"{green}[MGE]{default} Du bist bereits in {green}{1}{default}."
+		"ru"			"{green}[MGE]{default} Вы уже на {green}{1}{default}."
+		"es"			"{green}[MGE]{default} ¡Ya estás en {green}{1}{default}!"
+	}
+	"PlayerNotInAnyArena"
+	{
+		"#format"		"{1:N}"
+		"en"			"{green}[MGE]{default} {1} is not in any arena."
+		"chi"			"{green}[MGE]{default} {1} 不在任何竞技场中。"
+		"de"			"{green}[MGE]{default} {1} ist in keiner Arena."
+		"ru"			"{green}[MGE]{default} {1} не на арене."
+		"es"			"{green}[MGE]{default} {1} no está en ninguna arena."
+	}
+	"AlreadySameArena"
+	{
+		"#format"		"{1:N}"
+		"en"			"{green}[MGE]{default} You are already in the same arena as {1}."
+		"chi"			"{green}[MGE]{default} 您已经和 {1} 在同一个竞技场中了。"
+		"de"			"{green}[MGE]{default} Du bist bereits in derselben Arena wie {1}."
+		"ru"			"{green}[MGE]{default} Вы уже на той же арене, что и {1}."
+		"es"			"{green}[MGE]{default} Ya estás en la misma arena que {1}."
+	}
+	"ArenaAlready1v1"
+	{
+		"en"			"{green}[MGE]{default} This arena is already in 1v1 mode!"
+		"chi"			"{green}[MGE]{default} 此竞技场已经处于 1v1 模式！"
+		"de"			"{green}[MGE]{default} Diese Arena ist bereits im 1v1-Modus!"
+		"ru"			"{green}[MGE]{default} Эта арена уже в режиме 1v1!"
+		"es"			"{green}[MGE]{default} ¡Esta arena ya está en modo 1v1!"
+	}
+	"ArenaAlready2v2"
+	{
+		"en"			"{green}[MGE]{default} This arena is already in 2v2 mode!"
+		"chi"			"{green}[MGE]{default} 此竞技场已经处于 2v2 模式！"
+		"de"			"{green}[MGE]{default} Diese Arena ist bereits im 2v2-Modus!"
+		"ru"			"{green}[MGE]{default} Эта арена уже в режиме 2v2!"
+		"es"			"{green}[MGE]{default} ¡Esta arena ya está en modo 2v2!"
+	}
+	"ArenaAlreadyMGE"
+	{
+		"en"			"{green}[MGE]{default} This arena is already in MGE mode!"
+		"chi"			"{green}[MGE]{default} 此竞技场已经处于 MGE 模式！"
+		"de"			"{green}[MGE]{default} Diese Arena ist bereits im MGE-Modus!"
+		"ru"			"{green}[MGE]{default} Эта арена уже в режиме MGE!"
+		"es"			"{green}[MGE]{default} ¡Esta arena ya está en modo MGE!"
+	}
+	"Cannot1v1InArena"
+	{
+		"en"			"{green}[MGE]{default} Cannot change to 1v1 in this arena!"
+		"chi"			"{green}[MGE]{default} 无法在此竞技场中更改为 1v1！"
+		"de"			"{green}[MGE]{default} Kann in dieser Arena nicht zu 1v1 wechseln!"
+		"ru"			"{green}[MGE]{default} Нельзя переключить эту арену в режим 1v1!"
+		"es"			"{green}[MGE]{default} ¡No se puede cambiar a 1v1 en esta arena!"
+	}
+	"Cannot2v2InArena"
+	{
+		"en"			"{green}[MGE]{default} Cannot change to 2v2 in this arena!"
+		"chi"			"{green}[MGE]{default} 无法在此竞技场中更改为 2v2！"
+		"de"			"{green}[MGE]{default} Kann in dieser Arena nicht zu 2v2 wechseln!"
+		"ru"			"{green}[MGE]{default} Нельзя переключить эту арену в режим 2v2!"
+		"es"			"{green}[MGE]{default} ¡No se puede cambiar a 2v2 en esta arena!"
+	}
+	"CannotSwitch1v1Now"
+	{
+		"en"			"{green}[MGE]{default} Cannot switch to 1v1 now!"
+		"chi"			"{green}[MGE]{default} 现在无法切换到 1v1！"
+		"de"			"{green}[MGE]{default} Kann jetzt nicht zu 1v1 wechseln!"
+		"ru"			"{green}[MGE]{default} Нельзя переключиться в 1v1 сейчас!"
+		"es"			"{green}[MGE]{default} ¡No se puede cambiar a 1v1 ahora!"
+	}
+	"CannotSwitch2v2Now"
+	{
+		"en"			"{green}[MGE]{default} Cannot switch to 2v2 now!"
+		"chi"			"{green}[MGE]{default} 现在无法切换到 2v2！"
+		"de"			"{green}[MGE]{default} Kann jetzt nicht zu 2v2 wechseln!"
+		"ru"			"{green}[MGE]{default} Нельзя переключиться в 2v2 сейчас!"
+		"es"			"{green}[MGE]{default} ¡No se puede cambiar a 2v2 ahora!"
+	}
+	"MoreThan2Players"
+	{
+		"en"			"{green}[MGE]{default} There are more then 2 players in this arena"
+		"chi"			"{green}[MGE]{default} 此竞技场中有超过 2 名玩家"
+		"de"			"{green}[MGE]{default} Es sind mehr als 2 Spieler in dieser Arena"
+		"ru"			"{green}[MGE]{default} На этой арене больше 2 игроков"
+		"es"			"{green}[MGE]{default} Hay más de 2 jugadores en esta arena"
+	}
+	"ChangedArenaTo2v2"
+	{
+		"en"			"{green}[MGE]{default} Changed current arena to 2v2 arena!"
+		"chi"			"{green}[MGE]{default} 已将当前竞技场更改为 2v2 竞技场！"
+		"de"			"{green}[MGE]{default} Aktuelle Arena zu 2v2-Arena geändert!"
+		"ru"			"{green}[MGE]{default} Изменена текущая арена на арену 2v2!"
+		"es"			"{green}[MGE]{default} ¡Cambiada la arena actual a una arena 2v2!"
+	}
+	"ChangedArenaToMGE"
+	{
+		"en"			"{green}[MGE]{default} Changed current arena to MGE mode!"
+		"chi"			"{green}[MGE]{default} 已将当前竞技场更改为 MGE 模式！"
+		"de"			"{green}[MGE]{default} Aktuelle Arena zu MGE-Modus geändert!"
+		"ru"			"{green}[MGE]{default} Изменена текущая арена на режим MGE!"
+		"es"			"{green}[MGE]{default} ¡Cambiada la arena actual a modo MGE!"
+	}
+	"NoStatsTrue"
+	{
+		"en"			"{green}[MGE]{default} Stats have been disabled!"
+		"chi"			"{green}[MGE]{default} 统计数据已禁用！"
+		"de"			"{green}[MGE]{default} Statistiken wurden deaktiviert!"
+		"ru"			"{green}[MGE]{default} Статистика отключена!"
+		"es"			"{green}[MGE]{default} ¡Las estadísticas han sido desactivadas!"
+	}
+	"WinChanceMessage"
+	{
+		"#format"		"{1:N},{2:i},{3:i},{4:i}"
+		"en"			"{green}[MGE]{default} {lightgreen}{1}{default} has {green}{2}{default} wins and {green}{3}{default} losses. You have a {green}{4}%{default} chance of beating him."
+		"chi"			"{green}[MGE]{default} {lightgreen}{1}{default} 有 {green}{2}{default} 胜和 {green}{3}{default} 负。您有 {green}{4}%{default} 的机会击败他。"
+		"de"			"{green}[MGE]{default} {lightgreen}{1}{default} hat {green}{2}{default} Siege und {green}{3}{default} Niederlagen. Du hast eine {green}{4}%{default} Chance, ihn zu schlagen."
+		"ru"			"{green}[MGE]{default} {lightgreen}{1}{default} имеет {green}{2}{default} побед и {green}{3}{default} поражений. У вас {green}{4}%{default} шансов его победить."
+		"es"			"{green}[MGE]{default} {lightgreen}{1}{default} tiene {green}{2}{default} victorias y {green}{3}{default} derrotas. Tienes un {green}{4}%{default} de chances de vencerlo."
+	}
+	"WinChanceRatingMessage"
+	{
+		"#format"		"{1:N},{2:i},{3:i}"
+		"en"			"{green}[MGE]{default} {lightgreen}{1}{default}'s rating is {green}{2}{default}. You have a {green}{3}%{default} chance of beating him."
+		"chi"			"{green}[MGE]{default} {lightgreen}{1}{default} 的评级是 {green}{2}{default}。您有 {green}{3}%{default} 的机会击败他。"
+		"de"			"{green}[MGE]{default} {lightgreen}{1}{default}'s Wertung ist {green}{2}{default}. Du hast eine {green}{3}%{default} Chance, ihn zu schlagen."
+		"ru"			"{green}[MGE]{default} Рейтинг {lightgreen}{1}{default} равен {green}{2}{default}. У вас {green}{3}%{default} шансов его победить."
+		"es"			"{green}[MGE]{default} El rating de {lightgreen}{1}{default} es {green}{2}{default}. Tienes un {green}{3}%{default} de chances de vencerlo."
+	}
+	"EnabledLabel"
+	{
+		"en"			"enabled"
+		"chi"			"已启用"
+		"de"			"aktiviert"
+		"ru"			"включен"
+		"es"			"activado"
+	}
+	"DisabledLabel"
+	{
+		"en"			"disabled"
+		"chi"			"已禁用"
+		"de"			"deaktiviert"
+		"ru"			"отключен"
+		"es"			"desactivado"
+	}
+	"ArenaAlreadyKOTH"
+	{
+		"en"			"{green}[MGE]{default} This arena is already in KOTH mode!"
+		"chi"			"{green}[MGE]{default} 此竞技场已经处于 KOTH 模式！"
+		"de"			"{green}[MGE]{default} Diese Arena ist bereits im KOTH-Modus!"
+		"ru"			"{green}[MGE]{default} Эта арена уже в режиме KOTH!"
+		"es"			"{green}[MGE]{default} ¡Esta arena ya está en modo KOTH!"
+	}
+	"CannotKOTHInArena"
+	{
+		"en"			"{green}[MGE]{default} Cannot change to KOTH mode in this arena!"
+		"chi"			"{green}[MGE]{default} 无法在此竞技场中更改为 KOTH 模式！"
+		"de"			"{green}[MGE]{default} Kann in dieser Arena nicht zu KOTH-Modus wechseln!"
+		"ru"			"{green}[MGE]{default} Нельзя переключить эту арену в режим KOTH!"
+		"es"			"{green}[MGE]{default} ¡No se puede cambiar a modo KOTH en esta arena!"
+	}
+	"CannotSwitchKOTHNow"
+	{
+		"en"			"{green}[MGE]{default} Cannot switch to KOTH now!"
+		"chi"			"{green}[MGE]{default} 现在无法切换到 KOTH！"
+		"de"			"{green}[MGE]{default} Kann jetzt nicht zu KOTH wechseln!"
+		"ru"			"{green}[MGE]{default} Нельзя переключиться в KOTH сейчас!"
+		"es"			"{green}[MGE]{default} ¡No se puede cambiar a modo KOTH ahora!"
+	}
+	"ChangedArenaToKOTH"
+	{
+		"en"			"{green}[MGE]{default} Changed current arena to KOTH mode!"
+		"chi"			"{green}[MGE]{default} 已将当前竞技场更改为 KOTH 模式！"
+		"de"			"{green}[MGE]{default} Aktuelle Arena zu KOTH-Modus geändert!"
+		"ru"			"{green}[MGE]{default} Изменена текущая арена на режим KOTH!"
+		"es"			"{green}[MGE]{default} ¡Cambiada la arena actual a modo KOTH!"
 	}
 }
