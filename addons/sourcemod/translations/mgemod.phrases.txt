@@ -816,4 +816,120 @@
 		"ru"			"{1}/4 игроков готовы\n{2}\nНапишите !ready или !r для переключения"
 		"es"			"{1}/4 jugadores listos\n{2}\nEscribe !ready o !r para cambiar"
 	}
+	"2v2ArenaManagementTitle"
+	{
+		"#format"		"{1:s}"
+		"en"			"2v2 Arena Management (Currently on {1} team):"
+		"chi"			"2v2 竞技场管理（当前在 {1} 队）："
+		"de"			"2v2-Arena-Verwaltung (Aktuell im {1}-Team):"
+		"ru"			"Управление ареной 2v2 (В данный момент в команде {1}):"
+		"es"			"Gestión de Arena 2v2 (Actualmente en equipo {1}):"
+	}
+	"2v2ArenaSelectionTitle"
+	{
+		"en"			"You selected a 2v2 arena. What would you like to do?"
+		"chi"			"您选择了 2v2 竞技场。您想要做什么？"
+		"de"			"Du hast eine 2v2-Arena gewählt. Was möchtest du tun?"
+		"ru"			"Вы выбрали арену 2v2. Что вы хотите делать?"
+		"es"			"Has seleccionado una arena 2v2. ¿Qué te gustaría hacer?"
+	}
+	"JoinNormallySwitch1v1"
+	{
+		"en"			"Join normally and switch arena to 1v1"
+		"chi"			"正常加入并将竞技场切换为 1v1"
+		"de"			"Normal beitreten und Arena zu 1v1 wechseln"
+		"ru"			"Присоединиться обычно и переключить арену на 1v1"
+		"es"			"Unirse normalmente y cambiar arena a 1v1"
+	}
+	"Switch1v1Disabled"
+	{
+		"#format"		"{1:s}"
+		"en"			"Switch to 1v1 (disabled - {1})"
+		"chi"			"切换到 1v1（已禁用 - {1}）"
+		"de"			"Zu 1v1 wechseln (deaktiviert - {1})"
+		"ru"			"Переключиться на 1v1 (отключено - {1})"
+		"es"			"Cambiar a 1v1 (deshabilitado - {1})"
+	}
+	"JoinRedTeam"
+	{
+		"#format"		"{1:i}"
+		"en"			"Join RED [{1}]"
+		"chi"			"加入红队 [{1}]"
+		"de"			"ROT-Team beitreten [{1}]"
+		"ru"			"Присоединиться к КРАСНЫМ [{1}]"
+		"es"			"Unirse a equipo ROJO [{1}]"
+	}
+	"JoinBluTeam"
+	{
+		"#format"		"{1:i}"
+		"en"			"Join BLU [{1}]"
+		"chi"			"加入蓝队 [{1}]"
+		"de"			"BLAU-Team beitreten [{1}]"
+		"ru"			"Присоединиться к СИНИМ [{1}]"
+		"es"			"Unirse a equipo AZUL [{1}]"
+	}
+	"Ready2v2MatchTitle"
+	{
+		"en"			"Ready for 2v2 match?"
+		"chi"			"准备好进行 2v2 比赛了吗？"
+		"de"			"Bereit für 2v2-Match?"
+		"ru"			"Готовы к матчу 2v2?"
+		"es"			"¿Listo para el partido 2v2?"
+	}
+	"YesImReady"
+	{
+		"en"			"Yes, I'm ready!"
+		"chi"			"是的，我准备好了！"
+		"de"			"Ja, ich bin bereit!"
+		"ru"			"Да, я готов!"
+		"es"			"¡Sí, estoy listo!"
+	}
+	"NoNotReady"
+	{
+		"en"			"No, not ready"
+		"chi"			"不，还没准备好"
+		"de"			"Nein, nicht bereit"
+		"ru"			"Нет, не готов"
+		"es"			"No, no estoy listo"
+	}
+	"SwapClassesWithTeammate"
+	{
+		"en"			"Would you like to swap classes with your teammate?"
+		"chi"			"您想与队友交换职业吗？"
+		"de"			"Möchtest du die Klassen mit deinem Teamkameraden tauschen?"
+		"ru"			"Хотите поменяться классами с товарищем по команде?"
+		"es"			"¿Te gustaría intercambiar clases con tu compañero de equipo?"
+	}
+	"Yes"
+	{
+		"en"			"Yes"
+		"chi"			"是"
+		"de"			"Ja"
+		"ru"			"Да"
+		"es"			"Sí"
+	}
+	"No"
+	{
+		"en"			"No"
+		"chi"			"否"
+		"de"			"Nein"
+		"ru"			"Нет"
+		"es"			"No"
+	}
+	"TeamRed"
+	{
+		"en"			"RED"
+		"chi"			"红队"
+		"de"			"ROT"
+		"ru"			"КРАСНЫЕ"
+		"es"			"ROJO"
+	}
+	"TeamBlu"
+	{
+		"en"			"BLU"
+		"chi"			"蓝队"
+		"de"			"BLAU"
+		"ru"			"СИНИЕ"
+		"es"			"AZUL"
+	}
 }
