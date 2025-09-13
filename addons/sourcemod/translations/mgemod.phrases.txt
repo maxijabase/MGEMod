@@ -791,4 +791,29 @@
 		"ru"			"{green}[MGE]{default} Изменена текущая арена на режим KOTH!"
 		"es"			"{green}[MGE]{default} ¡Cambiada la arena actual a modo KOTH!"
 	}
+	"Ready2v2StatusReady"
+	{
+		"en"			"✓ You are READY"
+		"chi"			"✓ 您已准备就绪"
+		"de"			"✓ Du bist BEREIT"
+		"ru"			"✓ Вы ГОТОВЫ"
+		"es"			"✓ Estás LISTO"
+	}
+	"Ready2v2StatusNotReady"
+	{
+		"en"			"✘ You are NOT READY"
+		"chi"			"✘ 您尚未准备就绪"
+		"de"			"✘ Du bist NICHT BEREIT"
+		"ru"			"✘ Вы НЕ ГОТОВЫ"
+		"es"			"✘ NO estás listo"
+	}
+	"Ready2v2HudText"
+	{
+		"#format"		"{1:i},{2:s}"
+		"en"			"{1}/4 players ready\n{2}\nType !ready or !r to toggle"
+		"chi"			"{1}/4 名玩家已准备就绪\n{2}\n输入 !ready 或 !r 切换状态"
+		"de"			"{1}/4 Spieler bereit\n{2}\nGib !ready oder !r ein zum Wechseln"
+		"ru"			"{1}/4 игроков готовы\n{2}\nНапишите !ready или !r для переключения"
+		"es"			"{1}/4 jugadores listos\n{2}\nEscribe !ready o !r para cambiar"
+	}
 }

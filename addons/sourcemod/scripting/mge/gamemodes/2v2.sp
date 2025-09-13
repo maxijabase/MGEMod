@@ -337,21 +337,20 @@ void Show2v2ReadyHud(int arena_index, int ready_count)
         if (client && IsValidClient(client))
         {
             char hudtext[256];
-            char status_indicator[32];
+            char status_indicator[64];
             
             // Set personal ready status indicator
             if (g_bPlayer2v2Ready[client])
             {
-                Format(status_indicator, sizeof(status_indicator), "✓ You are READY");
+                Format(status_indicator, sizeof(status_indicator), "%T", "Ready2v2StatusReady", client);
             }
             else
             {
-                Format(status_indicator, sizeof(status_indicator), "✘ You are NOT READY");
+                Format(status_indicator, sizeof(status_indicator), "%T", "Ready2v2StatusNotReady", client);
             }
             
             // Format personalized hud text
-            Format(hudtext, sizeof(hudtext), "%d/4 players ready\n%s\nType !ready or !r to toggle", 
-                   ready_count, status_indicator);
+            Format(hudtext, sizeof(hudtext), "%T", "Ready2v2HudText", client, ready_count, status_indicator);
             
             PrintHintText(client, "%s", hudtext);
             StopSound(client, SNDCHAN_STATIC, "UI/hint.wav");
