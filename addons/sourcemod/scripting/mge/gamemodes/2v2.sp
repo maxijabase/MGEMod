@@ -18,7 +18,7 @@ void Show2v2SelectionMenu(int client, int arena_index)
     if (already_in_arena)
     {
         char current_team[32];
-        Format(current_team, sizeof(current_team), "%T", (current_slot == SLOT_ONE || current_slot == SLOT_THREE) ? "TeamRed" : "TeamBlu", client);
+        Format(current_team, sizeof(current_team), "%s", (current_slot == SLOT_ONE || current_slot == SLOT_THREE) ? "RED" : "BLU", client);
         Format(title, sizeof(title), "%T", "2v2ArenaManagementTitle", client, current_team);
     }
     else
