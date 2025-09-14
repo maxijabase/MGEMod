@@ -3,16 +3,63 @@
 
 This is a fork of sappho's repository, with the following improvements:
 
-- Added a database migration mechanism to leave room for future features and improvements that require modifying the schema
-- Fixed some database connection issues
-- Split the `mgemod_spawns.cfg` file into map-specific files for better performance and UX while editing arenas
-- Reduced log verbosity in console when loading the plugin
-- Added class tracking in duels
-- Added start time tracking in duels
-- Added previous and new score tracking in duels
-- Added the possibility of blocking class change once the duel has started and score is still 0-0, via a new arena `classchange` property in the map config file
-- Added `mgemod_2v2_skip_countdown` ConVar to allow server owners to toggle countdown between 2v2 rounds (0 = normal countdown, 1 = skip countdown) (author: [tommy-mor](https://github.com/sapphonie/MGEMod/pull/24))
-- Added new `!elo` command to toggle client score display (like a local-only no stats)
+## Database & Backend
+
+* Added a database migration mechanism to leave room for future features and improvements that require modifying the schema
+* Fixed some database connection issues
+* Added PostgreSQL support (only <=9.6 as per SourceMod's limitations)
+* Added some measures to prevent ELOs from corrupting randomly due to database connection errors
+* Added an API layer of natives and forwards
+
+## Duel & Statistics Tracking
+
+* Added class tracking in duels
+* Added start time tracking in duels
+* Added previous and new score tracking in duels
+* Added elo tracking in duels, displaying previous elo and new elo of each player in every match record
+* Added new `!elo` command to toggle client score display (like a local-only no stats)
+
+## Arena & Gameplay
+
+* Split the `mgemod_spawns.cfg` file into map-specific files for better performance and UX while editing arenas
+* Added the possibility of blocking class change once the duel has started and score is still 0-0, via a new arena `classchange` property in the map config file
+* Modified !add command to support a player name as argument to join the arena that player is in (`!add @ampere`)
+* Added `mgemod_clear_projectiles` (0/1) ConVar to allow server owners to enable/disable projectile deletion upon the start of a new round
+* Blocked eureka effect teleport usage
+* Blocked the repeating resupply sound due to some maps not blocking them in certain arenas
+* Fixed a small bug in the random spawn logic
+* Attempted to fix situations of death momentum carryover on respawn, which results in respawning with non-zero velocity
+
+## User Interface & Experience
+
+* Fixed arena player count display in the !add menu not working properly
+* Fixed HUD not reflecting changes on time or not displaying players properly sometimes
+* Improved the interface and usage experience of the !top5 menu
+* Fixed some sounds not working due to the plugin using their .wav version instead of .mp3
+* Forced menu close on players that had the !add menu open but decided to join an arena via chat, to prevent accidental arena changes
+* Fixed some commands not having their return type properly, making users users receive "Unknown command" upon running them
+* Added missing translations for all hardcoded english strings across the entire plugin, and added some languages
+
+## 2v2 System
+
+* Implemented a new menu upon selecting a 2v2 arena to join a specific team, or to switch that arena to 1v1
+* Implemented a ready system
+  * Plugin prompts players for their ready status once it detects 2 players per team in the arena
+  * Players can either confirm ready via menu or `!r`/`!ready` commands in chat
+  * Players get notified of everyone in the arena's ready status via a center hint text
+* Players can switch teams either via the !add menu selecting their current arena, or switching teams manually
+* Added `mgemod_2v2_skip_countdown` (0/1) ConVar to allow server owners to enable/disable countdown between 2v2 rounds (author: [tommy-mor](https://github.com/sapphonie/MGEMod/pull/24))
+* Fixed names sometimes getting cut off in the HUD text
+* Improved displaying player names in the HUD
+* Teammates no longer spawn in the same spot
+* Added `mgemod_2v2_elo` (0/1) ConVar to allow server owners to enable/disable 2v2 duels from affecting players ELOs
+
+## Developer Experience
+
+* Reduced log verbosity in console when loading the plugin
+* Modernized some parts of the source code with methodmap usage
+* Fixed some bugs with `!botme` usage
+* Completely modularized the code in separate script files to reduce the +7000 lines main file
 
 The plugin is ready to be a drop-in replacement for the standard MGE version. Database modifications will be performed automatically and safely.
 
@@ -51,16 +98,6 @@ The ELO display logic in 2v2 mode is confusing since individual ELOs get merged/
 - Implement team-based ELO calculation and display
 - Show individual ELOs but with clear indication they're not used for 2v2 matchmaking
 - Redesign ELO system to be more intuitive for 2v2 gameplay
-
-### SQLite Format() Query Bug
-
-There's a mysterious Format() bug that occurs on 2v2 match end, caused by incorrect parameters being passed to the SQLite query formatting function. This bug is difficult to reproduce and solve.
-
-**Investigation needed:**
-- Trace the exact parameters being passed to Format() function
-- Check for type mismatches or null values in query parameters
-- Review SQLite query construction logic for 2v2 match end
-- Add better error handling and parameter validation
 
 ### Make all timers configurable
 
