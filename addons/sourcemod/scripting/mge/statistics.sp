@@ -217,30 +217,212 @@ Action Command_Rank(int client, int args)
     if (g_bNoStats || !IsValidClient(client))
         return Plugin_Handled;
 
-    if (args == 0)
+    int target = client;
+    
+    if (args > 0)
     {
-        if (g_bNoDisplayRating || !g_bShowElo[client])
-            MC_PrintToChat(client, "%t", "MyRankNoRating", g_iPlayerWins[client], g_iPlayerLosses[client]);
-        else
-            MC_PrintToChat(client, "%t", "MyRank", g_iPlayerRating[client], g_iPlayerWins[client], g_iPlayerLosses[client]);
-    } else {
         char argstr[64];
         GetCmdArgString(argstr, sizeof(argstr));
         int targ = FindTarget(0, argstr, false, false);
-
-        if (targ == client)
-        {
-            if (g_bNoDisplayRating || !g_bShowElo[client])
-                MC_PrintToChat(client, "%t", "MyRankNoRating", g_iPlayerWins[client], g_iPlayerLosses[client]);
-            else
-                MC_PrintToChat(client, "%t", "MyRank", g_iPlayerRating[client], g_iPlayerWins[client], g_iPlayerLosses[client]);
-        } else if (targ != -1) {
-            if (g_bNoDisplayRating || !g_bShowElo[client])
-                MC_PrintToChat(client, "%t", "WinChanceMessage", targ, g_iPlayerWins[targ], g_iPlayerLosses[targ], RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targ] - g_iPlayerRating[client])) / 400) + 1)) * 100));
-            else
-                MC_PrintToChat(client, "%t", "WinChanceRatingMessage", targ, g_iPlayerRating[targ], RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targ] - g_iPlayerRating[client])) / 400) + 1)) * 100));
-        }
+        
+        if (targ != -1)
+            target = targ;
     }
+    
+    // Store target for panel display callbacks
+    g_iRankTargetClient[client] = target;
+    
+    // Start getting all rank data for the target player
+    GetPlayerRankData(client, target);
 
     return Plugin_Handled;
+}
+
+// Initiates database queries to get all rank data for a player
+void GetPlayerRankData(int requestingClient, int targetPlayer)
+{
+    if (!IsValidClient(targetPlayer) || g_bNoStats)
+        return;
+    
+    // Query for rating rank
+    char query[512];
+    GetSelectPlayerRatingRankQuery(query, sizeof(query), g_sPlayerSteamID[targetPlayer]);
+    DataPack dp = new DataPack();
+    dp.WriteCell(requestingClient);
+    dp.WriteCell(targetPlayer);
+    dp.WriteCell(1); // Query type: 1=rating, 2=wins, 3=losses
+    g_DB.Query(SQL_OnPlayerRankReceived, query, dp);
+}
+
+// Database callback for player rank queries
+void SQL_OnPlayerRankReceived(Database db, DBResultSet results, const char[] error, DataPack dp)
+{
+    dp.Reset();
+    int requestingClient = dp.ReadCell();
+    int targetPlayer = dp.ReadCell();
+    int queryType = dp.ReadCell();
+    delete dp;
+    
+    if (db == null || results == null)
+    {
+        LogError("[PlayerRank] Query failed (type %d): %s", queryType, error);
+        return;
+    }
+    
+    if (!IsValidClient(requestingClient) || !IsValidClient(targetPlayer))
+        return;
+        
+    int rank = 0;
+    if (results.FetchRow())
+        rank = results.FetchInt(0);
+    
+    // Store the rank data
+    switch (queryType)
+    {
+        case 1: 
+        {
+            g_iPlayerRatingRank[targetPlayer] = rank;
+            // Continue with wins query
+            char query[512];
+            GetSelectPlayerWinsRankQuery(query, sizeof(query), g_sPlayerSteamID[targetPlayer]);
+            DataPack newDp = new DataPack();
+            newDp.WriteCell(requestingClient);
+            newDp.WriteCell(targetPlayer);
+            newDp.WriteCell(2);
+            g_DB.Query(SQL_OnPlayerRankReceived, query, newDp);
+        }
+        case 2:
+        {
+            g_iPlayerWinsRank[targetPlayer] = rank;
+            // Continue with losses query
+            char query[512];
+            GetSelectPlayerLossesRankQuery(query, sizeof(query), g_sPlayerSteamID[targetPlayer]);
+            DataPack newDp = new DataPack();
+            newDp.WriteCell(requestingClient);
+            newDp.WriteCell(targetPlayer);
+            newDp.WriteCell(3);
+            g_DB.Query(SQL_OnPlayerRankReceived, query, newDp);
+        }
+        case 3:
+        {
+            g_iPlayerLossesRank[targetPlayer] = rank;
+            // All queries done, show the panel
+            ShowPlayerRankPanel(requestingClient, targetPlayer);
+        }
+    }
+}
+
+// Creates and displays comprehensive player rank panel
+void ShowPlayerRankPanel(int client, int targetPlayer)
+{
+    if (!IsValidClient(client) || !IsValidClient(targetPlayer))
+        return;
+
+    Panel panel = new Panel();
+    char title[128];
+    
+    if (client == targetPlayer)
+    {
+        Format(title, sizeof(title), "%T\n", "YourStatistics", client);
+    }
+    else
+    {
+        char targetName[MAX_NAME_LENGTH];
+        GetClientName(targetPlayer, targetName, sizeof(targetName));
+        Format(title, sizeof(title), "%T\n", "PlayerStatistics", client, targetName);
+    }
+    
+    panel.SetTitle(title);
+    panel.DrawText(" ");
+    
+    // Rating display
+    if (!g_bNoDisplayRating && g_bShowElo[client])
+    {
+        char ratingLine[256];
+        Format(ratingLine, sizeof(ratingLine), "Rating: %d (#%d)", g_iPlayerRating[targetPlayer], g_iPlayerRatingRank[targetPlayer]);
+        panel.DrawText(ratingLine);
+    }
+    
+    // Wins display
+    char winsLine[256];
+    Format(winsLine, sizeof(winsLine), "W: %d (#%d)", g_iPlayerWins[targetPlayer], g_iPlayerWinsRank[targetPlayer]);
+    panel.DrawText(winsLine);
+    
+    // Losses display  
+    char lossesLine[256];
+    Format(lossesLine, sizeof(lossesLine), "L: %d (#%d)", g_iPlayerLosses[targetPlayer], g_iPlayerLossesRank[targetPlayer]);
+    panel.DrawText(lossesLine);
+    
+    // W/L ratio display
+    char wlRatioLine[256];
+    if (g_iPlayerLosses[targetPlayer] > 0)
+    {
+        float wlRatio = float(g_iPlayerWins[targetPlayer]) / float(g_iPlayerLosses[targetPlayer]);
+        Format(wlRatioLine, sizeof(wlRatioLine), "W/L: %.2f", wlRatio);
+    }
+    else if (g_iPlayerWins[targetPlayer] > 0)
+    {
+        Format(wlRatioLine, sizeof(wlRatioLine), "W/L: ∞");
+    }
+    else
+    {
+        Format(wlRatioLine, sizeof(wlRatioLine), "W/L: 0.00");
+    }
+    panel.DrawText(wlRatioLine);
+    
+    // Win percentage display
+    char winPercentLine[256];
+    int totalGames = g_iPlayerWins[targetPlayer] + g_iPlayerLosses[targetPlayer];
+    if (totalGames > 0)
+    {
+        float winRate = (float(g_iPlayerWins[targetPlayer]) / float(totalGames)) * 100.0;
+        Format(winPercentLine, sizeof(winPercentLine), "WR: %.1f%%", winRate);
+    }
+    else
+    {
+        Format(winPercentLine, sizeof(winPercentLine), "WR: 0.0%%");
+    }
+    panel.DrawText(winPercentLine);
+    
+    // Win chance display (only if looking at another player and rating is enabled)
+    if (client != targetPlayer && !g_bNoDisplayRating && g_bShowElo[client])
+    {
+        panel.DrawText(" ");
+        int winChance = RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targetPlayer] - g_iPlayerRating[client])) / 400) + 1)) * 100);
+        char winChanceLine[256];
+        Format(winChanceLine, sizeof(winChanceLine), "%T", "PanelWinChance", client, winChance);
+        panel.DrawText(winChanceLine);
+    }
+    
+    panel.DrawText(" ");
+    char closeText[64];
+    Format(closeText, sizeof(closeText), "%T", "Close", client);
+    panel.DrawItem(closeText);
+    panel.Send(client, Panel_PlayerRank, MENU_TIME_FOREVER);
+    delete panel;
+}
+
+// Handles panel interactions for player rank display
+int Panel_PlayerRank(Menu menu, MenuAction action, int param1, int param2)
+{
+    switch (action)
+    {
+        case MenuAction_Select:
+        {
+            // Only Close option available
+        }
+        case MenuAction_Cancel:
+        {
+            if (param2 == MenuCancel_ExitBack)
+            {
+                ShowMainMenu(param1);
+            }
+        }
+        case MenuAction_End:
+        {
+            delete menu;
+        }
+    }
+    
+    return 0;
 }

@@ -445,6 +445,25 @@ void GetSelectTopPlayersQuery(char[] query, int maxlen)
     g_DB.Format(query, maxlen, "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
 }
 
+// Gets database-specific SELECT statement for player rating rank
+void GetSelectPlayerRatingRankQuery(char[] query, int maxlen, const char[] steamid)
+{
+    g_DB.Format(query, maxlen, "SELECT COUNT(*) + 1 FROM mgemod_stats WHERE rating > (SELECT rating FROM mgemod_stats WHERE steamid='%s')", steamid);
+}
+
+// Gets database-specific SELECT statement for player wins rank
+void GetSelectPlayerWinsRankQuery(char[] query, int maxlen, const char[] steamid)
+{
+    g_DB.Format(query, maxlen, "SELECT COUNT(*) + 1 FROM mgemod_stats WHERE wins > (SELECT wins FROM mgemod_stats WHERE steamid='%s')", steamid);
+}
+
+// Gets database-specific SELECT statement for player losses rank
+void GetSelectPlayerLossesRankQuery(char[] query, int maxlen, const char[] steamid)
+{
+    g_DB.Format(query, maxlen, "SELECT COUNT(*) + 1 FROM mgemod_stats WHERE losses < (SELECT losses FROM mgemod_stats WHERE steamid='%s')", steamid);
+}
+
+
 // Gets database-specific SELECT statement for database connection test
 void GetSelectConnectionTestQuery(char[] query, int maxlen)
 {

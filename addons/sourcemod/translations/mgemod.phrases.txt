@@ -812,26 +812,6 @@
 		"es"			"{green}[MGE]{default} ¡Las estadísticas han sido desactivadas!"
 		"pt"			"{green}[MGE]{default} As estatísticas foram desativadas!"
 	}
-	"WinChanceMessage"
-	{
-		"#format"		"{1:N},{2:i},{3:i},{4:i}"
-		"en"			"{green}[MGE]{default} {lightgreen}{1}{default} has {green}{2}{default} wins and {green}{3}{default} losses. You have a {green}{4}%{default} chance of beating him."
-		"chi"			"{green}[MGE]{default} {lightgreen}{1}{default} 有 {green}{2}{default} 胜和 {green}{3}{default} 负。您有 {green}{4}%{default} 的机会击败他。"
-		"de"			"{green}[MGE]{default} {lightgreen}{1}{default} hat {green}{2}{default} Siege und {green}{3}{default} Niederlagen. Du hast eine {green}{4}%{default} Chance, ihn zu schlagen."
-		"ru"			"{green}[MGE]{default} {lightgreen}{1}{default} имеет {green}{2}{default} побед и {green}{3}{default} поражений. У вас {green}{4}%{default} шансов его победить."
-		"es"			"{green}[MGE]{default} {lightgreen}{1}{default} tiene {green}{2}{default} victorias y {green}{3}{default} derrotas. Tienes un {green}{4}%{default} de chances de vencerlo."
-		"pt"			"{green}[MGE]{default} {lightgreen}{1}{default} tem {green}{2}{default} vitórias e {green}{3}{default} derrotas. Você tem um {green}{4}%{default} de chances de vencer ele."
-	}
-	"WinChanceRatingMessage"
-	{
-		"#format"		"{1:N},{2:i},{3:i}"
-		"en"			"{green}[MGE]{default} {lightgreen}{1}{default}'s rating is {green}{2}{default}. You have a {green}{3}%{default} chance of beating him."
-		"chi"			"{green}[MGE]{default} {lightgreen}{1}{default} 的评级是 {green}{2}{default}。您有 {green}{3}%{default} 的机会击败他。"
-		"de"			"{green}[MGE]{default} {lightgreen}{1}{default}'s Wertung ist {green}{2}{default}. Du hast eine {green}{3}%{default} Chance, ihn zu schlagen."
-		"ru"			"{green}[MGE]{default} Рейтинг {lightgreen}{1}{default} равен {green}{2}{default}. У вас {green}{3}%{default} шансов его победить."
-		"es"			"{green}[MGE]{default} El rating de {lightgreen}{1}{default} es {green}{2}{default}. Tienes un {green}{3}%{default} de chances de vencerlo."
-		"pt"			"{green}[MGE]{default} O rating de {lightgreen}{1}{default} é {green}{2}{default}. Você tem um {green}{3}%{default} de chances de vencer ele."
-	}
 	"EnabledLabel"
 	{
 		"en"			"enabled"
@@ -1107,5 +1087,34 @@
 		"ru"			"Закрыть"
 		"es"			"Cerrar"
 		"pt"			"Fechar"
+	}
+	"YourStatistics"
+	{
+		"en"			"Your Statistics"
+		"chi"			"您的统计"
+		"de"			"Deine Statistiken"
+		"ru"			"Ваша статистика"
+		"es"			"Tus Estadísticas"
+		"pt"			"Suas Estatísticas"
+	}
+	"PlayerStatistics"
+	{
+		"#format"		"{1:s}"
+		"en"			"{1}'s Statistics"
+		"chi"			"{1} 的统计"
+		"de"			"{1}s Statistiken"
+		"ru"			"Статистика {1}"
+		"es"			"Estadísticas de {1}"
+		"pt"			"Estatísticas de {1}"
+	}
+	"PanelWinChance"
+	{
+		"#format"		"{1:i}"
+		"en"			"You have a {1}% chance of beating them"
+		"chi"			"您有 {1}% 的机会击败他们"
+		"de"			"Du hast eine {1}% Chance, sie zu schlagen"
+		"ru"			"У вас {1}% шансов их победить"
+		"es"			"Tienes un {1}% de chances de vencerlos"
+		"pt"			"Você tem {1}% de chances de vencê-los"
 	}
 }

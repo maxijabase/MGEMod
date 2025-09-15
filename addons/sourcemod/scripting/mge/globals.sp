@@ -151,7 +151,13 @@ int
     g_iBBallIntel           [MAXARENAS + 1],
     g_iArenaEarlyLeave      [MAXARENAS + 1],
     g_iTopPlayersPage       [MAXPLAYERS + 1],
-    g_iTopPlayersTotalPages [MAXPLAYERS + 1];
+    g_iTopPlayersTotalPages [MAXPLAYERS + 1],
+    // Player rank data storage
+    g_iPlayerRatingRank     [MAXPLAYERS + 1],
+    g_iPlayerWinsRank       [MAXPLAYERS + 1], 
+    g_iPlayerLossesRank     [MAXPLAYERS + 1],
+    // Target client for rank panel display
+    g_iRankTargetClient     [MAXPLAYERS + 1];
 
 bool g_tfctArenaAllowedClasses[MAXARENAS + 1][10];
 

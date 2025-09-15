@@ -15,7 +15,7 @@
 #include <convar_class>
 #include <mge>
 
-#define PL_VERSION "3.1.0-2v2-beta12"
+#define PL_VERSION "3.1.0-beta5"
 
 #define MAXARENAS 63
 #define MAXSPAWNS 15
