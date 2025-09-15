@@ -39,6 +39,7 @@ This is a fork of sappho's repository, with the following improvements:
 * Forced menu close on players that had the !add menu open but decided to join an arena via chat, to prevent accidental arena changes
 * Fixed some commands not having their return type properly, making users users receive "Unknown command" upon running them
 * Added missing translations for all hardcoded english strings across the entire plugin, and added some languages
+* Enhanced `!rank` command to display comprehensive player statistics in a panel interface, showing individual rankings for rating, wins, and losses, plus calculated W/L ratio and win percentage
 
 ## 2v2 System
 
