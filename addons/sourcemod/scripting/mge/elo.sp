@@ -162,5 +162,21 @@ Action Command_ToggleElo(int client, int args)
     char status_text[32];
     Format(status_text, sizeof(status_text), "%T", g_bShowElo[client] ? "EnabledLabel" : "DisabledLabel", client);
     MC_PrintToChat(client, "%t", "EloToggle", status_text);
+    
+    // Refresh the appropriate HUD based on player's current state
+    int arena_index = g_iPlayerArena[client];
+    int player_slot = g_iPlayerSlot[client];
+    
+    if (arena_index > 0 && player_slot > 0)
+    {
+        // Player is actively in an arena - show player HUD
+        ShowPlayerHud(client);
+    }
+    else if (TF2_GetClientTeam(client) == TFTeam_Spectator && g_iPlayerSpecTarget[client] > 0)
+    {
+        // Player is spectating someone - show spectator HUD
+        ShowSpecHudToClient(client);
+    }
+    
     return Plugin_Handled;
 }

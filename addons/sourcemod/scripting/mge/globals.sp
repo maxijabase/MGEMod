@@ -20,7 +20,8 @@ DatabaseType g_DatabaseType;
 
 bool
     g_bNoStats,
-    g_bNoDisplayRating;
+    g_bNoDisplayRating,
+    g_bLate;
 
 // HUD Handles
 Handle

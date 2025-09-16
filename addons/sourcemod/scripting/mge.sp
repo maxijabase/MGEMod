@@ -67,6 +67,9 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
         SetFailState("This plugin is for Team Fortress 2 only.");
     }
 
+    // Store late loading flag for hot reload handling
+    g_bLate = late;
+
     // Forward declarations
     RegisterForwards();
     
@@ -212,6 +215,11 @@ public void OnPluginStart()
     // Set up the log file for debug logging
     BuildPath(Path_SM, g_sLogFile, sizeof(g_sLogFile), "logs/mgemod.log");
 
+}
+
+// Handle plugin hot reload by reinitializing all connected clients and loading their stats
+void HandleHotReload()
+{
     MC_PrintToChatAll("%t", "PluginReloaded");
 
     for (int i = 1; i <= MaxClients; i++)
@@ -225,8 +233,33 @@ public void OnPluginStart()
             if (g_alPlayerDuelClasses[i] != null)
                 delete g_alPlayerDuelClasses[i];
             g_alPlayerDuelClasses[i] = new ArrayList();
+            
+            // Reinitialize basic client state for hot reload
+            if (!IsFakeClient(i))
+            {
+                ChangeClientTeam(i, TFTeam_Spectator);
+                g_bShowHud[i] = true;
+                g_bPlayerRestoringAmmo[i] = false;
+                
+                // Load stats from database if available
+                if (!g_bNoStats && g_DB != null)
+                {
+                    char steamid_dirty[31], steamid[64], query[256];
+                    
+                    if (GetClientAuthId(i, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty)))
+                    {
+                        g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
+                        strcopy(g_sPlayerSteamID[i], 32, steamid);
+                        GetSelectPlayerStatsQuery(query, sizeof(query), steamid);
+                        g_DB.Query(SQL_OnPlayerReceived, query, i);
+                    }
+                }
+            }
         }
     }
+    
+    // Reset the late flag after handling hot reload
+    g_bLate = false;
 }
 
 // Execute configuration after all configs are loaded
@@ -235,6 +268,12 @@ public void OnConfigsExecuted()
     if (!g_bNoStats)
     {
         PrepareSQL();
+    }
+    
+    // Handle hot reload after database is ready
+    if (g_bLate)
+    {
+        HandleHotReload();
     }
 }
 

@@ -11,10 +11,14 @@ void HandleClientConnection(int client)
     g_bShowHud[client] = true;
     g_bPlayerRestoringAmmo[client] = false;
     
-    // Clear any inherited statistics data immediately
-    g_iPlayerRating[client] = 0;
-    g_iPlayerWins[client] = 0;
-    g_iPlayerLosses[client] = 0;
+    // Clear any inherited statistics data immediately (but preserve if already properly loaded)
+    // This prevents stats from being inherited from previous client in the same slot
+    if (g_iPlayerRating[client] == 0 || strlen(g_sPlayerSteamID[client]) == 0)
+    {
+        g_iPlayerRating[client] = 0;
+        g_iPlayerWins[client] = 0;
+        g_iPlayerLosses[client] = 0;
+    }
     
     // Initialize class tracking ArrayList
     if (g_alPlayerDuelClasses[client] != null)
