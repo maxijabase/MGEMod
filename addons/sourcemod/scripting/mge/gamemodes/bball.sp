@@ -308,6 +308,41 @@ Action OnTouchHoop(int entity, int other)
     return Plugin_Continue;
 }
 
+// Handles intel dropping when a BBall player dies
+void HandleBBallPlayerDeath(int victim, int killer, int arena_index)
+{
+    if (!g_bPlayerHasIntel[victim])
+        return;
+        
+    g_bPlayerHasIntel[victim] = false;
+    float pos[3];
+    GetClientAbsOrigin(victim, pos);
+    float dist = DistanceAboveGround(victim);
+    if (dist > -1)
+        pos[2] = pos[2] - dist + 5;
+    else
+        pos[2] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 3][2];
+
+    if (g_iBBallIntel[arena_index] == -1)
+        g_iBBallIntel[arena_index] = CreateEntityByName("item_ammopack_small");
+    else
+        LogError("[%s] Player died with intel, but intel [%i] already exists.", g_sArenaName[arena_index], g_iBBallIntel[arena_index]);
+
+    // Configure intel entity properties
+    DispatchKeyValue(g_iBBallIntel[arena_index], "powerup_model", MODEL_BRIEFCASE);
+    TeleportEntity(g_iBBallIntel[arena_index], pos, NULL_VECTOR, NULL_VECTOR);
+    DispatchSpawn(g_iBBallIntel[arena_index]);
+    SetEntProp(g_iBBallIntel[arena_index], Prop_Send, "m_iTeamNum", 1, 4);
+    SetEntPropFloat(g_iBBallIntel[arena_index], Prop_Send, "m_flModelScale", 1.15);
+    SDKHook(g_iBBallIntel[arena_index], SDKHook_StartTouch, OnTouchIntel);
+    AcceptEntityInput(g_iBBallIntel[arena_index], "Enable");
+
+    // Play intel drop sounds
+    EmitSoundToClient(victim, "vo/intel_teamdropped.mp3");
+    if (IsValidClient(killer))
+        EmitSoundToClient(killer, "vo/intel_enemydropped.mp3");
+}
+
 
 // ===== COMMANDS =====
 

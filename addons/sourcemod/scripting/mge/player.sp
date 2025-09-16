@@ -230,7 +230,7 @@ int ResetPlayer(int client)
     }
 
     // Remove projectiles when resetting a player
-    if (g_bClearProjectiles)
+    if (g_bClearProjectiles && g_iArenaStatus[arena_index] == AS_FIGHT && !g_bArenaBBall[arena_index])
         RemoveArenaProjectiles(arena_index);
 
     g_iPlayerSpecTarget[client] = 0;
@@ -391,6 +391,58 @@ void RemoveClientParticle(int client)
 
 // ===== UTILITY FUNCTIONS =====
 
+// Converts player slot (1-4) to team slot (1-2) for scoring and team identification
+int GetTeamSlotFromPlayerSlot(int player_slot)
+{
+    return (player_slot > 2) ? (player_slot - 2) : player_slot;
+}
+
+// Handles engineer building removal when player changes from engineer to another class
+void HandleEngineerClassChange(int client, TFClassType old_class, TFClassType new_class)
+{
+    if (old_class == TFClass_Engineer && new_class != TFClass_Engineer)
+    {
+        RemoveEngineerBuildings(client);
+    }
+}
+
+// Checks if class change would create conflict in Ultiduo 2v2 (same class on team)
+bool IsUltiduo2v2ClassConflict(int client, TFClassType new_class, int arena_index)
+{
+    if (!g_bArenaUltiduo[arena_index] || !g_bFourPersonArena[arena_index])
+        return false;
+        
+    int client_teammate = GetPlayerTeammate(g_iPlayerSlot[client], arena_index);
+    if (!IsValidClient(client_teammate))
+        return false;
+        
+    return (new_class == g_tfctPlayerClass[client_teammate]);
+}
+
+// Formats player names for 2v2 team display (e.g., "Player1 and Player2")
+void FormatTeamPlayerNames(int player1, int player2, char[] buffer, int maxlen)
+{
+    if (!IsValidClient(player1))
+    {
+        buffer[0] = '\0';
+        return;
+    }
+    
+    char player1_name[MAX_NAME_LENGTH];
+    GetClientName(player1, player1_name, sizeof(player1_name));
+    
+    if (!IsValidClient(player2))
+    {
+        strcopy(buffer, maxlen, player1_name);
+        return;
+    }
+    
+    char player2_name[MAX_NAME_LENGTH];
+    GetClientName(player2, player2_name, sizeof(player2_name));
+    
+    Format(buffer, maxlen, "%s and %s", player1_name, player2_name);
+}
+
 // Validates if a client index represents a valid, connected, non-bot player
 bool IsValidClient(int iClient, bool bIgnoreKickQueue = false)
 {
@@ -434,6 +486,199 @@ void CloseClientMenu(int client)
         InternalShowMenu(client, "\10", 1);
         CancelClientMenu(client, true, null);
     }
+}
+
+// Handles class change requests for players not currently in any arena
+Action HandleLobbyClassChange(int client, TFClassType new_class, int arena_index)
+{
+    if (!g_tfctClassAllowed[view_as<int>(new_class)])
+    {
+        MC_PrintToChat(client, "%t", "ClassIsNotAllowed");
+        return Plugin_Handled;
+    }
+    
+    if (IsUltiduo2v2ClassConflict(client, new_class, arena_index))
+    {
+        MC_PrintToChat(client, "%t", "TeamAlreadyHasClass");
+        return Plugin_Handled;
+    }
+    
+    HandleEngineerClassChange(client, g_tfctPlayerClass[client], new_class);
+    TF2_SetPlayerClass(client, new_class);
+    g_tfctPlayerClass[client] = new_class;
+    
+    ChangeClientTeam(client, TEAM_SPEC);
+    UpdateHudForArena(g_iPlayerArena[client]);
+    return Plugin_Handled;
+}
+
+// Validates if a player can change classes in their current arena
+bool CanPlayerChangeClassInArena(int client, TFClassType new_class, int arena_index)
+{
+    if (!g_tfctArenaAllowedClasses[arena_index][new_class])
+    {
+        MC_PrintToChat(client, "%t", "ClassIsNotAllowed");
+        return false;
+    }
+    
+    if (IsUltiduo2v2ClassConflict(client, new_class, arena_index))
+    {
+        MC_PrintToChat(client, "%t", "TeamAlreadyHasClass");
+        return false;
+    }
+    
+    return true;
+}
+
+// Checks class change timing restrictions for 2v2 arenas
+bool CanPlayerChangeClassInTeamArena(int client, int arena_index)
+{
+    if (!g_bArenaClassChange[arena_index])
+    {
+        // Class changes only allowed during waiting phase
+        if (g_iArenaStatus[arena_index] != AS_WAITING_READY && g_iArenaStatus[arena_index] != AS_IDLE)
+        {
+            MC_PrintToChat(client, "%t", "ClassChangesOnlyWhileWaiting");
+            return false;
+        }
+    }
+    else if (g_iArenaStatus[arena_index] == AS_FIGHT)
+    {
+        // Class changes allowed during countdown, but slay during fight
+        MC_PrintToChat(client, "%t", "ClassChangeDuringFightSlay");
+        ForcePlayerSuicide(client);
+        return true; // Allow but with penalty
+    }
+    
+    return true;
+}
+
+// Checks class change restrictions for 1v1 arenas
+bool CanPlayerChangeClassIn1v1Arena(int client, int arena_index)
+{
+    // Allow class changes if score is still 0-0, even during fight
+    if (!g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] == AS_FIGHT && 
+        (g_iArenaScore[arena_index][SLOT_ONE] != 0 || g_iArenaScore[arena_index][SLOT_TWO] != 0))
+    {
+        MC_PrintToChat(client, "%t", "ClassChangesDisabledDuringFight");
+        return false;
+    }
+    
+    return true;
+}
+
+// Determines if player is in an active arena slot (participating in duels)
+bool IsPlayerInActiveSlot(int client, int arena_index)
+{
+    int slot = g_iPlayerSlot[client];
+    
+    if (!g_bFourPersonArena[arena_index])
+        return (slot == SLOT_ONE || slot == SLOT_TWO);
+    else
+        return (slot >= SLOT_ONE && slot <= SLOT_FOUR);
+}
+
+// Executes the class change and handles related game mechanics
+Action ExecuteArenaClassChange(int client, TFClassType new_class, int arena_index)
+{
+    // Check if class changes are allowed in current arena state
+    if (g_iArenaStatus[arena_index] == AS_FIGHT && !g_bArenaMGE[arena_index] && !g_bArenaEndif[arena_index] && !g_bArenaKoth[arena_index])
+    {
+        MC_PrintToChat(client, "%t", "NoClassChange");
+        return Plugin_Handled;
+    }
+    
+    HandleEngineerClassChange(client, g_tfctPlayerClass[client], new_class);
+    TF2_SetPlayerClass(client, new_class);
+    g_tfctPlayerClass[client] = new_class;
+    
+    // Add class to tracking list if class changes are allowed and duel is active
+    if (g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] != AS_IDLE && 
+        g_alPlayerDuelClasses[client].FindValue(view_as<int>(new_class)) == -1)
+    {
+        g_alPlayerDuelClasses[client].Push(view_as<int>(new_class));
+    }
+    
+    // Handle class change during active combat
+    if (IsPlayerAlive(client))
+    {
+        HandleActivePlayerClassChange(client, arena_index);
+    }
+    
+    // Reset handicap to prevent exploits
+    g_iPlayerHandicap[client] = 0;
+    UpdateHudForArena(g_iPlayerArena[client]);
+    return Plugin_Continue;
+}
+
+// Handles class changes for players currently alive and fighting
+void HandleActivePlayerClassChange(int client, int arena_index)
+{
+    if (!(g_iArenaStatus[arena_index] == AS_FIGHT && (g_bArenaMGE[arena_index] || g_bArenaEndif[arena_index])))
+    {
+        CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
+        return;
+    }
+    
+    // Handle scoring and match completion for MGE/Endif arenas
+    int killer_slot = (g_iPlayerSlot[client] == SLOT_ONE || g_iPlayerSlot[client] == SLOT_THREE) ? SLOT_TWO : SLOT_ONE;
+    int fraglimit = g_iArenaFraglimit[arena_index];
+    int killer = g_iArenaQueue[arena_index][killer_slot];
+    int killer_teammate;
+    int killer_team_slot = GetTeamSlotFromPlayerSlot(killer_slot);
+    int client_team_slot = GetTeamSlotFromPlayerSlot(g_iPlayerSlot[client]);
+    int client_teammate = GetPlayerTeammate(g_iPlayerSlot[client], arena_index);
+    
+    if (g_bFourPersonArena[arena_index])
+    {
+        killer_teammate = GetPlayerTeammate(killer_slot, arena_index);
+    }
+    
+    if (g_iArenaStatus[arena_index] == AS_FIGHT && killer)
+    {
+        // Award points and provide feedback
+        if (g_bArenaClassChange[arena_index])
+        {
+            g_iArenaScore[arena_index][killer_team_slot] += 1;
+            MC_PrintToChat(killer, "%t", "ClassChangePointOpponent");
+            MC_PrintToChat(client, "%t", "ClassChangePoint");
+        }
+        
+        if (g_bFourPersonArena[arena_index] && killer_teammate)
+        {
+            CreateTimer(3.0, Timer_NewRound, arena_index);
+        }
+    }
+    
+    // Update HUDs for all players
+    UpdateHud(client);
+    if (IsValidClient(killer))
+    {
+        ResetKiller(killer, arena_index);
+        UpdateHud(killer);
+    }
+    
+    if (g_bFourPersonArena[arena_index])
+    {
+        if (IsValidClient(killer_teammate))
+        {
+            ResetKiller(killer_teammate, arena_index);
+            UpdateHud(killer_teammate);
+        }
+        if (IsValidClient(client_teammate))
+        {
+            ResetKiller(client_teammate, arena_index);
+            UpdateHud(client_teammate);
+        }
+    }
+    
+    // Check for match completion
+    if (ValidateMatchCompletion(arena_index, killer_team_slot, fraglimit))
+    {
+        ProcessClassChangeMatchCompletion(arena_index, client, killer, killer_teammate, client_teammate, killer_team_slot, client_team_slot, fraglimit);
+    }
+    
+    CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
 }
 
 
@@ -515,281 +760,58 @@ Action Command_JoinTeam(int client, int args)
 Action Command_JoinClass(int client, int args)
 {
     if (!IsValidClient(client))
-    {
         return Plugin_Continue;
-    }
-
-    if (args)
+        
+    if (!args)
+        return Plugin_Handled;
+    
+    // Parse class change request
+    char s_class[64];
+    GetCmdArg(1, s_class, sizeof(s_class));
+    TFClassType new_class = TF2_GetClass(s_class);
+    
+    if (new_class == g_tfctPlayerClass[client])
+        return Plugin_Handled;
+    
+    int arena_index = g_iPlayerArena[client];
+    
+    // Handle lobby class changes (not in arena)
+    if (arena_index == 0)
+        return HandleLobbyClassChange(client, new_class, arena_index);
+    
+    // Validate class change in current arena
+    if (!CanPlayerChangeClassInArena(client, new_class, arena_index))
+        return Plugin_Handled;
+    
+    // Handle Ultiduo class setting (special case)
+    if (g_bArenaUltiduo[arena_index] && g_bFourPersonArena[arena_index])
     {
-        int arena_index = g_iPlayerArena[client];
-        int client_teammate;
-        if (g_bFourPersonArena[arena_index])
-        {
-            client_teammate = GetPlayerTeammate(g_iPlayerSlot[client], arena_index);
-        }
-        char s_class[64];
-        GetCmdArg(1, s_class, sizeof(s_class));
-        TFClassType new_class = TF2_GetClass(s_class);
-
-        if (new_class == g_tfctPlayerClass[client])
-        {
-            return Plugin_Handled;
-        }
-
-        if (arena_index == 0) // If client is on arena
-        {
-            if (!g_tfctClassAllowed[view_as<int>(new_class)]) // Checking global class restrctions
-            {
-                MC_PrintToChat(client, "%t", "ClassIsNotAllowed");
-                return Plugin_Handled;
-            } else {
-                // If its ultiduo and a 4 man arena
-                if (g_bArenaUltiduo[arena_index] && g_bFourPersonArena[arena_index])
-                {
-                    // And you try to join as the same class as your teammate
-                    if (new_class == g_tfctPlayerClass[client_teammate])
-                    {
-                        // Tell the player what he did wrong
-                        MC_PrintToChat(client, "%t", "TeamAlreadyHasClass");
-                        return Plugin_Handled;
-                    }
-                    else
-                    {
-                        TF2_SetPlayerClass(client, new_class);
-                        g_tfctPlayerClass[client] = new_class;
-
-                    }
-                }
-                else
-                {
-                    if (g_tfctPlayerClass[client] == TFClass_Engineer && new_class != TFClass_Engineer)
-                    {
-                        RemoveEngineerBuildings(client);
-                    }
-                    TF2_SetPlayerClass(client, new_class);
-                    g_tfctPlayerClass[client] = new_class;
-
-                }
-                ChangeClientTeam(client, TEAM_SPEC);
-                UpdateHudForArena(g_iPlayerArena[client]);
-            }
-        }
-        else
-        {
-            if (!g_tfctArenaAllowedClasses[arena_index][new_class])
-            {
-                MC_PrintToChat(client, "%t", "ClassIsNotAllowed");
-                return Plugin_Handled;
-            }
-
-            // If its ultiduo and a 4 man arena
-            if (g_bArenaUltiduo[arena_index] && g_bFourPersonArena[arena_index])
-            {
-                // And you try to join as the same class as your teammate
-                if (new_class == g_tfctPlayerClass[client_teammate])
-                {
-                    // Tell the player what he did wrong
-                    MC_PrintToChat(client, "%t", "TeamAlreadyHasClass");
-                    return Plugin_Handled;
-                }
-                else
-                {
-                    TF2_SetPlayerClass(client, new_class);
-                    g_tfctPlayerClass[client] = new_class;
-                }
-            }
-
-
-            if (g_iPlayerSlot[client] == SLOT_ONE || g_iPlayerSlot[client] == SLOT_TWO || (g_bFourPersonArena[arena_index] && (g_iPlayerSlot[client] == SLOT_FOUR || g_iPlayerSlot[client] == SLOT_THREE)))
-            {
-                // Special 2v2 class change rules
-                if (g_bFourPersonArena[arena_index])
-                {
-                    if (!g_bArenaClassChange[arena_index])
-                    {
-                        // Class changes only allowed during waiting phase
-                        if (g_iArenaStatus[arena_index] != AS_WAITING_READY && g_iArenaStatus[arena_index] != AS_IDLE)
-                        {
-                            MC_PrintToChat(client, "%t", "ClassChangesOnlyWhileWaiting");
-                            return Plugin_Handled;
-                        }
-                    }
-                    else
-                    {
-                        // Class changes allowed during countdown, but slay during fight
-                        if (g_iArenaStatus[arena_index] == AS_FIGHT)
-                        {
-                            MC_PrintToChat(client, "%t", "ClassChangeDuringFightSlay");
-                            ForcePlayerSuicide(client);
-                            if (g_tfctPlayerClass[client] == TFClass_Engineer && new_class != TFClass_Engineer)
-                            {
-                                RemoveEngineerBuildings(client);
-                            }
-                            TF2_SetPlayerClass(client, new_class);
-                            g_tfctPlayerClass[client] = new_class;
-                            return Plugin_Handled;
-                        }
-                    }
-                }
-                else
-                {
-                    // Original logic for 1v1 arenas
-                    // Check if arena has class change disabled and fight has started
-                    // Allow class changes if score is still 0-0, even during fight
-                    if (!g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] == AS_FIGHT && 
-                        (g_iArenaScore[arena_index][SLOT_ONE] != 0 || g_iArenaScore[arena_index][SLOT_TWO] != 0))
-                    {
-                        MC_PrintToChat(client, "%t", "ClassChangesDisabledDuringFight");
-                        return Plugin_Handled;
-                    }
-                }
-                
-                if (g_iArenaStatus[arena_index] != AS_FIGHT || g_bArenaMGE[arena_index] || g_bArenaEndif[arena_index] || g_bArenaKoth[arena_index])
-                {
-                    if (g_tfctPlayerClass[client] == TFClass_Engineer && new_class != TFClass_Engineer)
-                    {
-                        RemoveEngineerBuildings(client);
-                    }
-                    TF2_SetPlayerClass(client, new_class);
-                    g_tfctPlayerClass[client] = new_class;
-                    
-                    // Add class to tracking list if class changes are allowed and duel is active
-                    if (g_bArenaClassChange[arena_index] && g_iArenaStatus[arena_index] != AS_IDLE && 
-                        g_alPlayerDuelClasses[client].FindValue(view_as<int>(new_class)) == -1)
-                    {
-                        g_alPlayerDuelClasses[client].Push(view_as<int>(new_class));
-                    }
-                    if (IsPlayerAlive(client))
-                    {
-                        if ((g_iArenaStatus[arena_index] == AS_FIGHT && g_bArenaMGE[arena_index] || g_bArenaEndif[arena_index]))
-                        {
-                            int killer_slot = (g_iPlayerSlot[client] == SLOT_ONE || g_iPlayerSlot[client] == SLOT_THREE) ? SLOT_TWO : SLOT_ONE;
-                            int fraglimit = g_iArenaFraglimit[arena_index];
-                            int killer = g_iArenaQueue[arena_index][killer_slot];
-                            int killer_teammate;
-                            int killer_team_slot = (killer_slot > 2) ? (killer_slot - 2) : killer_slot;
-                            int client_team_slot = (g_iPlayerSlot[client] > 2) ? (g_iPlayerSlot[client] - 2) : g_iPlayerSlot[client];
-
-                            if (g_bFourPersonArena[arena_index])
-                            {
-                                killer_teammate = GetPlayerTeammate(killer_slot, arena_index);
-                            }
-                            if (g_iArenaStatus[arena_index] == AS_FIGHT && killer)
-                            {
-                                // Only award points on class change if arena allows class changes
-                                if (g_bArenaClassChange[arena_index])
-                                {
-                                    g_iArenaScore[arena_index][killer_team_slot] += 1;
-                                    MC_PrintToChat(killer, "%t", "ClassChangePointOpponent");
-                                    MC_PrintToChat(client, "%t", "ClassChangePoint");
-                                }
-
-                                if (g_bFourPersonArena[arena_index] && killer_teammate)
-                                {
-                                    CreateTimer(3.0, Timer_NewRound, arena_index);
-                                }
-                            }
-
-                            UpdateHud(client);
-
-                            if (IsValidClient(killer))
-                            {
-                                ResetKiller(killer, arena_index);
-                                UpdateHud(killer);
-                            }
-
-                            if (g_bFourPersonArena[arena_index])
-                            {
-                                if (IsValidClient(killer_teammate))
-                                {
-                                    ResetKiller(killer_teammate, arena_index);
-                                    UpdateHud(killer_teammate);
-                                }
-                                if (IsValidClient(client_teammate))
-                                {
-                                    ResetKiller(client_teammate, arena_index);
-                                    UpdateHud(client_teammate);
-                                }
-                            }
-
-                            if (g_iArenaStatus[arena_index] == AS_FIGHT && fraglimit > 0 && g_iArenaScore[arena_index][killer_team_slot] >= fraglimit)
-                            {
-                                char killer_name[(MAX_NAME_LENGTH * 2) + 5];
-                                char victim_name[(MAX_NAME_LENGTH * 2) + 5];
-                                GetClientName(killer, killer_name, sizeof(killer_name));
-                                GetClientName(client, victim_name, sizeof(victim_name));
-                                if (g_bFourPersonArena[arena_index])
-                                {
-                                    char killer_teammate_name[MAX_NAME_LENGTH];
-                                    char victim_teammate_name[MAX_NAME_LENGTH];
-
-                                    GetClientName(killer_teammate, killer_teammate_name, sizeof(killer_teammate_name));
-                                    GetClientName(client_teammate, victim_teammate_name, sizeof(victim_teammate_name));
-
-                                    Format(killer_name, sizeof(killer_name), "%s and %s", killer_name, killer_teammate_name);
-                                    Format(victim_name, sizeof(victim_name), "%s and %s", victim_name, victim_teammate_name);
-                                }
-                                MC_PrintToChatAll("%t", "XdefeatsY", killer_name, g_iArenaScore[arena_index][killer_team_slot], victim_name, g_iArenaScore[arena_index][client_team_slot], fraglimit, g_sArenaName[arena_index]);
-
-                                g_iArenaStatus[arena_index] = AS_REPORTED;
-
-                                if (!g_bNoStats && g_bFourPersonArena[arena_index]/* && !g_arenaNoStats[arena_index]*/)
-                                    CalcELO2(killer, killer_teammate, client, client_teammate);
-                                else
-                                    CalcELO(killer, client);
-                                if (g_bFourPersonArena[arena_index] && g_iArenaQueue[arena_index][SLOT_FOUR + 1])
-                                {
-                                    RemoveFromQueue(client, false);
-                                    AddInQueue(client, arena_index, false, 0, false);
-
-                                    RemoveFromQueue(client_teammate, false);
-                                    AddInQueue(client_teammate, arena_index, false, 0, false);
-                                }
-                                else if (g_iArenaQueue[arena_index][SLOT_TWO + 1])
-                                {
-                                    RemoveFromQueue(client, false);
-                                    AddInQueue(client, arena_index, false, 0, false);
-                                }
-                                else
-                                {
-                                    // For 2v2 arenas, return to ready state instead of restarting immediately
-                                    if (g_bFourPersonArena[arena_index])
-                                    {
-                                        CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
-                                    }
-                                    else
-                                    {
-                                        CreateTimer(3.0, Timer_StartDuel, arena_index);
-                                    }
-                                }
-                            }
-
-
-                        }
-
-                        CreateTimer(0.1, Timer_ResetPlayer, GetClientUserId(client));
-                    }
-                    // Reset Handicap on class change to prevent an exploit where players could set their handicap to 299 as soldier
-                    // And then play scout as 299
-                    g_iPlayerHandicap[client] = 0;
-                    UpdateHudForArena(g_iPlayerArena[client]);
-                    return Plugin_Continue;
-                }
-                else
-                {
-                    MC_PrintToChat(client, "%t", "NoClassChange");
-                    return Plugin_Handled;
-                }
-            }
-            else
-            {
-                g_tfctPlayerClass[client] = new_class;
-                ChangeClientTeam(client, TEAM_SPEC);
-            }
-        }
+        TF2_SetPlayerClass(client, new_class);
+        g_tfctPlayerClass[client] = new_class;
     }
-
-    return Plugin_Handled;
+    
+    // Handle spectating players - just set class
+    if (!IsPlayerInActiveSlot(client, arena_index))
+    {
+        g_tfctPlayerClass[client] = new_class;
+        ChangeClientTeam(client, TEAM_SPEC);
+        return Plugin_Handled;
+    }
+    
+    // Check timing restrictions for active players
+    if (g_bFourPersonArena[arena_index])
+    {
+        if (!CanPlayerChangeClassInTeamArena(client, arena_index))
+            return Plugin_Handled;
+    }
+    else
+    {
+        if (!CanPlayerChangeClassIn1v1Arena(client, arena_index))
+            return Plugin_Handled;
+    }
+    
+    // Execute the class change
+    return ExecuteArenaClassChange(client, new_class, arena_index);
 }
 
 // Manages player handicap system for health adjustments in duels
@@ -1016,8 +1038,8 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
     int victim_teammate;
 
     // Gets the killer and victims team slot (red 1, blu 2)
-    int killer_team_slot = (killer_slot > 2) ? (killer_slot - 2) : killer_slot;
-    int victim_team_slot = (victim_slot > 2) ? (victim_slot - 2) : victim_slot;
+    int killer_team_slot = GetTeamSlotFromPlayerSlot(killer_slot);
+    int victim_team_slot = GetTeamSlotFromPlayerSlot(victim_slot);
 
     // Don't detect dead ringer deaths
     int victim_deathflags = event.GetInt("death_flags");
@@ -1101,84 +1123,9 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
         (g_bFourPersonArena[arena_index] && !IsPlayerAlive(victim_teammate) && !g_bArenaBBall[arena_index] && !g_bArenaKoth[arena_index]))
     g_iArenaStatus[arena_index] = AS_AFTERFIGHT;
 
-    if (g_iArenaStatus[arena_index] >= AS_FIGHT && g_iArenaStatus[arena_index] < AS_REPORTED && fraglimit > 0 && g_iArenaScore[arena_index][killer_team_slot] >= fraglimit)
+    if (ShouldProcessMatchCompletion(arena_index, killer_team_slot, fraglimit))
     {
-        g_iArenaStatus[arena_index] = AS_REPORTED;
-        char killer_name[128];
-        char victim_name[128];
-        GetClientName(killer, killer_name, sizeof(killer_name));
-        GetClientName(victim, victim_name, sizeof(victim_name));
-
-
-        if (g_bFourPersonArena[arena_index])
-        {
-            char killer_teammate_name[128];
-            char victim_teammate_name[128];
-
-            GetClientName(killer_teammate, killer_teammate_name, sizeof(killer_teammate_name));
-            GetClientName(victim_teammate, victim_teammate_name, sizeof(victim_teammate_name));
-
-            Format(killer_name, sizeof(killer_name), "%s and %s", killer_name, killer_teammate_name);
-            Format(victim_name, sizeof(victim_name), "%s and %s", victim_name, victim_teammate_name);
-        }
-
-        MC_PrintToChatAll("%t", "XdefeatsY", killer_name, g_iArenaScore[arena_index][killer_team_slot], victim_name, g_iArenaScore[arena_index][victim_team_slot], fraglimit, g_sArenaName[arena_index]);
-
-        // Call match end forwards
-        if (!g_bFourPersonArena[arena_index])
-        {
-            CallForward_On1v1MatchEnd(arena_index, killer, victim, g_iArenaScore[arena_index][killer_team_slot], g_iArenaScore[arena_index][victim_team_slot]);
-        }
-        else
-        {
-            int winning_team = (killer_team_slot == SLOT_ONE) ? TEAM_RED : TEAM_BLU;
-            CallForward_On2v2MatchEnd(arena_index, winning_team, g_iArenaScore[arena_index][killer_team_slot], g_iArenaScore[arena_index][victim_team_slot], 
-                                    g_iArenaQueue[arena_index][SLOT_ONE], g_iArenaQueue[arena_index][SLOT_THREE],
-                                    g_iArenaQueue[arena_index][SLOT_TWO], g_iArenaQueue[arena_index][SLOT_FOUR]);
-        }
-
-        if (!g_bNoStats && !g_bFourPersonArena[arena_index])
-            CalcELO(killer, victim);
-
-        else if (!g_bNoStats)
-            CalcELO2(killer, killer_teammate, victim, victim_teammate);
-
-        if (!g_bFourPersonArena[arena_index])
-        {
-            if (g_iArenaQueue[arena_index][SLOT_TWO + 1])
-            {
-                RemoveFromQueue(victim, false, true);
-                AddInQueue(victim, arena_index, false, 0, false);
-            } else {
-                CreateTimer(3.0, Timer_StartDuel, arena_index);
-            }
-        }
-        else
-        {
-            if (g_iArenaQueue[arena_index][SLOT_FOUR + 1] && g_iArenaQueue[arena_index][SLOT_FOUR + 2])
-            {
-                RemoveFromQueue(victim_teammate, false, true);
-                RemoveFromQueue(victim, false, true);
-                AddInQueue(victim_teammate, arena_index, false, 0, false);
-                AddInQueue(victim, arena_index, false, 0, false);
-            }
-            else if (g_iArenaQueue[arena_index][SLOT_FOUR + 1])
-            {
-                RemoveFromQueue(victim, false, true);
-                AddInQueue(victim, arena_index, false, 0, false);
-            }
-            else {
-                // For 2v2 arenas, return to ready state instead of restarting immediately
-                if (g_bFourPersonArena[arena_index])
-                {
-                    CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
-                }
-                else
-                {
-                    CreateTimer(3.0, Timer_StartDuel, arena_index);
-                }
-            }
-        }
+        ProcessMatchCompletion(arena_index, killer, killer_teammate, victim, victim_teammate, killer_team_slot, victim_team_slot, fraglimit);
     }
     else if (g_bArenaAmmomod[arena_index] || g_bArenaMidair[arena_index])
     {
@@ -1193,66 +1140,14 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
     {
         if (g_bArenaBBall[arena_index])
         {
-            if (g_bPlayerHasIntel[victim])
-            {
-                g_bPlayerHasIntel[victim] = false;
-                float pos[3];
-                GetClientAbsOrigin(victim, pos);
-                float dist = DistanceAboveGround(victim);
-                if (dist > -1)
-                    pos[2] = pos[2] - dist + 5;
-                else
-                    pos[2] = g_fArenaSpawnOrigin[arena_index][g_iArenaSpawns[arena_index] - 3][2];
-
-                if (g_iBBallIntel[arena_index] == -1)
-                    g_iBBallIntel[arena_index] = CreateEntityByName("item_ammopack_small");
-                else
-                    LogError("[%s] Player died with intel, but intel [%i] already exists.", g_sArenaName[arena_index], g_iBBallIntel[arena_index]);
-
-
-                // This should fix the ammopack not being turned into a briefcase
-                DispatchKeyValue(g_iBBallIntel[arena_index], "powerup_model", MODEL_BRIEFCASE);
-                TeleportEntity(g_iBBallIntel[arena_index], pos, NULL_VECTOR, NULL_VECTOR);
-                DispatchSpawn(g_iBBallIntel[arena_index]);
-                SetEntProp(g_iBBallIntel[arena_index], Prop_Send, "m_iTeamNum", 1, 4);
-                SetEntPropFloat(g_iBBallIntel[arena_index], Prop_Send, "m_flModelScale", 1.15);
-                SDKHook(g_iBBallIntel[arena_index], SDKHook_StartTouch, OnTouchIntel);
-                AcceptEntityInput(g_iBBallIntel[arena_index], "Enable");
-
-                EmitSoundToClient(victim, "vo/intel_teamdropped.mp3");
-                if (IsValidClient(killer))
-                    EmitSoundToClient(killer, "vo/intel_enemydropped.mp3");
-
-            }
+            HandleBBallPlayerDeath(victim, killer, arena_index);
         } else {
             if (!g_bFourPersonArena[arena_index] && !g_bArenaKoth[arena_index])
             {
                 ResetKiller(killer, arena_index);
             }
-            if (g_bFourPersonArena[arena_index] && (GetClientTeam(victim_teammate) == TEAM_SPEC || !IsPlayerAlive(victim_teammate)))
-            {
-                // Reset the teams
-                ResetArena(arena_index);
-                if (killer_team_slot == SLOT_ONE)
-                {
-                    ChangeClientTeam(victim, TEAM_BLU);
-                    ChangeClientTeam(victim_teammate, TEAM_BLU);
-
-                    ChangeClientTeam(killer_teammate, TEAM_RED);
-                }
-                else
-                {
-                    ChangeClientTeam(victim, TEAM_RED);
-                    ChangeClientTeam(victim_teammate, TEAM_RED);
-
-                    ChangeClientTeam(killer_teammate, TEAM_BLU);
-                }
-
-                if (g_b2v2SkipCountdown)
-                    CreateTimer(0.1, Timer_New2v2Round, arena_index);
-                else
-                    CreateTimer(0.1, Timer_NewRound, arena_index);
-            }
+            // Handle 2v2 team reset when one team is eliminated
+            Handle2v2TeamResetOnDeath(arena_index, victim, victim_teammate, killer_teammate, killer_team_slot);
 
 
         }

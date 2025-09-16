@@ -538,6 +538,44 @@ void Check2v2TeamBalance(int arena_index)
     }
 }
 
+// Handles 2v2 team reset logic when one team member dies and teammate is dead/spectating
+void Handle2v2TeamResetOnDeath(int arena_index, int victim, int victim_teammate, int killer_teammate, int killer_team_slot)
+{
+    if (!g_bFourPersonArena[arena_index])
+        return;
+        
+    // Check if victim teammate is dead or spectating
+    if (!(GetClientTeam(victim_teammate) == TEAM_SPEC || !IsPlayerAlive(victim_teammate)))
+        return;
+        
+    // Reset the arena
+    ResetArena(arena_index);
+    
+    // Reassign teams based on killer's team slot
+    if (killer_team_slot == SLOT_ONE)
+    {
+        // Killer team was RED, so losing team goes to BLU
+        ChangeClientTeam(victim, TEAM_BLU);
+        ChangeClientTeam(victim_teammate, TEAM_BLU);
+        
+        ChangeClientTeam(killer_teammate, TEAM_RED);
+    }
+    else
+    {
+        // Killer team was BLU, so losing team goes to RED
+        ChangeClientTeam(victim, TEAM_RED);
+        ChangeClientTeam(victim_teammate, TEAM_RED);
+        
+        ChangeClientTeam(killer_teammate, TEAM_BLU);
+    }
+    
+    // Start new round with appropriate countdown settings
+    if (g_b2v2SkipCountdown)
+        CreateTimer(0.1, Timer_New2v2Round, arena_index);
+    else
+        CreateTimer(0.1, Timer_NewRound, arena_index);
+}
+
 
 // ===== PLAYER UTILITIES =====
 
@@ -825,7 +863,7 @@ Action Timer_New2v2Round(Handle timer, any arena_index) {
     int blu_f2 = g_iArenaQueue[arena_index][SLOT_FOUR]; /* 2nd Blu (slot four) player. */
 
     // Remove all projectiles from previous round
-    if (g_bClearProjectiles)
+    if (g_bClearProjectiles && g_iArenaStatus[arena_index] == AS_FIGHT && !g_bArenaBBall[arena_index])
         RemoveArenaProjectiles(arena_index);
 
     if (red_f1) ResetPlayer(red_f1);

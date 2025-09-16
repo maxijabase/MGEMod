@@ -15,7 +15,7 @@
 #include <convar_class>
 #include <mge>
 
-#define PL_VERSION "3.1.0-beta6"
+#define PL_VERSION "3.1.0-beta7"
 
 #define MAXARENAS 63
 #define MAXSPAWNS 15
@@ -31,6 +31,7 @@
 #include "mge/sql.sp"
 #include "mge/hud.sp"
 #include "mge/arenas.sp"
+#include "mge/match.sp"
 #include "mge/player.sp"
 #include "mge/spectator.sp"
 #include "mge/statistics.sp"

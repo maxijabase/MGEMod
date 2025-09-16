@@ -665,7 +665,7 @@ int StartCountDown(int arena_index)
     int blu_f1 = g_iArenaQueue[arena_index][SLOT_TWO]; /* Blu (slot two) player. */
 
     // Remove all projectiles from previous round
-    if (g_bClearProjectiles)
+    if (g_bClearProjectiles && g_iArenaStatus[arena_index] == AS_FIGHT && !g_bArenaBBall[arena_index])
         RemoveArenaProjectiles(arena_index);
 
     if (g_bFourPersonArena[arena_index])
