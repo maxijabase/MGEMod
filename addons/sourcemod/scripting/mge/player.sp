@@ -229,7 +229,7 @@ int ResetPlayer(int client)
     if (g_bArenaMGE[arena_index] || g_bArenaBBall[arena_index])
         SetEntProp(client, Prop_Data, "m_iHealth", g_iPlayerHandicap[client] ? g_iPlayerHandicap[client] : RoundToNearest(float(g_iPlayerMaxHP[client]) * g_fArenaHPRatio[arena_index]));
 
-    ShowPlayerHud(client);
+    UpdateHud(client);
     ResetClientAmmoCounts(client);
     CreateTimer(0.1, Timer_Tele, GetClientUserId(client));
 
@@ -531,7 +531,7 @@ Action Command_JoinClass(int client, int args)
 
                 }
                 ChangeClientTeam(client, TEAM_SPEC);
-                ShowSpecHudToArena(g_iPlayerArena[client]);
+                UpdateHudForArena(g_iPlayerArena[client]);
             }
         }
         else
@@ -650,12 +650,12 @@ Action Command_JoinClass(int client, int args)
                                 }
                             }
 
-                            ShowPlayerHud(client);
+                            UpdateHud(client);
 
                             if (IsValidClient(killer))
                             {
                                 ResetKiller(killer, arena_index);
-                                ShowPlayerHud(killer);
+                                UpdateHud(killer);
                             }
 
                             if (g_bFourPersonArena[arena_index])
@@ -663,12 +663,12 @@ Action Command_JoinClass(int client, int args)
                                 if (IsValidClient(killer_teammate))
                                 {
                                     ResetKiller(killer_teammate, arena_index);
-                                    ShowPlayerHud(killer_teammate);
+                                    UpdateHud(killer_teammate);
                                 }
                                 if (IsValidClient(client_teammate))
                                 {
                                     ResetKiller(client_teammate, arena_index);
-                                    ShowPlayerHud(client_teammate);
+                                    UpdateHud(client_teammate);
                                 }
                             }
 
@@ -732,7 +732,7 @@ Action Command_JoinClass(int client, int args)
                     // Reset Handicap on class change to prevent an exploit where players could set their handicap to 299 as soldier
                     // And then play scout as 299
                     g_iPlayerHandicap[client] = 0;
-                    ShowSpecHudToArena(g_iPlayerArena[client]);
+                    UpdateHudForArena(g_iPlayerArena[client]);
                     return Plugin_Continue;
                 }
                 else
@@ -822,13 +822,13 @@ Action Command_Handicap(int client, int args)
                     player_teammate = getTeammate(player_slot, arena_index);
                     foe_teammate = getTeammate(foe_slot, arena_index);
 
-                    ShowPlayerHud(player_teammate);
-                    ShowPlayerHud(foe_teammate);
+                    UpdateHud(player_teammate);
+                    UpdateHud(foe_teammate);
                 }
 
-                ShowPlayerHud(client);
-                ShowPlayerHud(foe);
-                ShowSpecHudToArena(g_iPlayerArena[client]);
+                UpdateHud(client);
+                UpdateHud(foe);
+                UpdateHudForArena(g_iPlayerArena[client]);
             }
         }
     }
@@ -880,7 +880,7 @@ Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
     if (g_bArenaMGE[arena_index])
     {
         g_iPlayerHP[client] = RoundToNearest(float(g_iPlayerMaxHP[client]) * g_fArenaHPRatio[arena_index]);
-        ShowSpecHudToArena(arena_index);
+        UpdateHudForArena(arena_index);
     }
 
     if (g_bArenaBBall[arena_index])
@@ -952,9 +952,9 @@ Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
             SetEntityHealth(victim, g_iPlayerMaxHP[victim]);
     }
 
-    ShowPlayerHud(victim);
-    ShowPlayerHud(attacker);
-    ShowSpecHudToArena(g_iPlayerArena[victim]);
+    UpdateHud(victim);
+    UpdateHud(attacker);
+    UpdateHudForArena(g_iPlayerArena[victim]);
 
     return Plugin_Continue;
 }
@@ -1239,16 +1239,16 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 
     }
 
-    ShowPlayerHud(victim);
-    ShowPlayerHud(killer);
+    UpdateHud(victim);
+    UpdateHud(killer);
 
     if (g_bFourPersonArena[arena_index])
     {
-        ShowPlayerHud(victim_teammate);
-        ShowPlayerHud(killer_teammate);
+        UpdateHud(victim_teammate);
+        UpdateHud(killer_teammate);
     }
 
-    ShowSpecHudToArena(arena_index);
+    UpdateHudForArena(arena_index);
 
     return Plugin_Continue;
 }
@@ -1333,7 +1333,7 @@ Action Timer_Tele(Handle timer, int userid)
 
         TeleportEntity(client, g_fArenaSpawnOrigin[arena_index][random_int], g_fArenaSpawnAngles[arena_index][random_int], vel);
         EmitAmbientSound("items/spawn_item.wav", g_fArenaSpawnOrigin[arena_index][random_int], _, SNDLEVEL_NORMAL, _, 1.0);
-        ShowPlayerHud(client);
+        UpdateHud(client);
         return Plugin_Continue;
     }
     else if (g_bArenaKoth[arena_index])
@@ -1352,7 +1352,7 @@ Action Timer_Tele(Handle timer, int userid)
 
         TeleportEntity(client, g_fArenaSpawnOrigin[arena_index][random_int], g_fArenaSpawnAngles[arena_index][random_int], vel);
         EmitAmbientSound("items/spawn_item.wav", g_fArenaSpawnOrigin[arena_index][random_int], _, SNDLEVEL_NORMAL, _, 1.0);
-        ShowPlayerHud(client);
+        UpdateHud(client);
         return Plugin_Continue;
     }
     else if (g_bFourPersonArena[arena_index])
@@ -1384,7 +1384,7 @@ Action Timer_Tele(Handle timer, int userid)
 
         TeleportEntity(client, g_fArenaSpawnOrigin[arena_index][random_int], g_fArenaSpawnAngles[arena_index][random_int], vel);
         EmitAmbientSound("items/spawn_item.wav", g_fArenaSpawnOrigin[arena_index][random_int], _, SNDLEVEL_NORMAL, _, 1.0);
-        ShowPlayerHud(client);
+        UpdateHud(client);
         return Plugin_Continue;
     }
 
@@ -1418,7 +1418,7 @@ Action Timer_Tele(Handle timer, int userid)
                 {
                     TeleportEntity(client, g_fArenaSpawnOrigin[arena_index][RandomSpawn[i]], g_fArenaSpawnAngles[arena_index][RandomSpawn[i]], vel);
                     EmitAmbientSound("items/spawn_item.wav", g_fArenaSpawnOrigin[arena_index][RandomSpawn[i]], _, SNDLEVEL_NORMAL, _, 1.0);
-                    ShowPlayerHud(client);
+                    UpdateHud(client);
                     return Plugin_Continue;
                 } else if (distance > besteffort_dist) {
                     besteffort_dist = distance;
@@ -1433,14 +1433,14 @@ Action Timer_Tele(Handle timer, int userid)
         // Couldn't find a spawn that was far enough away, so use the one that was the farthest.
         TeleportEntity(client, g_fArenaSpawnOrigin[arena_index][besteffort_spawn], g_fArenaSpawnAngles[arena_index][besteffort_spawn], vel);
         EmitAmbientSound("items/spawn_item.wav", g_fArenaSpawnOrigin[arena_index][besteffort_spawn], _, SNDLEVEL_NORMAL, _, 1.0);
-        ShowPlayerHud(client);
+        UpdateHud(client);
         return Plugin_Continue;
     } else {
         // No foe, so just pick a random spawn.
         int random_int = GetRandomInt(1, g_iArenaSpawns[arena_index]);
         TeleportEntity(client, g_fArenaSpawnOrigin[arena_index][random_int], g_fArenaSpawnAngles[arena_index][random_int], vel);
         EmitAmbientSound("items/spawn_item.wav", g_fArenaSpawnOrigin[arena_index][random_int], _, SNDLEVEL_NORMAL, _, 1.0);
-        ShowPlayerHud(client);
+        UpdateHud(client);
         return Plugin_Continue;
     }
 }

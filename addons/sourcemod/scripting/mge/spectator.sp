@@ -1,77 +1,6 @@
 
 // ===== SPECTATOR HUD MANAGEMENT =====
 
-// Displays arena information and player stats to individual spectator clients
-// TODO: refactor mounstrous repeated code mess
-void ShowSpecHudToClient(int client)
-{
-    if (!IsValidClient(client) || !IsValidClient(g_iPlayerSpecTarget[client]) || !g_bShowHud[client])
-        return;
-
-    int arena_index = g_iPlayerArena[g_iPlayerSpecTarget[client]];
-
-    char hp_report[128];
-    int red_f1, blu_f1, red_f2, blu_f2;
-    GetArenaPlayers(arena_index, red_f1, blu_f1, red_f2, blu_f2);
-
-    // If its a 2v2 arena show the teamates hp's
-    if (g_bFourPersonArena[arena_index])
-    {
-        if (red_f1)
-            Format(hp_report, sizeof(hp_report), "%N : %d", red_f1, g_iPlayerHP[red_f1]);
-
-        if (red_f2)
-            Format(hp_report, sizeof(hp_report), "%s\n%N : %d", hp_report, red_f2, g_iPlayerHP[red_f2]);
-
-        if (blu_f1)
-            Format(hp_report, sizeof(hp_report), "%s\n\n%N : %d", hp_report, blu_f1, g_iPlayerHP[blu_f1]);
-
-        if (blu_f2)
-            Format(hp_report, sizeof(hp_report), "%s\n%N : %d", hp_report, blu_f2, g_iPlayerHP[blu_f2]);
-    }
-    else
-    {
-        if (red_f1)
-            Format(hp_report, sizeof(hp_report), "%N : %d", red_f1, g_iPlayerHP[red_f1]);
-
-        if (blu_f1)
-            Format(hp_report, sizeof(hp_report), "%s\n%N : %d", hp_report, blu_f1, g_iPlayerHP[blu_f1]);
-    }
-
-
-
-    SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 255, 255);
-    ShowSyncHudText(client, hm_HP, hp_report);
-
-    // Score
-    char report[256];
-    SetHudTextParams(0.01, 0.01, HUDFADEOUTTIME, 255, 255, 255, 255);
-    BuildArenaScoreReport(arena_index, client, true, report, sizeof(report));
-    ShowSyncHudText(client, hm_Score, "%s", report);
-}
-
-// Updates HUD display for all spectators watching a specific arena
-void ShowSpecHudToArena(int arena_index)
-{
-    if (!arena_index)
-    {
-        return;
-    }
-    for (int i = 1; i <= MaxClients; i++)
-    {
-        if
-        (
-            IsValidClient(i)
-            && GetClientTeam(i) == TEAM_SPEC
-            && g_iPlayerSpecTarget[i] > 0
-            && g_iPlayerArena[g_iPlayerSpecTarget[i]] == arena_index
-        )
-        {
-            ShowSpecHudToClient(i);
-        }
-    }
-}
-
 // Displays countdown messages to spectators watching a specific arena
 void ShowCountdownToSpec(int arena_index, char[] text)
 {
@@ -114,7 +43,7 @@ Action Timer_SpecFix(Handle timer, int userid)
 Action Timer_SpecHudToAllArenas(Handle timer, int userid)
 {
     for (int i = 1; i <= g_iArenaCount; i++)
-    ShowSpecHudToArena(i);
+    UpdateHudForArena(i);
 
     return Plugin_Continue;
 }
@@ -145,7 +74,7 @@ Action Timer_ChangeSpecTarget(Handle timer, int userid)
     if (IsValidClient(target) && g_iPlayerArena[target])
     {
         g_iPlayerSpecTarget[client] = target;
-        ShowSpecHudToClient(client);
+        UpdateHud(client);
     }
     else
     {

@@ -347,7 +347,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
 
                 SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
                 
-                ShowHudToArena(arena_index);
+                UpdateHudForArena(arena_index);
             } else {
                 if (foe && IsFakeClient(foe))
                 {
@@ -364,7 +364,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
 
                 g_iArenaStatus[arena_index] = AS_IDLE;
                 
-                ShowHudToArena(arena_index);
+                UpdateHudForArena(arena_index);
                 return;
             }
         }
@@ -427,7 +427,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
 
                 SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
                 
-                ShowHudToArena(arena_index);
+                UpdateHudForArena(arena_index);
             } else {
                 if (foe && IsFakeClient(foe))
                 {
@@ -438,7 +438,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
 
                 g_iArenaStatus[arena_index] = AS_IDLE;
                 
-                ShowHudToArena(arena_index);
+                UpdateHudForArena(arena_index);
                 return;
             }
         }
@@ -454,7 +454,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
         g_iArenaQueue[arena_index][after_leaver_slot - 1] = 0;
     }
     
-    ShowHudToArena(arena_index);
+    UpdateHudForArena(arena_index);
     
     // Call OnPlayerArenaRemoved forward
     CallForward_OnPlayerArenaRemoved(client, arena_index);
@@ -641,7 +641,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
         }
     }
 
-    ShowHudToArena(arena_index);
+    UpdateHudForArena(arena_index);
 
     return;
 }
@@ -1534,7 +1534,7 @@ Action Timer_StartDuel(Handle timer, any arena_index)
     g_iArenaScore[arena_index][SLOT_ONE] = 0;
     g_iArenaScore[arena_index][SLOT_TWO] = 0;
     g_iArenaDuelStartTime[arena_index] = 0; // Reset duel start time
-    ShowHudToArena(arena_index);
+    UpdateHudForArena(arena_index);
     
     // Clear 2v2 ready hud text
     Clear2v2ReadyHud(arena_index);

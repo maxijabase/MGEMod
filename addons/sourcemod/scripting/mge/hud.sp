@@ -1,23 +1,62 @@
 
 // ===== HUD DISPLAY CORE =====
 
-// Displays comprehensive HUD information to active players including health, scores, and game-specific elements
-// TODO: refactor repeated code with spectator.sp lines 6-131
-void ShowPlayerHud(int client)
+// Unified HUD update method that handles both players and spectators
+void UpdateHud(int client)
 {
     if (!IsValidClient(client))
+        return;
+    
+    int arena_index = 0;
+    bool is_spectator = false;
+    
+    // Determine arena and role
+    if (g_iPlayerArena[client] > 0)
     {
+        // Player in arena
+        arena_index = g_iPlayerArena[client];
+    }
+    else if (g_iPlayerSpecTarget[client] > 0 && IsValidClient(g_iPlayerSpecTarget[client]))
+    {
+        // Spectator watching someone
+        arena_index = g_iPlayerArena[g_iPlayerSpecTarget[client]];
+        is_spectator = true;
+    }
+    else
+    {
+        // Not in arena and not spectating - hide HUD
+        HideHud(client);
         return;
     }
 
-    // HP
-    int arena_index = g_iPlayerArena[client];
+    // Handle HUD disabled cases
+    if (!g_bShowHud[client])
+    {
+        if (is_spectator)
+        {
+            // Spectators with HUD off see nothing
+            return;
+        }
+        else
+        {
+            // Players with HUD off still see critical game info
+            ShowCriticalGameInfo(client, arena_index);
+            return;
+        }
+    }
+    
+    // Show full HUD for both players and spectators
+    ShowFullHud(client, arena_index, is_spectator);
+}
+
+// Shows critical game information that players see even when HUD is disabled
+void ShowCriticalGameInfo(int client, int arena_index)
+{
     int client_slot = g_iPlayerSlot[client];
     int client_foe_slot = (client_slot == SLOT_ONE || client_slot == SLOT_THREE) ? SLOT_TWO : SLOT_ONE;
-    int client_foe = (g_iArenaQueue[g_iPlayerArena[client]][(g_iPlayerSlot[client] == SLOT_ONE || g_iPlayerSlot[client] == SLOT_THREE) ? SLOT_TWO : SLOT_ONE]); // Test
+    int client_foe = (g_iArenaQueue[arena_index][(client_slot == SLOT_ONE || client_slot == SLOT_THREE) ? SLOT_TWO : SLOT_ONE]);
     int client_teammate;
     int client_foe2;
-    char hp_report[128];
 
     if (g_bFourPersonArena[arena_index])
     {
@@ -25,145 +64,147 @@ void ShowPlayerHud(int client)
         client_foe2 = getTeammate(client_foe_slot, arena_index);
     }
 
+    // KOTH timers (always shown to players)
     if (g_bArenaKoth[arena_index])
     {
-        /* if (g_iArenaStatus[arena_index] == AS_FIGHT || true) */
-        {
-            // Show the red team timer, if they have it capped make the timer red
+        // Show the red team timer
             if (g_iPointState[arena_index] == TEAM_RED)
-            {
                 SetHudTextParams(0.40, 0.01, HUDFADEOUTTIME, 255, 0, 0, 255); // Red
-            }
             else
-            {
                 SetHudTextParams(0.40, 0.01, HUDFADEOUTTIME, 255, 255, 255, 255);
-            }
 
-            // Set the Text for the timer
             ShowSyncHudText(client, hm_KothTimerRED, "%i:%02i", g_iKothTimer[arena_index][TEAM_RED] / 60, g_iKothTimer[arena_index][TEAM_RED] % 60);
 
-            // Show the blue team timer, if they have it capped make the timer blue
+        // Show the blue team timer
             if (g_iPointState[arena_index] == TEAM_BLU)
-            {
                 SetHudTextParams(0.60, 0.01, HUDFADEOUTTIME, 0, 0, 255, 255); // Blue
-            }
             else
-            {
                 SetHudTextParams(0.60, 0.01, HUDFADEOUTTIME, 255, 255, 255, 255);
-            }
-            // Set the Text for the timer
+        
             ShowSyncHudText(client, hm_KothTimerBLU, "%i:%02i", g_iKothTimer[arena_index][TEAM_BLU] / 60, g_iKothTimer[arena_index][TEAM_BLU] % 60);
 
-            // Show the capture point percent
-            // Set it red if red team is capping
+        // Show capture point percentage
             if (g_iCappingTeam[arena_index] == TEAM_RED)
-            {
                 SetHudTextParams(0.50, 0.80, HUDFADEOUTTIME, 255, 0, 0, 255); // Red
-            }
-            // Set it blue if blu team is capping
             else if (g_iCappingTeam[arena_index] == TEAM_BLU)
-            {
                 SetHudTextParams(0.50, 0.80, HUDFADEOUTTIME, 0, 0, 255, 255); // Blue
-            }
-            // Set it white if no one is capping
             else
-            {
                 SetHudTextParams(0.50, 0.80, HUDFADEOUTTIME, 255, 255, 255, 255);
-            }
-            // Show the text
+        
             ShowSyncHudText(client, hm_KothCap, "Point Capture: %.1f", g_fKothCappedPercent[arena_index]);
-        }
     }
 
-
-    if (g_bArenaShowHPToPlayers[arena_index])
+    // Health display with BBall intel integration (always shown to players)
+    if (g_bArenaBBall[arena_index] && g_iArenaStatus[arena_index] == AS_FIGHT)
     {
-        float hp_ratio = ((float(g_iPlayerHP[client])) / (float(g_iPlayerMaxHP[client]) * g_fArenaHPRatio[arena_index]));
-        if (hp_ratio > 0.66)
+        // BBall arenas show intel status instead of regular health display
+        char hud_text[128];
+        if (g_bPlayerHasIntel[client])
         {
-            SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 0, 255, 0, 255); // Green
+            Format(hud_text, sizeof(hud_text), "%T", "YouHaveTheIntel", client);
+            ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
         }
-        else if (hp_ratio >= 0.33)
+        else if (g_bFourPersonArena[arena_index] && g_bPlayerHasIntel[client_teammate])
         {
-            SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 0, 255); // Yellow
+            Format(hud_text, sizeof(hud_text), "%T", "TeammateHasTheIntel", client);
+            ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
         }
-        else if (hp_ratio < 0.33)
+        else if (g_bPlayerHasIntel[client_foe] || (g_bFourPersonArena[arena_index] && g_bPlayerHasIntel[client_foe2]))
         {
-            SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 0, 0, 255); // Red
-        }
-        else // SANITY
-        {
-            SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 255, 255); // White
-        }
-        ShowSyncHudText(client, hm_HP, "Health : %d", g_iPlayerHP[client]);
-    }
-    else
-    {
-        SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 255, 255); // White
-        ShowSyncHudText(client, hm_HP, "", g_iPlayerHP[client]);
-    }
-
-
-
-    if (g_bArenaBBall[arena_index])
-    {
-        if (g_iArenaStatus[arena_index] == AS_FIGHT)
-        {
-            char hud_text[128];
-            if (g_bPlayerHasIntel[client])
-            {
-                Format(hud_text, sizeof(hud_text), "%T", "YouHaveTheIntel", client);
-                ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
-            }
-            else if (g_bFourPersonArena[arena_index] && g_bPlayerHasIntel[client_teammate])
-            {
-                Format(hud_text, sizeof(hud_text), "%T", "TeammateHasTheIntel", client);
-                ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
-            }
-            else if (g_bPlayerHasIntel[client_foe] || (g_bFourPersonArena[arena_index] && g_bPlayerHasIntel[client_foe2]))
-            {
-                Format(hud_text, sizeof(hud_text), "%T", "EnemyHasTheIntel", client);
-                ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
-            }
-            else
-            {
-                Format(hud_text, sizeof(hud_text), "%T", "GetTheIntel", client);
-                ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
-            }
+            Format(hud_text, sizeof(hud_text), "%T", "EnemyHasTheIntel", client);
+            ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
         }
         else
         {
+            Format(hud_text, sizeof(hud_text), "%T", "GetTheIntel", client);
+            ShowSyncHudText(client, hm_HP, hud_text, g_iPlayerHP[client]);
+        }
+    }
+    else
+    {
+        // Regular health display for non-BBall arenas
+        if (g_bArenaShowHPToPlayers[arena_index])
+        {
+            float hp_ratio = ((float(g_iPlayerHP[client])) / (float(g_iPlayerMaxHP[client]) * g_fArenaHPRatio[arena_index]));
+            if (hp_ratio > 0.66)
+                SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 0, 255, 0, 255); // Green
+            else if (hp_ratio >= 0.33)
+                SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 0, 255); // Yellow
+            else if (hp_ratio < 0.33)
+                SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 0, 0, 255); // Red
+            else
+                SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 255, 255); // White
+            
+            ShowSyncHudText(client, hm_HP, "Health : %d", g_iPlayerHP[client]);
+        }
+        else
+        {
+            SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 255, 255);
             ShowSyncHudText(client, hm_HP, "", g_iPlayerHP[client]);
         }
     }
 
-    // We want ammomod players to be able to see what their health is, even when they have the text hud turned off.
-    // We also want to show them BBALL notifications
-    if (!g_bShowHud[client])
+    // Teammate HP display for 2v2 (always shown to players)
+    if (g_bFourPersonArena[arena_index] && client_teammate)
     {
-        return;
+        char hp_report[128];
+        Format(hp_report, sizeof(hp_report), "%N : %d", client_teammate, g_iPlayerHP[client_teammate]);
+        SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 255, 255);
+        ShowSyncHudText(client, hm_TeammateHP, hp_report);
     }
+}
 
-    // Score
-    SetHudTextParams(0.01, 0.01, HUDFADEOUTTIME, 255, 255, 255, 255);
-    char report[256];
-    BuildArenaScoreReport(arena_index, client, false, report, sizeof(report));
-    ShowSyncHudText(client, hm_Score, "%s", report);
+// Shows complete HUD information for both players and spectators
+void ShowFullHud(int client, int arena_index, bool is_spectator)
+{
+    if (is_spectator)
+    {
+        // Show HP display for spectators (all arena players)
+        char hp_report[128];
+        int red_f1, blu_f1, red_f2, blu_f2;
+        GetArenaPlayers(arena_index, red_f1, blu_f1, red_f2, blu_f2);
 
-
-    // Hp of teammate
     if (g_bFourPersonArena[arena_index])
-    {
+        {
+            if (red_f1)
+                Format(hp_report, sizeof(hp_report), "%N : %d", red_f1, g_iPlayerHP[red_f1]);
 
-        if (client_teammate)
-            Format(hp_report, sizeof(hp_report), "%N : %d", client_teammate, g_iPlayerHP[client_teammate]);
+            if (red_f2)
+                Format(hp_report, sizeof(hp_report), "%s\n%N : %d", hp_report, red_f2, g_iPlayerHP[red_f2]);
+
+            if (blu_f1)
+                Format(hp_report, sizeof(hp_report), "%s\n\n%N : %d", hp_report, blu_f1, g_iPlayerHP[blu_f1]);
+
+            if (blu_f2)
+                Format(hp_report, sizeof(hp_report), "%s\n%N : %d", hp_report, blu_f2, g_iPlayerHP[blu_f2]);
+        }
+        else
+        {
+            if (red_f1)
+                Format(hp_report, sizeof(hp_report), "%N : %d", red_f1, g_iPlayerHP[red_f1]);
+
+            if (blu_f1)
+                Format(hp_report, sizeof(hp_report), "%s\n%N : %d", hp_report, blu_f1, g_iPlayerHP[blu_f1]);
+        }
+
+        SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 255, 255);
+        ShowSyncHudText(client, hm_HP, hp_report);
     }
-    SetHudTextParams(0.01, 0.80, HUDFADEOUTTIME, 255, 255, 255, 255);
-    ShowSyncHudText(client, hm_TeammateHP, hp_report);
+    else
+    {
+        // Players get critical info first, then score
+        ShowCriticalGameInfo(client, arena_index);
+    }
+
+    // Both players and spectators get score display
+    char report[256];
+    SetHudTextParams(0.01, 0.01, HUDFADEOUTTIME, 255, 255, 255, 255);
+    BuildArenaScoreReport(arena_index, client, is_spectator, report, sizeof(report));
+    ShowSyncHudText(client, hm_Score, "%s", report);
 }
 
 // Updates HUD display for all players and spectators in a specific arena
-void ShowHudToArena(int arena_index)
+void UpdateHudForArena(int arena_index)
 {
     if (arena_index <= 0 || arena_index > g_iArenaCount)
         return;
@@ -173,28 +214,28 @@ void ShowHudToArena(int arena_index)
     {
         if (g_iArenaQueue[arena_index][i])
         {
-            ShowPlayerHud(g_iArenaQueue[arena_index][i]);
+            UpdateHud(g_iArenaQueue[arena_index][i]);
         }
     }
     
-    // Update HUD for spectators watching this arena
-    ShowSpecHudToArena(arena_index);
+    // Update HUD for all spectators watching this arena
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsValidClient(i) && GetClientTeam(i) == TEAM_SPEC && 
+            g_iPlayerSpecTarget[i] > 0 && 
+            g_iPlayerArena[g_iPlayerSpecTarget[i]] == arena_index)
+        {
+            UpdateHud(i);
+        }
+    }
 }
 
 // Updates HUD display for all players and spectators across all arenas
-void ShowHudToAll()
+void UpdateHudForAll()
 {
     for (int i = 1; i <= g_iArenaCount; i++)
     {
-        ShowSpecHudToArena(i);
-    }
-
-    for (int i = 1; i <= MAXPLAYERS; i++)
-    {
-        if (g_iPlayerArena[i])
-        {
-            ShowPlayerHud(i);
-        }
+        UpdateHudForArena(i);
     }
 }
 
@@ -338,10 +379,7 @@ Action Command_ToggleHud(int client, int args)
 
     if (g_bShowHud[client])
     {
-        if (g_iPlayerArena[client])
-            ShowPlayerHud(client);
-        else
-            ShowSpecHudToClient(client);
+        UpdateHud(client);
     }
     else
     {

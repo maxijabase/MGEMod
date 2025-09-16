@@ -170,12 +170,12 @@ Action Command_ToggleElo(int client, int args)
     if (arena_index > 0 && player_slot > 0)
     {
         // Player is actively in an arena - show player HUD
-        ShowPlayerHud(client);
+        UpdateHud(client);
     }
     else if (TF2_GetClientTeam(client) == TFTeam_Spectator && g_iPlayerSpecTarget[client] > 0)
     {
         // Player is spectating someone - show spectator HUD
-        ShowSpecHudToClient(client);
+        UpdateHud(client);
     }
     
     return Plugin_Handled;

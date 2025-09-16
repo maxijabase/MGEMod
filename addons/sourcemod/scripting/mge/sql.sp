@@ -144,7 +144,7 @@ void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any dat
             }
 
             // Refresh all huds to show stats again.
-            ShowHudToAll();
+            UpdateHudForAll();
 
             PrintHintTextToAll("%t", "StatsRestored");
             LogError("Database connection restored.");
@@ -247,7 +247,7 @@ void SQL_OnGenericQueryFinished(Database db, DBResultSet results, const char[] e
             PrintHintTextToAll("%t", "DatabaseDown", g_iReconnectInterval);
 
             // Refresh all huds to get rid of stats display.
-            ShowHudToAll();
+            UpdateHudForAll();
 
             LogError("Lost connection to database, attempting reconnect in %i minutes.", g_iReconnectInterval);
 

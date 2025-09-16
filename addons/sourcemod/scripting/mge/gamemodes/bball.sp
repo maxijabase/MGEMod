@@ -93,7 +93,7 @@ Action OnTouchIntel(int entity, int other)
         g_iClientParticle[client] = EntIndexToEntRef(particle);
     }
 
-    ShowPlayerHud(client);
+    UpdateHud(client);
     EmitSoundToClient(client, "vo/intel_teamstolen.mp3");
 
     int foe = g_iArenaQueue[g_iPlayerArena[client]][(g_iPlayerSlot[client] == SLOT_ONE || g_iPlayerSlot[client] == SLOT_THREE) ? SLOT_TWO : SLOT_ONE];
@@ -101,7 +101,7 @@ Action OnTouchIntel(int entity, int other)
     if (IsValidClient(foe))
     {
         EmitSoundToClient(foe, "vo/intel_enemystolen.mp3");
-        ShowPlayerHud(foe);
+        UpdateHud(foe);
     }
 
     if (g_bFourPersonArena[g_iPlayerArena[client]])
@@ -110,7 +110,7 @@ Action OnTouchIntel(int entity, int other)
         if (IsValidClient(foe2))
         {
             EmitSoundToClient(foe2, "vo/intel_enemystolen.mp3");
-            ShowPlayerHud(foe2);
+            UpdateHud(foe2);
         }
     }
 
@@ -217,13 +217,13 @@ Action OnTouchHoop(int entity, int other)
             CreateTimer(0.15, Timer_ResetIntel, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
         }
 
-        ShowPlayerHud(client);
-        ShowPlayerHud(foe);
+        UpdateHud(client);
+        UpdateHud(foe);
 
         if (g_bFourPersonArena[arena_index])
         {
-            ShowPlayerHud(client_teammate);
-            ShowPlayerHud(foe_teammate);
+            UpdateHud(client_teammate);
+            UpdateHud(foe_teammate);
         }
 
         EmitSoundToClient(client, "vo/intel_teamcaptured.mp3");
@@ -238,7 +238,7 @@ Action OnTouchHoop(int entity, int other)
                 EmitSoundToClient(foe_teammate, "vo/intel_enemycaptured.mp3");
         }
 
-        ShowSpecHudToArena(arena_index);
+        UpdateHudForArena(arena_index);
     }
     return Plugin_Continue;
 }

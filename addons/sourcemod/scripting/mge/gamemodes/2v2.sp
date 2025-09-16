@@ -448,7 +448,7 @@ void Handle2v2TeamSwitch(int client, int arena_index, int new_team)
     Check2v2TeamBalance(arena_index);
     
     // Update HUD for all players in the arena to reflect team changes
-    ShowHudToArena(arena_index);
+    UpdateHudForArena(arena_index);
 }
 
 // Processes team switching requests originating from menu selections

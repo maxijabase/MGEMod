@@ -327,13 +327,13 @@ void EndKoth(any arena_index, any winner_team)
         g_bTimerRunning[arena_index] = true;
     }
 
-    ShowPlayerHud(client);
-    ShowPlayerHud(foe);
+    UpdateHud(client);
+    UpdateHud(foe);
 
     if (g_bFourPersonArena[arena_index])
     {
-        ShowPlayerHud(client_teammate);
-        ShowPlayerHud(foe_teammate);
+        UpdateHud(client_teammate);
+        UpdateHud(foe_teammate);
     }
 }
 
@@ -625,14 +625,14 @@ Action Timer_CountDownKoth(Handle timer, any arena_index)
     }
 
     if (g_iArenaQueue[arena_index][SLOT_ONE])
-        ShowPlayerHud(g_iArenaQueue[arena_index][SLOT_ONE]);
+        UpdateHud(g_iArenaQueue[arena_index][SLOT_ONE]);
     if (g_iArenaQueue[arena_index][SLOT_ONE])
-        ShowPlayerHud(g_iArenaQueue[arena_index][SLOT_TWO]);
+        UpdateHud(g_iArenaQueue[arena_index][SLOT_TWO]);
 
     if (g_bFourPersonArena[arena_index])
     {
-        ShowPlayerHud(g_iArenaQueue[arena_index][SLOT_THREE]);
-        ShowPlayerHud(g_iArenaQueue[arena_index][SLOT_FOUR]);
+        UpdateHud(g_iArenaQueue[arena_index][SLOT_THREE]);
+        UpdateHud(g_iArenaQueue[arena_index][SLOT_FOUR]);
     }
 
     if (g_iArenaStatus[arena_index] > AS_FIGHT)
