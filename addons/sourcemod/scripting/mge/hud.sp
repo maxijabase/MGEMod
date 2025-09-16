@@ -268,11 +268,11 @@ void FormatTeamScoreLine(int player1, int player2, int score, bool show_elo, boo
     }
     else if (player1)
     {
-        FormatPlayerScoreLine(player1, score, show_elo, output, output_size);
+        FormatPlayerScoreLine(player1, score, show_elo && show_2v2_elo, output, output_size);
     }
     else if (player2)
     {
-        FormatPlayerScoreLine(player2, score, show_elo, output, output_size);
+        FormatPlayerScoreLine(player2, score, show_elo && show_2v2_elo, output, output_size);
     }
 }
 
