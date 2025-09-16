@@ -208,32 +208,7 @@ void HideHud(int client)
     ClearSyncHud(client, hm_HP);
 }
 
-
-// ===== HUD DATA EXTRACTION FUNCTIONS =====
-
-// Retrieves arena player assignments for HUD display
-void GetArenaPlayers(int arena_index, int &red_f1, int &blu_f1, int &red_f2, int &blu_f2)
-{
-    red_f1 = g_iArenaQueue[arena_index][SLOT_ONE];
-    blu_f1 = g_iArenaQueue[arena_index][SLOT_TWO];
-    red_f2 = 0;
-    blu_f2 = 0;
-    
-    if (g_bFourPersonArena[arena_index])
-    {
-        red_f2 = g_iArenaQueue[arena_index][SLOT_THREE];
-        blu_f2 = g_iArenaQueue[arena_index][SLOT_FOUR];
-    }
-}
-
-// Retrieves basic arena information for HUD display
-void GetArenaBasicInfo(int arena_index, char[] arena_name, int name_size, int &fraglimit, bool &is_2v2, bool &is_bball)
-{
-    strcopy(arena_name, name_size, g_sArenaName[arena_index]);
-    fraglimit = g_iArenaFraglimit[arena_index];
-    is_2v2 = g_bFourPersonArena[arena_index];
-    is_bball = g_bArenaBBall[arena_index];
-}
+// ===== HUD FORMATTING FUNCTIONS =====
 
 // Formats a single player's score line with optional ELO display
 void FormatPlayerScoreLine(int player, int score, bool show_elo, char[] output, int output_size)
