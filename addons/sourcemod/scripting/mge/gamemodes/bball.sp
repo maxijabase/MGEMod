@@ -1,5 +1,70 @@
 // ===== ENTITY MANAGEMENT =====
 
+// Setup BBall hoops for all BBall arenas during round start
+void SetupBBallHoops()
+{
+    PrecacheModel(MODEL_BRIEFCASE, true);
+    PrecacheModel(MODEL_AMMOPACK, true);
+
+    for (int i = 0; i <= g_iArenaCount; i++)
+    {
+        if (g_bArenaBBall[i])
+        {
+            float hoop_2_loc[3];
+            hoop_2_loc[0] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][0];
+            hoop_2_loc[1] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][1];
+            hoop_2_loc[2] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][2];
+
+            float hoop_1_loc[3];
+            hoop_1_loc[0] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i] - 1][0];
+            hoop_1_loc[1] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i] - 1][1];
+            hoop_1_loc[2] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i] - 1][2];
+
+            if (IsValidEdict(g_iBBallHoop[i][SLOT_ONE]) && g_iBBallHoop[i][SLOT_ONE] > 0)
+            {
+                RemoveEdict(g_iBBallHoop[i][SLOT_ONE]);
+                g_iBBallHoop[i][SLOT_ONE] = -1;
+            } else if (g_iBBallHoop[i][SLOT_ONE] != -1) {
+                g_iBBallHoop[i][SLOT_ONE] = -1;
+            }
+
+            if (IsValidEdict(g_iBBallHoop[i][SLOT_TWO]) && g_iBBallHoop[i][SLOT_TWO] > 0)
+            {
+                RemoveEdict(g_iBBallHoop[i][SLOT_TWO]);
+                g_iBBallHoop[i][SLOT_TWO] = -1;
+            } else if (g_iBBallHoop[i][SLOT_TWO] != -1) {
+                g_iBBallHoop[i][SLOT_TWO] = -1;
+            }
+
+            if (g_iBBallHoop[i][SLOT_ONE] == -1)
+            {
+                g_iBBallHoop[i][SLOT_ONE] = CreateEntityByName("item_ammopack_small");
+                TeleportEntity(g_iBBallHoop[i][SLOT_ONE], hoop_1_loc, NULL_VECTOR, NULL_VECTOR);
+                DispatchSpawn(g_iBBallHoop[i][SLOT_ONE]);
+                SetEntProp(g_iBBallHoop[i][SLOT_ONE], Prop_Send, "m_iTeamNum", 1, 4);
+
+                SDKHook(g_iBBallHoop[i][SLOT_ONE], SDKHook_StartTouch, OnTouchHoop);
+            }
+
+            if (g_iBBallHoop[i][SLOT_TWO] == -1)
+            {
+                g_iBBallHoop[i][SLOT_TWO] = CreateEntityByName("item_ammopack_small");
+                TeleportEntity(g_iBBallHoop[i][SLOT_TWO], hoop_2_loc, NULL_VECTOR, NULL_VECTOR);
+                DispatchSpawn(g_iBBallHoop[i][SLOT_TWO]);
+                SetEntProp(g_iBBallHoop[i][SLOT_TWO], Prop_Send, "m_iTeamNum", 1, 4);
+
+                SDKHook(g_iBBallHoop[i][SLOT_TWO], SDKHook_StartTouch, OnTouchHoop);
+            }
+
+            if (g_bVisibleHoops[i] == false)
+            {
+                AcceptEntityInput(g_iBBallHoop[i][SLOT_ONE], "Disable");
+                AcceptEntityInput(g_iBBallHoop[i][SLOT_TWO], "Disable");
+            }
+        }
+    }
+}
+
 // Reset and recreate the intel entity at appropriate spawn locations for bball gameplay
 void ResetIntel(int arena_index, any client = -1)
 {

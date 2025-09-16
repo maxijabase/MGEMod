@@ -1,3 +1,46 @@
+// ===== ENTITY MANAGEMENT =====
+
+// Setup KOTH capture points for all KOTH arenas during round start
+void SetupKothCapturePoints()
+{
+    for (int i = 0; i <= g_iArenaCount; i++)
+    {
+        if (g_bArenaKoth[i])
+        {
+            float point_loc[3];
+            point_loc[0] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][0];
+            point_loc[1] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][1];
+            point_loc[2] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][2];
+
+            if (IsValidEdict(g_iCapturePoint[i]) && g_iCapturePoint[i] > 0)
+            {
+                RemoveEdict(g_iCapturePoint[i]);
+                g_iCapturePoint[i] = -1;
+            }
+            else if (g_iCapturePoint[i] != -1)
+            {
+                g_iCapturePoint[i] = -1;
+            }
+
+            if (g_iCapturePoint[i] == -1)
+            {
+                g_iCapturePoint[i] = CreateEntityByName("item_ammopack_small");
+                TeleportEntity(g_iCapturePoint[i], point_loc, NULL_VECTOR, NULL_VECTOR);
+                DispatchSpawn(g_iCapturePoint[i]);
+                SetEntProp(g_iCapturePoint[i], Prop_Send, "m_iTeamNum", 1, 4);
+                SetEntityModel(g_iCapturePoint[i], MODEL_POINT);
+                DispatchKeyValue(g_iCapturePoint[i], "powerup_model", MODEL_BRIEFCASE);
+
+                SDKHook(g_iCapturePoint[i], SDKHook_StartTouch, OnTouchPoint);
+                SDKHook(g_iCapturePoint[i], SDKHook_EndTouch, OnEndTouchPoint);
+            }
+
+            AcceptEntityInput(g_iCapturePoint[i], "Disable");
+        }
+    }
+}
+
+
 // ===== GAME MECHANICS =====
 
 // Process capture point mechanics across all active KOTH arenas

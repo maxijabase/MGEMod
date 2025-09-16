@@ -626,108 +626,13 @@ Action Event_WinPanel(Event event, const char[] name, bool dontBroadcast)
 // Initialize BBall hoops and KOTH capture points when round starts
 Action Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-    FindConVar("mp_waitingforplayers_cancel").SetInt(1); // Cancel waiting for players
+    FindConVar("mp_waitingforplayers_cancel").SetInt(1);
 
-    // Be totally certain that the models are cached so they can be hooked
-    PrecacheModel(MODEL_BRIEFCASE, true);
-    PrecacheModel(MODEL_AMMOPACK, true);
+    // BBall
+    SetupBBallHoops();
 
-    for (int i = 0; i <= g_iArenaCount; i++)
-    {
-        if (g_bArenaBBall[i])
-        {
-            float hoop_2_loc[3];
-            hoop_2_loc[0] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][0];
-            hoop_2_loc[1] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][1];
-            hoop_2_loc[2] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][2];
-
-            float hoop_1_loc[3];
-            hoop_1_loc[0] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i] - 1][0];
-            hoop_1_loc[1] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i] - 1][1];
-            hoop_1_loc[2] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i] - 1][2];
-
-            if (IsValidEdict(g_iBBallHoop[i][SLOT_ONE]) && g_iBBallHoop[i][SLOT_ONE] > 0)
-            {
-                RemoveEdict(g_iBBallHoop[i][SLOT_ONE]);
-                g_iBBallHoop[i][SLOT_ONE] = -1;
-            } else if (g_iBBallHoop[i][SLOT_ONE] != -1) {  // g_iBBallHoop[i][SLOT_ONE] equaling -1 is not a bad thing, so don't print an error for it.
-                g_iBBallHoop[i][SLOT_ONE] = -1;
-            }
-
-            if (IsValidEdict(g_iBBallHoop[i][SLOT_TWO]) && g_iBBallHoop[i][SLOT_TWO] > 0)
-            {
-                RemoveEdict(g_iBBallHoop[i][SLOT_TWO]);
-                g_iBBallHoop[i][SLOT_TWO] = -1;
-            } else if (g_iBBallHoop[i][SLOT_TWO] != -1) {  // g_iBBallHoop[i][SLOT_TWO] equaling -1 is not a bad thing, so don't print an error for it.
-                g_iBBallHoop[i][SLOT_TWO] = -1;
-            }
-
-            if (g_iBBallHoop[i][SLOT_ONE] == -1)
-            {
-                g_iBBallHoop[i][SLOT_ONE] = CreateEntityByName("item_ammopack_small");
-                TeleportEntity(g_iBBallHoop[i][SLOT_ONE], hoop_1_loc, NULL_VECTOR, NULL_VECTOR);
-                DispatchSpawn(g_iBBallHoop[i][SLOT_ONE]);
-                SetEntProp(g_iBBallHoop[i][SLOT_ONE], Prop_Send, "m_iTeamNum", 1, 4);
-
-                SDKHook(g_iBBallHoop[i][SLOT_ONE], SDKHook_StartTouch, OnTouchHoop);
-            }
-
-            if (g_iBBallHoop[i][SLOT_TWO] == -1)
-            {
-                g_iBBallHoop[i][SLOT_TWO] = CreateEntityByName("item_ammopack_small");
-                TeleportEntity(g_iBBallHoop[i][SLOT_TWO], hoop_2_loc, NULL_VECTOR, NULL_VECTOR);
-                DispatchSpawn(g_iBBallHoop[i][SLOT_TWO]);
-                SetEntProp(g_iBBallHoop[i][SLOT_TWO], Prop_Send, "m_iTeamNum", 1, 4);
-
-                SDKHook(g_iBBallHoop[i][SLOT_TWO], SDKHook_StartTouch, OnTouchHoop);
-            }
-
-            if (g_bVisibleHoops[i] == false)
-            {
-                // Could have used SetRenderMode here, but it had the unfortunate side-effect of also making the intel invisible.
-                // Luckily, inputting "Disable" to most entities makes them invisible, so it was a valid workaround.
-                AcceptEntityInput(g_iBBallHoop[i][SLOT_ONE], "Disable");
-                AcceptEntityInput(g_iBBallHoop[i][SLOT_TWO], "Disable");
-            }
-        }
-
-        if (g_bArenaKoth[i])
-        {
-            float point_loc[3];
-            point_loc[0] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][0];
-            point_loc[1] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][1];
-            point_loc[2] = g_fArenaSpawnOrigin[i][g_iArenaSpawns[i]][2];
-
-            if (IsValidEdict(g_iCapturePoint[i]) && g_iCapturePoint[i] > 0)
-            {
-                RemoveEdict(g_iCapturePoint[i]);
-                g_iCapturePoint[i] = -1;
-            }
-            // g_iCapturePoint[i] equaling -1 is not a bad thing, so don't print an error for it.
-            else if (g_iCapturePoint[i] != -1)
-            {
-                g_iCapturePoint[i] = -1;
-            }
-
-            if (g_iCapturePoint[i] == -1)
-            {
-                g_iCapturePoint[i] = CreateEntityByName("item_ammopack_small");
-                TeleportEntity(g_iCapturePoint[i], point_loc, NULL_VECTOR, NULL_VECTOR);
-                DispatchSpawn(g_iCapturePoint[i]);
-                SetEntProp(g_iCapturePoint[i], Prop_Send, "m_iTeamNum", 1, 4);
-                SetEntityModel(g_iCapturePoint[i], MODEL_POINT);
-                DispatchKeyValue(g_iCapturePoint[i], "powerup_model", MODEL_BRIEFCASE);
-
-                SDKHook(g_iCapturePoint[i], SDKHook_StartTouch, OnTouchPoint);
-                SDKHook(g_iCapturePoint[i], SDKHook_EndTouch, OnEndTouchPoint);
-            }
-
-            // Could have used SetRenderMode here, but it had the unfortunate side-effect of also making the intel invisible.
-            // Luckily, inputting "Disable" to most entities makes them invisible, so it was a valid workaround.
-            AcceptEntityInput(g_iCapturePoint[i], "Disable");
-
-        }
-    }
+    // KOTH
+    SetupKothCapturePoints();
 
     return Plugin_Continue;
 }
