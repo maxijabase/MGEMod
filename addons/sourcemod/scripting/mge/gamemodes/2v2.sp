@@ -232,7 +232,9 @@ void Start2v2ReadySystem(int arena_index)
 
     // Notify players about ready state
     PrintToChatArena(arena_index, "%t", "All4PlayersJoined");
-    Update2v2ReadyStatus(arena_index);
+    
+    // Delay hint text by 1 second after arena selection
+    CreateTimer(1.0, Timer_Show2v2InitialStatus, arena_index);
     
     // Start hud text refresh timer
     CreateTimer(5.0, Timer_Refresh2v2Hud, arena_index, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
@@ -738,6 +740,17 @@ Action Command_Swap(int client, int args)
 
 
 // ===== TIMER CALLBACKS =====
+
+// Displays initial ready status with 1 second delay after arena selection
+Action Timer_Show2v2InitialStatus(Handle timer, any arena_index)
+{
+    // Only show if arena is still in ready state
+    if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
+    {
+        Update2v2ReadyStatus(arena_index);
+    }
+    return Plugin_Continue;
+}
 
 // Periodically refreshes the ready status HUD display for active 2v2 arenas
 Action Timer_Refresh2v2Hud(Handle timer, any arena_index)
