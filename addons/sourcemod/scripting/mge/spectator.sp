@@ -9,18 +9,10 @@ void ShowSpecHudToClient(int client)
         return;
 
     int arena_index = g_iPlayerArena[g_iPlayerSpecTarget[client]];
-    int red_f1 = g_iArenaQueue[arena_index][SLOT_ONE];
-    int blu_f1 = g_iArenaQueue[arena_index][SLOT_TWO];
-    int red_f2;
-    int blu_f2;
-
-    if (g_bFourPersonArena[arena_index])
-    {
-        red_f2 = g_iArenaQueue[arena_index][SLOT_THREE];
-        blu_f2 = g_iArenaQueue[arena_index][SLOT_FOUR];
-    }
 
     char hp_report[128];
+    int red_f1, blu_f1, red_f2, blu_f2;
+    GetArenaPlayers(arena_index, red_f1, blu_f1, red_f2, blu_f2);
 
     // If its a 2v2 arena show the teamates hp's
     if (g_bFourPersonArena[arena_index])
@@ -54,101 +46,7 @@ void ShowSpecHudToClient(int client)
     // Score
     char report[256];
     SetHudTextParams(0.01, 0.01, HUDFADEOUTTIME, 255, 255, 255, 255);
-
-    int fraglimit = g_iArenaFraglimit[arena_index];
-
-    if (g_iArenaStatus[arena_index] != AS_IDLE)
-    {
-        if (fraglimit > 0)
-            Format(report, sizeof(report), "%s - Frag Limit [%d]", g_sArenaName[arena_index], fraglimit);
-        else
-            Format(report, sizeof(report), "%s - No Frag Limit", g_sArenaName[arena_index]);
-    }
-    else
-    {
-        Format(report, sizeof(report), "%s", g_sArenaName[arena_index]);
-    }
-
-    if (g_bFourPersonArena[arena_index])
-    {
-        // Display RED team (SLOT_ONE and SLOT_THREE)
-        if (red_f1 || red_f2)
-        {
-            if (red_f1 && red_f2)
-            {
-                // Both RED players present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client] || !g_b2v2Elo)
-                    Format(report, sizeof(report), "%s\n«%N» and «%N» : %d", report, red_f1, red_f2, g_iArenaScore[arena_index][SLOT_ONE]);
-                else
-                    Format(report, sizeof(report), "%s\n«%N» and «%N» (%d): %d", report, red_f1, red_f2, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
-            }
-            else if (red_f1)
-            {
-                // Only first RED player present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                    Format(report, sizeof(report), "%s\n%N : %d", report, red_f1, g_iArenaScore[arena_index][SLOT_ONE]);
-                else
-                    Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f1, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
-            }
-            else if (red_f2)
-            {
-                // Only second RED player present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                    Format(report, sizeof(report), "%s\n%N : %d", report, red_f2, g_iArenaScore[arena_index][SLOT_ONE]);
-                else
-                    Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f2, g_iPlayerRating[red_f2], g_iArenaScore[arena_index][SLOT_ONE]);
-            }
-        }
-        
-        // Display BLU team (SLOT_TWO and SLOT_FOUR)
-        if (blu_f1 || blu_f2)
-        {
-            if (blu_f1 && blu_f2)
-            {
-                // Both BLU players present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client] || !g_b2v2Elo)
-                    Format(report, sizeof(report), "%s\n«%N» and «%N» : %d", report, blu_f1, blu_f2, g_iArenaScore[arena_index][SLOT_TWO]);
-                else
-                    Format(report, sizeof(report), "%s\n«%N» and «%N» (%d): %d", report, blu_f1, blu_f2, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
-            }
-            else if (blu_f1)
-            {
-                // Only first BLU player present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                    Format(report, sizeof(report), "%s\n%N : %d", report, blu_f1, g_iArenaScore[arena_index][SLOT_TWO]);
-                else
-                    Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f1, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
-            }
-            else if (blu_f2)
-            {
-                // Only second BLU player present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                    Format(report, sizeof(report), "%s\n%N : %d", report, blu_f2, g_iArenaScore[arena_index][SLOT_TWO]);
-                else
-                    Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f2, g_iPlayerRating[blu_f2], g_iArenaScore[arena_index][SLOT_TWO]);
-            }
-        }
-    }
-
-    else
-    {
-        if (red_f1)
-        {
-            if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                Format(report, sizeof(report), "%s\n%N : %d", report, red_f1, g_iArenaScore[arena_index][SLOT_ONE]);
-            else
-                Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f1, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
-        }
-
-        if (blu_f1)
-        {
-            if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                Format(report, sizeof(report), "%s\n%N : %d", report, blu_f1, g_iArenaScore[arena_index][SLOT_TWO]);
-            else
-                Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f1, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
-        }
-    }
-
+    BuildArenaScoreReport(arena_index, client, true, report, sizeof(report));
     ShowSyncHudText(client, hm_Score, "%s", report);
 }
 

@@ -147,110 +147,7 @@ void ShowPlayerHud(int client)
     // Score
     SetHudTextParams(0.01, 0.01, HUDFADEOUTTIME, 255, 255, 255, 255);
     char report[256];
-    int fraglimit = g_iArenaFraglimit[arena_index];
-
-    if (g_bArenaBBall[arena_index])
-    {
-        if (fraglimit > 0)
-            Format(report, sizeof(report), "%s - Capture Limit [%d]", g_sArenaName[arena_index], fraglimit);
-        else
-            Format(report, sizeof(report), "%s - No Capture Limit", g_sArenaName[arena_index]);
-    } else {
-        if (fraglimit > 0)
-            Format(report, sizeof(report), "%s - Frag Limit [%d]", g_sArenaName[arena_index], fraglimit);
-        else
-            Format(report, sizeof(report), "%s - No Frag Limit", g_sArenaName[arena_index]);
-    }
-
-    int red_f1 = g_iArenaQueue[arena_index][SLOT_ONE];
-    int blu_f1 = g_iArenaQueue[arena_index][SLOT_TWO];
-    int red_f2;
-    int blu_f2;
-    if (g_bFourPersonArena[arena_index])
-    {
-        red_f2 = g_iArenaQueue[arena_index][SLOT_THREE];
-        blu_f2 = g_iArenaQueue[arena_index][SLOT_FOUR];
-    }
-
-    if (g_bFourPersonArena[arena_index])
-    {
-        // Display RED team (SLOT_ONE and SLOT_THREE)
-        if (red_f1 || red_f2)
-        {
-            if (red_f1 && red_f2)
-            {
-                // Both RED players present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client] || !g_b2v2Elo)
-                    Format(report, sizeof(report), "%s\n«%N» and «%N» : %d", report, red_f1, red_f2, g_iArenaScore[arena_index][SLOT_ONE]);
-                else
-                    Format(report, sizeof(report), "%s\n«%N» and «%N» (%d): %d", report, red_f1, red_f2, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
-            }
-            else if (red_f1)
-            {
-                // Only first RED player present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                    Format(report, sizeof(report), "%s\n%N : %d", report, red_f1, g_iArenaScore[arena_index][SLOT_ONE]);
-                else
-                    Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f1, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
-            }
-            else if (red_f2)
-            {
-                // Only second RED player present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                    Format(report, sizeof(report), "%s\n%N : %d", report, red_f2, g_iArenaScore[arena_index][SLOT_ONE]);
-                else
-                    Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f2, g_iPlayerRating[red_f2], g_iArenaScore[arena_index][SLOT_ONE]);
-            }
-        }
-        
-        // Display BLU team (SLOT_TWO and SLOT_FOUR)
-        if (blu_f1 || blu_f2)
-        {
-            if (blu_f1 && blu_f2)
-            {
-                // Both BLU players present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client] || !g_b2v2Elo)
-                    Format(report, sizeof(report), "%s\n«%N» and «%N» : %d", report, blu_f1, blu_f2, g_iArenaScore[arena_index][SLOT_TWO]);
-                else
-                    Format(report, sizeof(report), "%s\n«%N» and «%N» (%d): %d", report, blu_f1, blu_f2, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
-            }
-            else if (blu_f1)
-            {
-                // Only first BLU player present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                    Format(report, sizeof(report), "%s\n%N : %d", report, blu_f1, g_iArenaScore[arena_index][SLOT_TWO]);
-                else
-                    Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f1, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
-            }
-            else if (blu_f2)
-            {
-                // Only second BLU player present
-                if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                    Format(report, sizeof(report), "%s\n%N : %d", report, blu_f2, g_iArenaScore[arena_index][SLOT_TWO]);
-                else
-                    Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f2, g_iPlayerRating[blu_f2], g_iArenaScore[arena_index][SLOT_TWO]);
-            }
-        }
-    }
-
-    else
-    {
-        if (red_f1)
-        {
-            if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                Format(report, sizeof(report), "%s\n%N : %d", report, red_f1, g_iArenaScore[arena_index][SLOT_ONE]);
-            else
-                Format(report, sizeof(report), "%s\n%N (%d): %d", report, red_f1, g_iPlayerRating[red_f1], g_iArenaScore[arena_index][SLOT_ONE]);
-        }
-
-        if (blu_f1)
-        {
-            if (g_bNoStats || g_bNoDisplayRating || !g_bShowElo[client])
-                Format(report, sizeof(report), "%s\n%N : %d", report, blu_f1, g_iArenaScore[arena_index][SLOT_TWO]);
-            else
-                Format(report, sizeof(report), "%s\n%N (%d): %d", report, blu_f1, g_iPlayerRating[blu_f1], g_iArenaScore[arena_index][SLOT_TWO]);
-        }
-    }
+    BuildArenaScoreReport(arena_index, client, false, report, sizeof(report));
     ShowSyncHudText(client, hm_Score, "%s", report);
 
 
@@ -309,6 +206,148 @@ void HideHud(int client)
 
     ClearSyncHud(client, hm_Score);
     ClearSyncHud(client, hm_HP);
+}
+
+
+// ===== HUD DATA EXTRACTION FUNCTIONS =====
+
+// Retrieves arena player assignments for HUD display
+void GetArenaPlayers(int arena_index, int &red_f1, int &blu_f1, int &red_f2, int &blu_f2)
+{
+    red_f1 = g_iArenaQueue[arena_index][SLOT_ONE];
+    blu_f1 = g_iArenaQueue[arena_index][SLOT_TWO];
+    red_f2 = 0;
+    blu_f2 = 0;
+    
+    if (g_bFourPersonArena[arena_index])
+    {
+        red_f2 = g_iArenaQueue[arena_index][SLOT_THREE];
+        blu_f2 = g_iArenaQueue[arena_index][SLOT_FOUR];
+    }
+}
+
+// Retrieves basic arena information for HUD display
+void GetArenaBasicInfo(int arena_index, char[] arena_name, int name_size, int &fraglimit, bool &is_2v2, bool &is_bball)
+{
+    strcopy(arena_name, name_size, g_sArenaName[arena_index]);
+    fraglimit = g_iArenaFraglimit[arena_index];
+    is_2v2 = g_bFourPersonArena[arena_index];
+    is_bball = g_bArenaBBall[arena_index];
+}
+
+// Formats a single player's score line with optional ELO display
+void FormatPlayerScoreLine(int player, int score, bool show_elo, char[] output, int output_size)
+{
+    if (!player)
+    {
+        output[0] = '\0';
+        return;
+    }
+    
+    if (g_bNoStats || g_bNoDisplayRating || !show_elo)
+        Format(output, output_size, "%N : %d", player, score);
+    else
+        Format(output, output_size, "%N (%d): %d", player, g_iPlayerRating[player], score);
+}
+
+// Formats a team score line for 2v2 with optional ELO display  
+void FormatTeamScoreLine(int player1, int player2, int score, bool show_elo, bool show_2v2_elo, char[] output, int output_size)
+{
+    if (!player1 && !player2)
+    {
+        output[0] = '\0';
+        return;
+    }
+    
+    if (player1 && player2)
+    {
+        if (g_bNoStats || g_bNoDisplayRating || !show_elo || !show_2v2_elo)
+            Format(output, output_size, "«%N» and «%N» : %d", player1, player2, score);
+        else
+            Format(output, output_size, "«%N» and «%N» (%d): %d", player1, player2, g_iPlayerRating[player1], score);
+    }
+    else if (player1)
+    {
+        FormatPlayerScoreLine(player1, score, show_elo, output, output_size);
+    }
+    else if (player2)
+    {
+        FormatPlayerScoreLine(player2, score, show_elo, output, output_size);
+    }
+}
+
+// Formats arena header with name and frag/capture limit information
+void FormatArenaHeader(char[] arena_name, int fraglimit, bool is_bball, bool for_spectator, int arena_status, char[] output, int output_size)
+{
+    if (for_spectator && arena_status == AS_IDLE)
+    {
+        Format(output, output_size, "%s", arena_name);
+        return;
+    }
+    
+    if (fraglimit > 0)
+    {
+        if (is_bball)
+            Format(output, output_size, "%s - Capture Limit [%d]", arena_name, fraglimit);
+        else
+            Format(output, output_size, "%s - Frag Limit [%d]", arena_name, fraglimit);
+    }
+    else
+    {
+        if (is_bball)
+            Format(output, output_size, "%s - No Capture Limit", arena_name);
+        else
+            Format(output, output_size, "%s - No Frag Limit", arena_name);
+    }
+}
+
+// Builds complete arena score report for both players and spectators
+void BuildArenaScoreReport(int arena_index, int client, bool for_spectator, char[] output, int output_size)
+{
+    char arena_name[64];
+    int fraglimit;
+    bool is_2v2, is_bball;
+    GetArenaBasicInfo(arena_index, arena_name, sizeof(arena_name), fraglimit, is_2v2, is_bball);
+    
+    int red_f1, blu_f1, red_f2, blu_f2;
+    GetArenaPlayers(arena_index, red_f1, blu_f1, red_f2, blu_f2);
+    
+    char header[128];
+    FormatArenaHeader(arena_name, fraglimit, is_bball, for_spectator, g_iArenaStatus[arena_index], header, sizeof(header));
+    strcopy(output, output_size, header);
+    
+    bool show_elo = g_bShowElo[client];
+    
+    if (is_2v2)
+    {
+        char red_line[128], blu_line[128];
+        
+        if (red_f1 || red_f2)
+        {
+            FormatTeamScoreLine(red_f1, red_f2, g_iArenaScore[arena_index][SLOT_ONE], show_elo, g_b2v2Elo, red_line, sizeof(red_line));
+            if (red_line[0] != '\0')
+                Format(output, output_size, "%s\n%s", output, red_line);
+        }
+        
+        if (blu_f1 || blu_f2)
+        {
+            FormatTeamScoreLine(blu_f1, blu_f2, g_iArenaScore[arena_index][SLOT_TWO], show_elo, g_b2v2Elo, blu_line, sizeof(blu_line));
+            if (blu_line[0] != '\0')
+                Format(output, output_size, "%s\n%s", output, blu_line);
+        }
+    }
+    else
+    {
+        char red_line[128], blu_line[128];
+        
+        FormatPlayerScoreLine(red_f1, g_iArenaScore[arena_index][SLOT_ONE], show_elo, red_line, sizeof(red_line));
+        if (red_line[0] != '\0')
+            Format(output, output_size, "%s\n%s", output, red_line);
+        
+        FormatPlayerScoreLine(blu_f1, g_iArenaScore[arena_index][SLOT_TWO], show_elo, blu_line, sizeof(blu_line));
+        if (blu_line[0] != '\0')
+            Format(output, output_size, "%s\n%s", output, blu_line);
+    }
 }
 
 
