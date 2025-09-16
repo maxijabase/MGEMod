@@ -941,9 +941,6 @@ Action Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     else if (g_bArenaAmmomod[arena_index])
         g_iPlayerHP[victim] -= iDamage;
 
-    // TODO: Look into getting rid of the crutch. Possible memory leak/performance issue?
-    g_bPlayerRestoringAmmo[attacker] = false; // Inf ammo crutch
-
     if (g_bArenaAmmomod[arena_index] || g_bArenaMidair[arena_index] || g_bArenaEndif[arena_index])
     {
         if (g_iPlayerHP[victim] <= 0)
@@ -972,7 +969,6 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
         float vel[3] = { 0.0, 0.0, 0.0 };
         TeleportEntity(victim, NULL_VECTOR, NULL_VECTOR, vel);
     }
-
 
     int killer_slot = (victim_slot == SLOT_ONE || victim_slot == SLOT_THREE) ? SLOT_TWO : SLOT_ONE;
     int killer = g_iArenaQueue[arena_index][killer_slot];
