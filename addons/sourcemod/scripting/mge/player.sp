@@ -10,7 +10,6 @@ void HandleClientConnection(int client)
     ChangeClientTeam(client, TEAM_SPEC);
     g_bShowHud[client] = true;
     g_bPlayerRestoringAmmo[client] = false;
-    g_bShowElo[client] = true;
     
     // Clear any inherited statistics data immediately
     g_iPlayerRating[client] = 0;

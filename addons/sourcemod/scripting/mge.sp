@@ -364,6 +364,8 @@ public void OnClientCookiesCached(int client)
     g_hShowEloCookie.Get(client, cookieValue, sizeof(cookieValue));
     if (strlen(cookieValue) > 0)
         g_bShowElo[client] = (StringToInt(cookieValue) == 1);
+    else
+        g_bShowElo[client] = true; // Default to enabled for new players
 }
 
 // Initialize basic client data when they connect (regardless of Steam status)
