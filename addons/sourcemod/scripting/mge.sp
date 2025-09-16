@@ -217,6 +217,21 @@ public void OnPluginStart()
 
 }
 
+// Execute configuration after all configs are loaded
+public void OnConfigsExecuted()
+{
+    if (!g_bNoStats)
+    {
+        PrepareSQL();
+    }
+    
+    // Handle hot reload after database is ready
+    if (g_bLate)
+    {
+        HandleHotReload();
+    }
+}
+
 // Handle plugin hot reload by reinitializing all connected clients and loading their stats
 void HandleHotReload()
 {
@@ -260,21 +275,6 @@ void HandleHotReload()
     
     // Reset the late flag after handling hot reload
     g_bLate = false;
-}
-
-// Execute configuration after all configs are loaded
-public void OnConfigsExecuted()
-{
-    if (!g_bNoStats)
-    {
-        PrepareSQL();
-    }
-    
-    // Handle hot reload after database is ready
-    if (g_bLate)
-    {
-        HandleHotReload();
-    }
 }
 
 // Initialize map-specific systems, precache models, hook events, and set up arenas
