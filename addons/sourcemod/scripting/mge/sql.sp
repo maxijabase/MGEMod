@@ -84,6 +84,12 @@ void PrepareSQL()
     }
 
     RunDatabaseMigrations();
+
+    // Handle hot reload after database is ready
+    if (g_bLate)
+    {
+        HandleHotReload();
+    }
 }
 
 

@@ -214,7 +214,6 @@ public void OnPluginStart()
 
     // Set up the log file for debug logging
     BuildPath(Path_SM, g_sLogFile, sizeof(g_sLogFile), "logs/mgemod.log");
-
 }
 
 // Execute configuration after all configs are loaded
@@ -223,12 +222,6 @@ public void OnConfigsExecuted()
     if (!g_bNoStats)
     {
         PrepareSQL();
-    }
-    
-    // Handle hot reload after database is ready
-    if (g_bLate)
-    {
-        HandleHotReload();
     }
 }
 
