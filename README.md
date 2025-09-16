@@ -3,6 +3,17 @@
 
 This is a fork of sappho's repository, with the following improvements:
 
+## New Commands
+
+* Added `!elo` command to toggle client score display (like a local-only no stats)
+* Modified `!add` command to support a player name as argument to join the arena that player is in (`!add @ampere`)
+* Enhanced `!rank` command to display comprehensive player statistics in a panel interface
+
+## New ConVars
+
+* `mgemod_allow_unverified_players` (0/1) - server flexibility with unverified players - allows them to play but skips ELO calculations
+* `mgemod_clear_projectiles` (0/1) - allow server owners to enable/disable projectile deletion upon the start of a new round
+
 ## Database & Backend
 
 * Added a database migration mechanism to leave room for future features and improvements that require modifying the schema
@@ -10,6 +21,7 @@ This is a fork of sappho's repository, with the following improvements:
 * Added PostgreSQL support (only <=9.6 as per SourceMod's limitations)
 * Added some measures to prevent ELOs from corrupting randomly due to database connection errors
 * Added an API layer of natives and forwards
+* Added ELO verification system to prevent players with failed Steam authentication from affecting ratings
 
 ## Duel & Statistics Tracking
 
@@ -17,14 +29,11 @@ This is a fork of sappho's repository, with the following improvements:
 * Added start time tracking in duels
 * Added previous and new score tracking in duels
 * Added elo tracking in duels, displaying previous elo and new elo of each player in every match record
-* Added new `!elo` command to toggle client score display (like a local-only no stats)
 
 ## Arena & Gameplay
 
 * Split the `mgemod_spawns.cfg` file into map-specific files for better performance and UX while editing arenas
 * Added the possibility of blocking class change once the duel has started and score is still 0-0, via a new arena `classchange` property in the map config file
-* Modified !add command to support a player name as argument to join the arena that player is in (`!add @ampere`)
-* Added `mgemod_clear_projectiles` (0/1) ConVar to allow server owners to enable/disable projectile deletion upon the start of a new round
 * Blocked eureka effect teleport usage
 * Blocked the repeating resupply sound due to some maps not blocking them in certain arenas
 * Fixed a small bug in the random spawn logic
@@ -36,10 +45,9 @@ This is a fork of sappho's repository, with the following improvements:
 * Fixed HUD not reflecting changes on time or not displaying players properly sometimes
 * Improved the interface and usage experience of the !top5 menu
 * Fixed some sounds not working due to the plugin using their .wav version instead of .mp3
-* Forced menu close on players that had the !add menu open but decided to join an arena via chat, to prevent accidental arena changes
-* Fixed some commands not having their return type properly, making users users receive "Unknown command" upon running them
-* Added missing translations for all hardcoded english strings across the entire plugin, and added some languages
-* Enhanced `!rank` command to display comprehensive player statistics in a panel interface, showing individual rankings for rating, wins, and losses, plus calculated W/L ratio and win percentage
+* Forced menu close on players that had the !add menu open but decided to join an arena via chat
+* Fixed some commands not having their return type properly, making users users receive "Unknown command"
+* Added missing translations for all hardcoded english strings, and added some languages
 
 ## 2v2 System
 
