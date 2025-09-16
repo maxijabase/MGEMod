@@ -345,7 +345,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 CreateTimer(2.0, Timer_Restart2v2Ready, arena_index);
                 GetClientName(next_client, playername, sizeof(playername));
 
-                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
+                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client], IsPlayerEligibleForElo(next_client));
                 
                 UpdateHudForArena(arena_index);
             } else {
@@ -425,7 +425,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
                 CreateTimer(2.0, Timer_StartDuel, arena_index);
                 GetClientName(next_client, playername, sizeof(playername));
 
-                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client]);
+                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client], IsPlayerEligibleForElo(next_client));
                 
                 UpdateHudForArena(arena_index);
             } else {
@@ -554,6 +554,15 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             player_slot++;
     }
 
+    // Validate ELO authentication before allowing arena join
+    char reason[128];
+    if (!IsPlayerEloValid(client, reason, sizeof(reason)))
+    {
+        if (showmsg)
+            MC_PrintToChat(client, "%t", "CannotJoinArena", reason);
+        return;
+    }
+    
     // If committing to a different arena now, cleanly remove from current first
     if (g_iPlayerArena[client] && g_iPlayerArena[client] != arena_index)
     {
@@ -585,7 +594,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             char name[MAX_NAME_LENGTH];
             GetClientName(client, name, sizeof(name));
 
-            SendArenaJoinMessage(name, g_iPlayerRating[client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client]);
+            SendArenaJoinMessage(name, g_iPlayerRating[client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client], IsPlayerEligibleForElo(client));
 
             // Check if we have exactly 2 players per team for 2v2 match
             int red_count = 0;
@@ -624,7 +633,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             char name[MAX_NAME_LENGTH];
             GetClientName(client, name, sizeof(name));
 
-            SendArenaJoinMessage(name, g_iPlayerRating[client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client]);
+            SendArenaJoinMessage(name, g_iPlayerRating[client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client], IsPlayerEligibleForElo(client));
 
             if (g_iArenaQueue[arena_index][SLOT_ONE] && g_iArenaQueue[arena_index][SLOT_TWO])
             {
@@ -966,6 +975,13 @@ int Menu_Main(Menu menu, MenuAction action, int param1, int param2)
 
             if (arena_index > 0 && arena_index <= g_iArenaCount)
             {
+                char reason[128];
+                if (!IsPlayerEloValid(client, reason, sizeof(reason)))
+                {
+                    MC_PrintToChat(client, "%t", "CannotJoinArena", reason);
+                    return 0;
+                }
+                
                 // Checking rating (but allow re-selection of same arena)
                 if (arena_index != g_iPlayerArena[client])
                 {
@@ -1007,14 +1023,14 @@ int Menu_Main(Menu menu, MenuAction action, int param1, int param2)
 // ===== MESSAGING SYSTEM =====
 
 // Send formatted join message with player rating and arena information
-void SendArenaJoinMessage(const char[] playername, int player_rating, const char[] arena_name, bool show_elo)
+void SendArenaJoinMessage(const char[] playername, int player_rating, const char[] arena_name, bool show_elo, bool is_verified = true)
 {
     for (int i = 1; i <= MaxClients; ++i)
     {
         if (!IsClientInGame(i))
             continue;
             
-        if (show_elo && g_bShowElo[i])
+        if (show_elo && g_bShowElo[i] && is_verified)
             MC_PrintToChat(i, "%t", "JoinsArena", playername, player_rating, arena_name);
         else
             MC_PrintToChat(i, "%t", "JoinsArenaNoStats", playername, arena_name);

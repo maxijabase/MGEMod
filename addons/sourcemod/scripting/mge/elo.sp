@@ -6,6 +6,10 @@ void CalcELO(int winner, int loser)
 {
     if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats)
         return;
+        
+    // Skip ELO calculations if either player has unverified ELO
+    if (!IsPlayerEligibleForElo(winner) || !IsPlayerEligibleForElo(loser))
+        return;
 
     // Store previous ELO values before calculating new ones
     int winner_previous_elo = g_iPlayerRating[winner];
@@ -65,6 +69,11 @@ void CalcELO(int winner, int loser)
 void CalcELO2(int winner, int winner2, int loser, int loser2)
 {
     if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || IsFakeClient(loser2) || IsFakeClient(winner2) || !g_b2v2Elo)
+        return;
+        
+    // Skip ELO calculations if any player has unverified ELO
+    if (!IsPlayerEligibleForElo(winner) || !IsPlayerEligibleForElo(winner2) || 
+        !IsPlayerEligibleForElo(loser) || !IsPlayerEligibleForElo(loser2))
         return;
 
     // Store previous ELO values before calculating new ones

@@ -42,7 +42,8 @@ bool g_bBlockFallDamage,
      g_bAutoCvar,
      g_b2v2SkipCountdown,
      g_b2v2Elo,
-     g_bClearProjectiles;
+     g_bClearProjectiles,
+     g_bAllowUnverifiedPlayers;
 
 int
     g_iDefaultFragLimit,
@@ -74,7 +75,8 @@ Convar
     gcvar_reconnectInterval,
     gcvar_2v2SkipCountdown,
     gcvar_2v2Elo,
-    gcvar_clearProjectiles;
+    gcvar_clearProjectiles,
+    gcvar_allowUnverifiedPlayers;
 
 // Classes
 bool g_tfctClassAllowed[10];
@@ -173,7 +175,8 @@ bool
     g_bShowElo              [MAXPLAYERS + 1] = { true, ... },
     g_iPlayerWaiting        [MAXPLAYERS + 1],
     g_bCanPlayerSwap        [MAXPLAYERS + 1],
-    g_bCanPlayerGetIntel    [MAXPLAYERS + 1];
+    g_bCanPlayerGetIntel    [MAXPLAYERS + 1],
+    g_bPlayerEloVerified    [MAXPLAYERS + 1]; // ELO loaded from authenticated Steam account
 
 int
     g_iPlayerArena          [MAXPLAYERS + 1],

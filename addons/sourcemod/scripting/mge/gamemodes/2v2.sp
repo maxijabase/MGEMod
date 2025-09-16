@@ -550,7 +550,7 @@ int GetPlayerTeammate(int myClientSlot, int arena_index)
 }
 
 // Executes class swapping between two teammates in ultiduo arenas
-void swapClasses(int client, int client_teammate)
+void SwapClasses(int client, int client_teammate)
 {
     TFClassType client_class = g_tfctPlayerClass[client];
     TFClassType client_teammate_class = g_tfctPlayerClass[client_teammate];
@@ -562,12 +562,11 @@ void swapClasses(int client, int client_teammate)
 
     g_tfctPlayerClass[client] = client_teammate_class;
     g_tfctPlayerClass[client_teammate] = client_class;
-
 }
 
 // Restores any 2v2 participants who were moved to spectator while waiting for their teammate
-// To finish the round. Ensures they are back on the correct team, clears waiting flag, and
-// Schedules a reset to spawn them properly.
+// to finish the round. Ensures they are back on the correct team, clears waiting flag, and
+// schedules a reset to spawn them properly.
 void Restore2v2WaitingSpectators(int arena_index)
 {
     if (!g_bFourPersonArena[arena_index])
@@ -631,7 +630,7 @@ int SwapMenuHandler(Menu menu, MenuAction action, int param1, int param2)
 
             int arena_index = g_iPlayerArena[client];
             int client_teammate = GetPlayerTeammate(g_iPlayerSlot[client], arena_index);
-            swapClasses(client, client_teammate);
+            SwapClasses(client, client_teammate);
 
         }
         else

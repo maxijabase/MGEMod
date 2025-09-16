@@ -229,6 +229,7 @@ void SQL_OnPlayerReceived(Database db, DBResultSet results, const char[] error, 
         g_iPlayerRating[client] = results.FetchInt(0);
         g_iPlayerWins[client] = results.FetchInt(1);
         g_iPlayerLosses[client] = results.FetchInt(2);
+        g_bPlayerEloVerified[client] = true;
 
         GetUpdatePlayerNameQuery(query, sizeof(query), namesql, g_sPlayerSteamID[client]);
         db.Query(SQL_OnGenericQueryFinished, query);
@@ -237,6 +238,7 @@ void SQL_OnPlayerReceived(Database db, DBResultSet results, const char[] error, 
         db.Query(SQL_OnGenericQueryFinished, query);
 
         g_iPlayerRating[client] = 1600;
+        g_bPlayerEloVerified[client] = true;
     }
 }
 

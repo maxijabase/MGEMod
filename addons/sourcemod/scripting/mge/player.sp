@@ -10,6 +10,7 @@ void HandleClientConnection(int client)
     ChangeClientTeam(client, TEAM_SPEC);
     g_bShowHud[client] = true;
     g_bPlayerRestoringAmmo[client] = false;
+    g_bPlayerEloVerified[client] = false;
     
     // Clear any inherited statistics data immediately (but preserve if already properly loaded)
     // This prevents stats from being inherited from previous client in the same slot
@@ -18,6 +19,7 @@ void HandleClientConnection(int client)
         g_iPlayerRating[client] = 0;
         g_iPlayerWins[client] = 0;
         g_iPlayerLosses[client] = 0;
+        g_bPlayerEloVerified[client] = false;
     }
     
     // Initialize class tracking ArrayList
@@ -158,6 +160,7 @@ void TryLoadPlayerStats(int client, bool isRetry)
     if (!GetClientAuthId(client, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty))) {
         if (isRetry) {
             LogError("Failed to get Steam ID for client %d even after Steam auth - stats loading failed", client);
+            g_bPlayerEloVerified[client] = false;
         }
         return;
     }
@@ -165,7 +168,7 @@ void TryLoadPlayerStats(int client, bool isRetry)
     g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
     
     // Skip if stats already loaded successfully for this specific Steam ID
-    if (g_iPlayerRating[client] > 0 && StrEqual(g_sPlayerSteamID[client], steamid)) {
+    if (g_bPlayerEloVerified[client] && StrEqual(g_sPlayerSteamID[client], steamid)) {
         if (isRetry) {
             LogMessage("Stats already loaded for client %d (%s), skipping retry", client, steamid);
         }
@@ -176,6 +179,43 @@ void TryLoadPlayerStats(int client, bool isRetry)
     
     GetSelectPlayerStatsQuery(query, sizeof(query), steamid);
     g_DB.Query(SQL_OnPlayerReceived, query, client);
+}
+
+// Validates if player's ELO is verified and safe for arena play
+bool IsPlayerEloValid(int client, char[] reason, int reason_size)
+{
+    if (IsFakeClient(client))
+        return true; // Bots are always valid
+        
+    if (g_bNoStats)
+        return true; // Stats disabled, allow anyone
+    
+    if (!g_bPlayerEloVerified[client]) {
+        if (g_bAllowUnverifiedPlayers) {
+            return true; // Allow unverified players when convar enabled
+        }
+        Format(reason, reason_size, "%T", "EloNotVerified", client);
+        return false;
+    }
+    
+    if (strlen(g_sPlayerSteamID[client]) == 0) {
+        Format(reason, reason_size, "%T", "InvalidSteamID", client);
+        return false;
+    }
+    
+    return true;
+}
+
+// Checks if player should be included in ELO calculations
+bool IsPlayerEligibleForElo(int client)
+{
+    if (IsFakeClient(client))
+        return false; // Bots never affect ELO
+        
+    if (g_bNoStats)
+        return false; // Stats disabled globally
+        
+    return g_bPlayerEloVerified[client]; // Only verified players eligible for ELO
 }
 
 // Resets player state including health, class, team assignment, and teleports to spawn

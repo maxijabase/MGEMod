@@ -155,6 +155,34 @@
 		"es"			"{green}[MGE]{default} Tu rating {green}{1}{default} es demasiado alto, el máximo es {green}{2}"
 		"pt"			"{green}[MGE]{default} Seu rating {green}{1}{default} é muito alto, o máximo é {green}{2}"
 	}
+	"CannotJoinArena"
+	{
+		"#format"		"{1:s}"
+		"en"			"{green}[MGE]{default} Cannot join arena: {1}. Please wait for Steam authentication to complete or reconnect."
+		"chi"			"{green}[MGE]{default} 无法加入竞技场：{1}。请等待Steam验证完成或重新连接。"
+		"de"			"{green}[MGE]{default} Kann Arena nicht betreten: {1}. Bitte warten Sie, bis die Steam-Authentifizierung abgeschlossen ist, oder verbinden Sie sich erneut."
+		"ru"			"{green}[MGE]{default} Невозможно войти на арену: {1}. Пожалуйста, дождитесь завершения аутентификации Steam или переподключитесь."
+		"es"			"{green}[MGE]{default} No se puede unir a la arena: {1}. Por favor, espera a que se complete la autenticación de Steam o reconéctate."
+		"pt"			"{green}[MGE]{default} Não é possível entrar na arena: {1}. Aguarde a conclusão da autenticação do Steam ou reconecte-se."
+	}
+	"EloNotVerified"
+	{
+		"en"			"ELO not verified - Steam authentication may have failed"
+		"chi"			"ELO未验证 - Steam身份验证可能失败"
+		"de"			"ELO nicht verifiziert - Steam-Authentifizierung möglicherweise fehlgeschlagen"
+		"ru"			"ELO не подтвержден - возможно, не удалась аутентификация Steam"
+		"es"			"ELO no verificado - la autenticación de Steam puede haber fallado"
+		"pt"			"ELO não verificado - a autenticação do Steam pode ter falhado"
+	}
+	"InvalidSteamID"
+	{
+		"en"			"invalid Steam ID"
+		"chi"			"无效的Steam ID"
+		"de"			"ungültige Steam ID"
+		"ru"			"недействительный Steam ID"
+		"es"			"Steam ID inválido"
+		"pt"			"Steam ID inválido"
+	}
 	"XdefeatsY"
 	{
 		"#format"		"{1:s},{2:i},{3:s},{4:i},{5:i},{6:s}"
@@ -335,7 +363,7 @@
 		"en"			"[MGE] hud\t - Toggle text hud overlay."
 		"chi"			"[MGE] hud\t - 开启或关闭 HUD 文本信息。"
 		"de"			"[MGE] hud - An- / Ausschalten des Text-HUDs."
-		"ru"			"[MGE] hud - Включить\отключить HUD."
+		"ru"			"[MGE] hud - Включить\\отключить HUD."
 		"es"			"[MGE] hud - Activar/desactivar el HUD."
 		"pt"			"[MGE] hud - Ativar/desativar o HUD."
 	}
@@ -344,7 +372,7 @@
 		"en"			"[MGE] elo\t - Toggle ELO display."
 		"chi"			"[MGE] elo\t - 开启或关闭 ELO 显示。"
 		"de"			"[MGE] elo - An- / Ausschalten der ELO-Anzeige."
-		"ru"			"[MGE] elo - Включить\отключить отображение ELO."
+		"ru"			"[MGE] elo - Включить\\отключить отображение ELO."
 		"es"			"[MGE] elo - Activar/desactivar el ELO."
 		"pt"			"[MGE] elo - Ativar/desativar o ELO."
 	}
