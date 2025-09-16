@@ -137,8 +137,8 @@ Action OnTouchHoop(int entity, int other)
 
     if (g_bFourPersonArena[arena_index])
     {
-        client_teammate = getTeammate(client_slot, arena_index);
-        foe_teammate = getTeammate(foe_slot, arena_index);
+        client_teammate = GetPlayerTeammate(client_slot, arena_index);
+        foe_teammate = GetPlayerTeammate(foe_slot, arena_index);
     }
 
     if (!IsValidClient(foe) || !g_bArenaBBall[arena_index])

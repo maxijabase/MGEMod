@@ -82,8 +82,8 @@ void HandleClientDisconnection(int client)
 
         if (g_bFourPersonArena[arena_index])
         {
-            player_teammate = getTeammate(player_slot, arena_index);
-            foe2 = getTeammate(foe_slot, arena_index);
+            player_teammate = GetPlayerTeammate(player_slot, arena_index);
+            foe2 = GetPlayerTeammate(foe_slot, arena_index);
         }
 
         g_iPlayerArena[client] = 0;
@@ -257,7 +257,7 @@ void SetPlayerToAllowedClass(int client, int arena_index)
             {
                 if (g_bArenaUltiduo[arena_index] && g_bFourPersonArena[arena_index] && g_iPlayerSlot[client] > SLOT_TWO)
                 {
-                    int client_teammate = getTeammate(g_iPlayerSlot[client], arena_index);
+                    int client_teammate = GetPlayerTeammate(g_iPlayerSlot[client], arena_index);
                     if (view_as<TFClassType>(i) == g_tfctPlayerClass[client_teammate])
                     {
                         // Tell the player what he did wrong
@@ -485,7 +485,7 @@ Action Command_JoinClass(int client, int args)
         int client_teammate;
         if (g_bFourPersonArena[arena_index])
         {
-            client_teammate = getTeammate(g_iPlayerSlot[client], arena_index);
+            client_teammate = GetPlayerTeammate(g_iPlayerSlot[client], arena_index);
         }
         char s_class[64];
         GetCmdArg(1, s_class, sizeof(s_class));
@@ -632,7 +632,7 @@ Action Command_JoinClass(int client, int args)
 
                             if (g_bFourPersonArena[arena_index])
                             {
-                                killer_teammate = getTeammate(killer_slot, arena_index);
+                                killer_teammate = GetPlayerTeammate(killer_slot, arena_index);
                             }
                             if (g_iArenaStatus[arena_index] == AS_FIGHT && killer)
                             {
@@ -819,8 +819,8 @@ Action Command_Handicap(int client, int args)
 
                 if (g_bFourPersonArena[arena_index])
                 {
-                    player_teammate = getTeammate(player_slot, arena_index);
-                    foe_teammate = getTeammate(foe_slot, arena_index);
+                    player_teammate = GetPlayerTeammate(player_slot, arena_index);
+                    foe_teammate = GetPlayerTeammate(foe_slot, arena_index);
 
                     UpdateHud(player_teammate);
                     UpdateHud(foe_teammate);
@@ -992,8 +992,8 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 
     if (g_bFourPersonArena[arena_index])
     {
-        victim_teammate = getTeammate(victim_slot, arena_index);
-        killer_teammate = getTeammate(killer_slot, arena_index);
+        victim_teammate = GetPlayerTeammate(victim_slot, arena_index);
+        killer_teammate = GetPlayerTeammate(killer_slot, arena_index);
     }
 
     RemoveClientParticle(victim);
@@ -1369,7 +1369,7 @@ Action Timer_Tele(Handle timer, int userid)
         }
 
         // Get teammate and check if they're using a spawn point
-        int teammate = getTeammate(g_iPlayerSlot[client], arena_index);
+        int teammate = GetPlayerTeammate(g_iPlayerSlot[client], arena_index);
         int teammate_spawn = -1;
         if (IsValidClient(teammate) && IsPlayerAlive(teammate)) {
             teammate_spawn = GetPlayerCurrentSpawnPoint(teammate, arena_index);

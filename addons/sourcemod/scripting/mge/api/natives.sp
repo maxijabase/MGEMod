@@ -246,18 +246,5 @@ int Native_GetPlayerTeammate(Handle plugin, int numParams)
     if (arena_index == 0 || !g_bFourPersonArena[arena_index])
         return 0;
     
-    int player_slot = g_iPlayerSlot[client];
-    int teammate_slot = 0;
-    
-    // Determine teammate slot based on current player's slot
-    switch (player_slot)
-    {
-        case SLOT_ONE: teammate_slot = SLOT_THREE;
-        case SLOT_TWO: teammate_slot = SLOT_FOUR;
-        case SLOT_THREE: teammate_slot = SLOT_ONE;
-        case SLOT_FOUR: teammate_slot = SLOT_TWO;
-        default: return 0;
-    }
-    
-    return g_iArenaQueue[arena_index][teammate_slot];
+    return GetPlayerTeammate(g_iPlayerSlot[client], arena_index);
 }

@@ -60,8 +60,8 @@ void ShowCriticalGameInfo(int client, int arena_index)
 
     if (g_bFourPersonArena[arena_index])
     {
-        client_teammate = getTeammate(client_slot, arena_index);
-        client_foe2 = getTeammate(client_foe_slot, arena_index);
+        client_teammate = GetPlayerTeammate(client_slot, arena_index);
+        client_foe2 = GetPlayerTeammate(client_foe_slot, arena_index);
     }
 
     // KOTH timers (always shown to players)

@@ -542,30 +542,11 @@ void Check2v2TeamBalance(int arena_index)
 // ===== PLAYER UTILITIES =====
 
 // Gets a clients teammate if he's in a 4 player arena
-// TODO: This can actually be replaced by g_iArenaQueue[SLOT_X] but I didn't realize that array existed, so YOLO
-int getTeammate(int myClientSlot, int arena_index)
+int GetPlayerTeammate(int myClientSlot, int arena_index)
 {
-    int client_teammate_slot;
-
-    if (myClientSlot == SLOT_ONE)
-    {
-        client_teammate_slot = SLOT_THREE;
-    }
-    else if (myClientSlot == SLOT_TWO)
-    {
-        client_teammate_slot = SLOT_FOUR;
-    }
-    else if (myClientSlot == SLOT_THREE)
-    {
-        client_teammate_slot = SLOT_ONE;
-    }
-    else
-    {
-        client_teammate_slot = SLOT_TWO;
-    }
-
-    int myClientTeammate = g_iArenaQueue[arena_index][client_teammate_slot];
-    return myClientTeammate;
+    // Map slots to teammates: RED team (1 <-> 3), BLU team (2 <-> 4)
+    int client_teammate_slot = (myClientSlot <= SLOT_TWO) ? myClientSlot + 2 : myClientSlot - 2;
+    return g_iArenaQueue[arena_index][client_teammate_slot];
 }
 
 // Executes class swapping between two teammates in ultiduo arenas
@@ -649,7 +630,7 @@ int SwapMenuHandler(Menu menu, MenuAction action, int param1, int param2)
                 return 0;
 
             int arena_index = g_iPlayerArena[client];
-            int client_teammate = getTeammate(g_iPlayerSlot[client], arena_index);
+            int client_teammate = GetPlayerTeammate(g_iPlayerSlot[client], arena_index);
             swapClasses(client, client_teammate);
 
         }
@@ -733,7 +714,7 @@ Action Command_Swap(int client, int args)
     if (!g_bArenaUltiduo[arena_index] || !g_bFourPersonArena[arena_index])
         return Plugin_Continue;
 
-    int client_teammate = getTeammate(g_iPlayerSlot[client], arena_index);
+    int client_teammate = GetPlayerTeammate(g_iPlayerSlot[client], arena_index);
     ShowSwapMenu(client_teammate);
     return Plugin_Handled;
 }

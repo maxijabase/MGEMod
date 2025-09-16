@@ -245,8 +245,8 @@ void EndKoth(any arena_index, any winner_team)
 
     if (g_bFourPersonArena[arena_index])
     {
-        client_teammate = getTeammate(client_slot, arena_index);
-        foe_teammate = getTeammate(foe_slot, arena_index);
+        client_teammate = GetPlayerTeammate(client_slot, arena_index);
+        foe_teammate = GetPlayerTeammate(foe_slot, arena_index);
     }
 
     if (fraglimit > 0 && g_iArenaScore[arena_index][winner_team] >= fraglimit && g_iArenaStatus[arena_index] >= AS_FIGHT && g_iArenaStatus[arena_index] < AS_REPORTED)

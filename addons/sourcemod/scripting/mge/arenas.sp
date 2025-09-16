@@ -271,8 +271,8 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
 
             if (g_bFourPersonArena[arena_index])
             {
-                player_teammate = getTeammate(player_slot, arena_index);
-                foe2 = getTeammate(foe_slot, arena_index);
+                player_teammate = GetPlayerTeammate(player_slot, arena_index);
+                foe2 = GetPlayerTeammate(foe_slot, arena_index);
 
             }
 
