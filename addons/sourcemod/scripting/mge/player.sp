@@ -1032,10 +1032,49 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
         TeleportEntity(victim, NULL_VECTOR, NULL_VECTOR, vel);
     }
 
-    int killer_slot = (victim_slot == SLOT_ONE || victim_slot == SLOT_THREE) ? SLOT_TWO : SLOT_ONE;
-    int killer = g_iArenaQueue[arena_index][killer_slot];
+    int killer_slot;
+    int killer;
     int killer_teammate;
     int victim_teammate;
+    
+    // In 2v2: RED (slots 1,3) vs BLU (slots 2,4)
+    // In 1v1: RED (slot 1) vs BLU (slot 2)
+    if (g_bFourPersonArena[arena_index])
+    {
+        // 2v2 logic: find an alive enemy player
+        if (victim_slot == SLOT_ONE || victim_slot == SLOT_THREE)
+        {
+            // Victim was RED, killer is BLU (slot 2 or 4)
+            killer = g_iArenaQueue[arena_index][SLOT_TWO];
+            killer_slot = SLOT_TWO;
+            if (!IsValidClient(killer) || !IsPlayerAlive(killer))
+            {
+                killer = g_iArenaQueue[arena_index][SLOT_FOUR];
+                killer_slot = SLOT_FOUR;
+            }
+        }
+        else
+        {
+            // Victim was BLU, killer is RED (slot 1 or 3)  
+            killer = g_iArenaQueue[arena_index][SLOT_ONE];
+            killer_slot = SLOT_ONE;
+            if (!IsValidClient(killer) || !IsPlayerAlive(killer))
+            {
+                killer = g_iArenaQueue[arena_index][SLOT_THREE];
+                killer_slot = SLOT_THREE;
+            }
+        }
+        
+        victim_teammate = GetPlayerTeammate(victim_slot, arena_index);
+        if (IsValidClient(killer))
+            killer_teammate = GetPlayerTeammate(killer_slot, arena_index);
+    }
+    else
+    {
+        // 1v1 logic: simple slot mapping
+        killer_slot = (victim_slot == SLOT_ONE) ? SLOT_TWO : SLOT_ONE;
+        killer = g_iArenaQueue[arena_index][killer_slot];
+    }
 
     // Gets the killer and victims team slot (red 1, blu 2)
     int killer_team_slot = GetTeamSlotFromPlayerSlot(killer_slot);
@@ -1048,11 +1087,6 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
         return Plugin_Continue;
     }
 
-    if (g_bFourPersonArena[arena_index])
-    {
-        victim_teammate = GetPlayerTeammate(victim_slot, arena_index);
-        killer_teammate = GetPlayerTeammate(killer_slot, arena_index);
-    }
 
     RemoveClientParticle(victim);
 
@@ -1134,6 +1168,14 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 
         else if (g_bFourPersonArena[arena_index] && !IsPlayerAlive(victim_teammate))
             CreateTimer(3.0, Timer_NewRound, arena_index);
+        
+        else if (g_bFourPersonArena[arena_index] && victim_teammate && IsPlayerAlive(victim_teammate))
+        {
+            // Set the player as waiting (same as other 2v2 modes)
+            g_iPlayerWaiting[victim] = true;
+            // Change the player to spec to keep him from respawning
+            CreateTimer(5.0, Timer_ChangePlayerSpec, victim);
+        }
 
     }
     else
