@@ -1415,98 +1415,50 @@ float DistanceAboveGround(int victim)
 }
 
 // Calculates minimum ground distance around player for drop detection
-// This is used for dropping
-// TODO: refactor
-float DistanceAboveGroundAroundPlayer(int victim)
+float DistanceAboveGroundAroundPlayer(int client)
 {
-    float vStart[3];
+    static const float SAMPLE_OFFSET = 10.0;
+    static const float INVALID_DISTANCE = -1.0;
+    
+    float playerPos[3];
+    GetClientAbsOrigin(client, playerPos);
+    
+    // Define sample positions: center and 4 cardinal directions
+    float samplePositions[5][3];
+    samplePositions[0] = playerPos;                                    // Center
+    samplePositions[1] = playerPos; samplePositions[1][0] += SAMPLE_OFFSET; // +X
+    samplePositions[2] = playerPos; samplePositions[2][0] -= SAMPLE_OFFSET; // -X
+    samplePositions[3] = playerPos; samplePositions[3][1] += SAMPLE_OFFSET; // +Y
+    samplePositions[4] = playerPos; samplePositions[4][1] -= SAMPLE_OFFSET; // -Y
+    
+    float minDistance = INVALID_DISTANCE;
     float vEnd[3];
-    float vAngles[3] =  { 90.0, 0.0, 0.0 };
-    GetClientAbsOrigin(victim, vStart);
-    float minDist;
-
-    for (int i = 0; i < 5; ++i)
+    float vAngles[3] = { 90.0, 0.0, 0.0 };
+    
+    for (int i = 0; i < sizeof(samplePositions); i++)
     {
-        float tvStart[3];
-        tvStart = vStart;
-        float tempDist = -1.0;
-        if (i == 0)
+        Handle trace = TR_TraceRayFilterEx(samplePositions[i], vAngles, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilterPlayer);
+        
+        if (TR_DidHit(trace))
         {
-            Handle trace = TR_TraceRayFilterEx(vStart, vAngles, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilterPlayer);
-
-            if (TR_DidHit(trace))
+            TR_GetEndPosition(vEnd, trace);
+            float distance = GetVectorDistance(samplePositions[i], vEnd, false);
+            
+            if (minDistance == INVALID_DISTANCE || distance < minDistance)
             {
-                TR_GetEndPosition(vEnd, trace);
-                minDist = GetVectorDistance(vStart, vEnd, false);
-            } else {
-                LogError("trace error. victim %N(%d)", victim, victim);
+                minDistance = distance;
             }
-            delete trace;
         }
-        else if (i == 1)
+        else
         {
-            tvStart[0] = tvStart[0] + 10;
-            Handle trace = TR_TraceRayFilterEx(tvStart, vAngles, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilterPlayer);
-
-            if (TR_DidHit(trace))
-            {
-                TR_GetEndPosition(vEnd, trace);
-                tempDist = GetVectorDistance(tvStart, vEnd, false);
-            } else {
-                LogError("trace error. victim %N(%d)", victim, victim);
-            }
-            delete trace;
+            LogError("Ground trace failed for client %N(%d) at position [%.1f, %.1f, %.1f]", 
+                     client, client, samplePositions[i][0], samplePositions[i][1], samplePositions[i][2]);
         }
-        else if (i == 2)
-        {
-            tvStart[0] = tvStart[0] - 10;
-            Handle trace = TR_TraceRayFilterEx(tvStart, vAngles, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilterPlayer);
-
-            if (TR_DidHit(trace))
-            {
-                TR_GetEndPosition(vEnd, trace);
-                tempDist = GetVectorDistance(tvStart, vEnd, false);
-            } else {
-                LogError("trace error. victim %N(%d)", victim, victim);
-            }
-            delete trace;
-        }
-        else if (i == 3)
-        {
-            tvStart[1] = vStart[1] + 10;
-            Handle trace = TR_TraceRayFilterEx(tvStart, vAngles, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilterPlayer);
-
-            if (TR_DidHit(trace))
-            {
-                TR_GetEndPosition(vEnd, trace);
-                tempDist = GetVectorDistance(tvStart, vEnd, false);
-            } else {
-                LogError("trace error. victim %N(%d)", victim, victim);
-            }
-            delete trace;
-        }
-        else if (i == 4)
-        {
-            tvStart[1] = vStart[1] - 10;
-            Handle trace = TR_TraceRayFilterEx(tvStart, vAngles, MASK_PLAYERSOLID, RayType_Infinite, TraceEntityFilterPlayer);
-
-            if (TR_DidHit(trace))
-            {
-                TR_GetEndPosition(vEnd, trace);
-                tempDist = GetVectorDistance(tvStart, vEnd, false);
-            } else {
-                LogError("trace error. victim %N(%d)", victim, victim);
-            }
-            delete trace;
-        }
-
-        if ((tempDist > -1 && tempDist < minDist) || minDist == -1)
-        {
-            minDist = tempDist;
-        }
+        
+        delete trace;
     }
-
-    return minDist;
+    
+    return minDistance;
 }
 
 // Determines which spawn point a player is currently closest to
