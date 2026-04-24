@@ -254,17 +254,20 @@ int Native_IsValidSlotForArena(Handle plugin, int numParams)
 int Native_GetArenaInfo(Handle plugin, int numParams)
 {
     int arena_index = GetNativeCell(1);
-    
+
     if (arena_index < 1 || arena_index > g_iArenaCount)
         return false;
-    
-    // Create a temporary struct to populate
-    int info[7]; // MGEArenaInfo has 7 fields
-    
-    // Populate the struct fields
-    // name is at offset 0, but it's a string array so we handle it separately
-    
-    // Calculate player count
+
+    // MGEArenaInfo layout is 16 cells (packed char name[64]) + 6 scalar
+    // cells = 22 cells total. Populate the struct directly so the field
+    // offsets match what the caller declared — the previous version wrote
+    // into an int[7] and then used SetNativeString to overwrite the name
+    // field, which left every scalar field (players..fragLimit)
+    // uninitialised on the caller's side.
+    MGEArenaInfo info;
+
+    strcopy(info.name, sizeof(info.name), g_sArenaName[arena_index]);
+
     int playerCount = 0;
     int maxSlots = g_bFourPersonArena[arena_index] ? SLOT_FOUR : SLOT_TWO;
     for (int i = SLOT_ONE; i <= maxSlots; i++)
@@ -272,8 +275,7 @@ int Native_GetArenaInfo(Handle plugin, int numParams)
         if (g_iArenaQueue[arena_index][i] > 0)
             playerCount++;
     }
-    
-    // Calculate game mode flags
+
     int flags = 0;
     if (g_bArenaMGE[arena_index])
         flags |= MGE_GAMEMODE_MGE;
@@ -293,20 +295,15 @@ int Native_GetArenaInfo(Handle plugin, int numParams)
         flags |= MGE_GAMEMODE_TURRIS;
     if (g_bFourPersonArena[arena_index])
         flags |= MGE_GAMEMODE_4PLAYER;
-    
-    info[1] = playerCount;  // players
-    info[2] = maxSlots;  // maxSlots  
-    info[3] = g_iArenaStatus[arena_index];  // status
-    info[4] = flags;  // gameMode
-    info[5] = g_bFourPersonArena[arena_index] ? 1 : 0;  // is2v2 (as int)
-    info[6] = g_iArenaFraglimit[arena_index];  // fragLimit
-    
-    // Set the struct in the native parameter
+
+    info.players = playerCount;
+    info.maxSlots = maxSlots;
+    info.status = g_iArenaStatus[arena_index];
+    info.gameMode = flags;
+    info.is2v2 = g_bFourPersonArena[arena_index];
+    info.fragLimit = g_iArenaFraglimit[arena_index];
+
     SetNativeArray(2, info, sizeof(info));
-    
-    // Set the arena name separately (string field at offset 0)
-    SetNativeString(2, g_sArenaName[arena_index], 64);
-    
     return true;
 }
 
