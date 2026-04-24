@@ -177,6 +177,17 @@ forward void MGE_On2v2ReadyStart(int arena_index);
 forward void MGE_On2v2PlayerReady(int client, int arena_index, bool ready_status);
 
 /**
+ * Called when a map config file is missing
+ * Return Plugin_Handled to suppress SetFailState (e.g. to download the config asynchronously)
+ * Return Plugin_Continue to allow normal SetFailState behavior
+ *
+ * @param mapName        Current map name (workshop-normalized)
+ * @param configPath     Full absolute path where the config should be written
+ * @return               Plugin_Handled to suppress SetFailState, Plugin_Continue otherwise
+ */
+forward Action MGE_OnMapConfigMissing(const char[] mapName, const char[] configPath);
+
+/**
  * Gets a player's current arena
  *
  * @param client         Client index

@@ -14,6 +14,7 @@ void RegisterForwards()
     g_hOnPlayerELOChange = new GlobalForward("MGE_OnPlayerELOChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
     g_hOn2v2ReadyStart = new GlobalForward("MGE_On2v2ReadyStart", ET_Ignore, Param_Cell);
     g_hOn2v2PlayerReady = new GlobalForward("MGE_On2v2PlayerReady", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
+    g_hOnMapConfigMissing = new GlobalForward("MGE_OnMapConfigMissing", ET_Hook, Param_String, Param_String);
 }
 
 // ===== FORWARD CALL HELPERS =====
@@ -146,4 +147,15 @@ void CallForward_On2v2PlayerReady(int client, int arena_index, bool ready_status
     Call_PushCell(arena_index);
     Call_PushCell(ready_status);
     Call_Finish();
+}
+
+// Call the OnMapConfigMissing forward
+Action CallForward_OnMapConfigMissing(const char[] mapName, const char[] configPath)
+{
+    Action result = Plugin_Continue;
+    Call_StartForward(g_hOnMapConfigMissing);
+    Call_PushString(mapName);
+    Call_PushString(configPath);
+    Call_Finish(result);
+    return result;
 }

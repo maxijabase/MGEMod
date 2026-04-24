@@ -330,7 +330,17 @@ public void OnMapStart()
 
         AddNormalSoundHook(Sound_BlockSound);
     } else {
-        SetFailState("Map not supported. MGEMod disabled.");
+        char configPath[PLATFORM_MAX_PATH];
+        BuildPath(Path_SM, configPath, sizeof(configPath), "configs/mge/%s.cfg", g_sMapName);
+
+        if (CallForward_OnMapConfigMissing(g_sMapName, configPath) == Plugin_Continue)
+        {
+            SetFailState("Map not supported. MGEMod disabled.");
+        }
+        else
+        {
+            LogMessage("Config missing for map '%s' - external handler invoked, deferring.", g_sMapName);
+        }
     }
 
     for (int i = 0; i < MAXPLAYERS; i++)
