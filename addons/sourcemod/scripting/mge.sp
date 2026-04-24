@@ -53,7 +53,7 @@ public Plugin myinfo =
     author      = "Originally by Lange & Cprice; based on kAmmomod by Krolus - maintained by mge.tf",
     description = "Duel mod for TF2 with realistic game situations.",
     version     =  PL_VERSION,
-    url         = "https://github.com/sapphonie/MGEMod"
+    url         = "https://github.com/mgetf/MGEMod"
 }
 
 
