@@ -188,6 +188,14 @@ forward void MGE_On2v2PlayerReady(int client, int arena_index, bool ready_status
 forward Action MGE_OnMapConfigMissing(const char[] mapName, const char[] configPath);
 
 /**
+ * Reports that a previously deferred config download has failed and no config is available.
+ * MGEMod will disable itself on the next game frame.
+ * Only has effect after Plugin_Handled was returned from MGE_OnMapConfigMissing.
+ * Call this from your async download completion handler on failure.
+ */
+native void MGE_ReportConfigUnavailable();
+
+/**
  * Gets a player's current arena
  *
  * @param client         Client index

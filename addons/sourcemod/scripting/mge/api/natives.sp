@@ -17,6 +17,7 @@ void RegisterNatives()
     CreateNative("MGE_GetPlayerTeammate", Native_GetPlayerTeammate);
     CreateNative("MGE_ArenaHasGameMode", Native_ArenaHasGameMode);
     CreateNative("MGE_IsValidSlotForArena", Native_IsValidSlotForArena);
+    CreateNative("MGE_ReportConfigUnavailable", Native_ReportConfigUnavailable);
 }
 
 // ===== PLAYER INFORMATION NATIVES =====
@@ -249,6 +250,19 @@ int Native_IsValidSlotForArena(Handle plugin, int numParams)
     return IsValidSlotForArena(arena_index, slot);
 }
 
+
+// Signals that a deferred config download has failed and MGEMod should abort
+int Native_ReportConfigUnavailable(Handle plugin, int numParams)
+{
+    if (g_bDeferred)
+        RequestFrame(Frame_FailPlugin);
+    return 0;
+}
+
+void Frame_FailPlugin(any data)
+{
+    SetFailState("Map not supported. MGEMod disabled.");
+}
 
 // Gets complete arena information
 int Native_GetArenaInfo(Handle plugin, int numParams)

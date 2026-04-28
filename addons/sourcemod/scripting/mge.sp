@@ -15,7 +15,7 @@
 #include <convar_class>
 #include <mge>
 
-#define PL_VERSION "3.1.0-beta20"
+#define PL_VERSION "3.1.0-beta21"
 
 #define MAXARENAS 63
 #define MAXSPAWNS 15
@@ -291,6 +291,15 @@ public void OnMapStart()
     PrecacheModel(MODEL_POINT, true);
 
     g_bNoStats = gcvar_stats.BoolValue ? false : true; /* Reset this variable, since it is forced to false during Event_WinPanel */
+    g_bDeferred = false;
+
+    // Reject maps that are not MGE maps before attempting any config load
+    char sCheckMap[256];
+    GetCurrentMap(sCheckMap, sizeof(sCheckMap));
+    if (StrContains(sCheckMap, "workshop/", false) != -1)
+        GetMapDisplayName(sCheckMap, sCheckMap, sizeof(sCheckMap));
+    if (StrContains(sCheckMap, "mge_", false) != 0)
+        SetFailState("Map '%s' is not an MGE map. MGEMod disabled.", sCheckMap);
 
     // Spawns
     bool isMapAm = LoadSpawnPoints();
@@ -339,6 +348,7 @@ public void OnMapStart()
         }
         else
         {
+            g_bDeferred = true;
             LogMessage("Config missing for map '%s' - external handler invoked, deferring.", g_sMapName);
         }
     }
