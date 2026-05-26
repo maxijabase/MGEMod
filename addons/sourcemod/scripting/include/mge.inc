@@ -188,6 +188,18 @@ forward void MGE_On2v2PlayerReady(int client, int arena_index, bool ready_status
 forward Action MGE_OnMapConfigMissing(const char[] mapName, const char[] configPath);
 
 /**
+ * Called when a map config file exists but fails to parse or contains no valid arenas.
+ * Return Plugin_Handled to suppress SetFailState and take over recovery (e.g. delete and redownload).
+ * Return Plugin_Continue to allow normal SetFailState behavior.
+ * Only fired when a config file is present but unparseable — missing files use MGE_OnMapConfigMissing.
+ *
+ * @param mapName        Current map name (workshop-normalized)
+ * @param configPath     Full absolute path to the invalid config file
+ * @return               Plugin_Handled to suppress SetFailState, Plugin_Continue otherwise
+ */
+forward Action MGE_OnMapConfigInvalid(const char[] mapName, const char[] configPath);
+
+/**
  * Reports that a previously deferred config download has failed and no config is available.
  * MGEMod will disable itself on the next game frame.
  * Only has effect after Plugin_Handled was returned from MGE_OnMapConfigMissing.

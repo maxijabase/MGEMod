@@ -15,7 +15,7 @@
 #include <convar_class>
 #include <mge>
 
-#define PL_VERSION "3.1.0-beta21"
+#define PL_VERSION "3.1.0-beta22"
 
 #define MAXARENAS 63
 #define MAXSPAWNS 15
@@ -302,8 +302,8 @@ public void OnMapStart()
         SetFailState("Map '%s' is not an MGE map. MGEMod disabled.", sCheckMap);
 
     // Spawns
-    bool isMapAm = LoadSpawnPoints();
-    if (isMapAm)
+    int loadResult = LoadSpawnPoints();
+    if (loadResult > 0)
     {
         for (int i = 0; i <= g_iArenaCount; i++)
         {
@@ -342,14 +342,21 @@ public void OnMapStart()
         char configPath[PLATFORM_MAX_PATH];
         BuildPath(Path_SM, configPath, sizeof(configPath), "configs/mge/%s.cfg", g_sMapName);
 
-        if (CallForward_OnMapConfigMissing(g_sMapName, configPath) == Plugin_Continue)
+        Action fwdResult;
+        if (loadResult == 0)
+            fwdResult = CallForward_OnMapConfigMissing(g_sMapName, configPath);
+        else
+            fwdResult = CallForward_OnMapConfigInvalid(g_sMapName, configPath);
+
+        if (fwdResult == Plugin_Continue)
         {
             SetFailState("Map not supported. MGEMod disabled.");
         }
         else
         {
             g_bDeferred = true;
-            LogMessage("Config missing for map '%s' - external handler invoked, deferring.", g_sMapName);
+            LogMessage("Config %s for map '%s' - external handler invoked, deferring.",
+                loadResult == 0 ? "missing" : "invalid", g_sMapName);
         }
     }
 

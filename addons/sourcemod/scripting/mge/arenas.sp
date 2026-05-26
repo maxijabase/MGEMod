@@ -279,7 +279,8 @@ bool ValidateArenaSchema(int arena)
 
 // ===== PLUGIN CORE LIFECYCLE =====
 
-bool LoadSpawnPoints()
+// Returns 1 on success, 0 if the config file is missing, -1 if the file exists but is invalid.
+int LoadSpawnPoints()
 {
     char txtfile[256];
     GetCurrentMap(g_sMapName, sizeof(g_sMapName));
@@ -310,18 +311,25 @@ bool LoadSpawnPoints()
         g_iArenaRedSpawnCount[j] = 0;
     }
 
+    if (!FileExists(txtfile))
+    {
+        LogError("Config file missing: %s", txtfile);
+        delete kv;
+        return 0;
+    }
+
     if (!kv.ImportFromFile(txtfile))
     {
-        LogError("Error. Can't find cfg file: %s", txtfile);
+        LogError("Config file exists but failed to parse: %s", txtfile);
         delete kv;
-        return false;
+        return -1;
     }
 
     if (!kv.GotoFirstSubKey())
     {
-        LogError("Error in cfg file: %s", txtfile);
+        LogError("Config file has no arena entries: %s", txtfile);
         delete kv;
-        return false;
+        return -1;
     }
 
     do
@@ -389,13 +397,13 @@ bool LoadSpawnPoints()
     {
         LogMessage("Loaded %d arenas from %s. MGEMod enabled.", g_iArenaCount, txtfile);
         delete kv;
-        return true;
+        return 1;
     }
     else
     {
-        LogMessage("No arenas found in %s.", txtfile);
+        LogMessage("No valid arenas found in %s.", txtfile);
         delete kv;
-        return false;
+        return -1;
     }
 }
 

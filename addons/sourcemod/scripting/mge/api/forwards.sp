@@ -15,6 +15,7 @@ void RegisterForwards()
     g_hOn2v2ReadyStart = new GlobalForward("MGE_On2v2ReadyStart", ET_Ignore, Param_Cell);
     g_hOn2v2PlayerReady = new GlobalForward("MGE_On2v2PlayerReady", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
     g_hOnMapConfigMissing = new GlobalForward("MGE_OnMapConfigMissing", ET_Hook, Param_String, Param_String);
+    g_hOnMapConfigInvalid = new GlobalForward("MGE_OnMapConfigInvalid", ET_Hook, Param_String, Param_String);
 }
 
 // ===== FORWARD CALL HELPERS =====
@@ -154,6 +155,17 @@ Action CallForward_OnMapConfigMissing(const char[] mapName, const char[] configP
 {
     Action result = Plugin_Continue;
     Call_StartForward(g_hOnMapConfigMissing);
+    Call_PushString(mapName);
+    Call_PushString(configPath);
+    Call_Finish(result);
+    return result;
+}
+
+// Call the OnMapConfigInvalid forward
+Action CallForward_OnMapConfigInvalid(const char[] mapName, const char[] configPath)
+{
+    Action result = Plugin_Continue;
+    Call_StartForward(g_hOnMapConfigInvalid);
     Call_PushString(mapName);
     Call_PushString(configPath);
     Call_Finish(result);
