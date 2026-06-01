@@ -107,6 +107,9 @@ void PrepareSQL()
         
         g_DB.Format(migrationQuery, sizeof(migrationQuery), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('004_add_elo_tracking', %d) ON CONFLICT (migration_name) DO NOTHING", currentTime);
         g_DB.Query(SQL_OnGenericQueryFinished, migrationQuery);
+        
+        g_DB.Format(migrationQuery, sizeof(migrationQuery), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('005_utf8mb4_charset', %d) ON CONFLICT (migration_name) DO NOTHING", currentTime);
+        g_DB.Query(SQL_OnGenericQueryFinished, migrationQuery);
     }
 
     RunDatabaseMigrations();
@@ -329,7 +332,7 @@ void GetCreateTableQuery_Stats(char[] query, int maxlen)
         }
         case DB_MYSQL:
         {
-            strcopy(query, maxlen, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INT(4) NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INT(4) NOT NULL, losses INT(4) NOT NULL, lastplayed INT(11) NOT NULL) DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci ENGINE = InnoDB");
+            strcopy(query, maxlen, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INT(4) NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INT(4) NOT NULL, losses INT(4) NOT NULL, lastplayed INT(11) NOT NULL) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB");
         }
         case DB_POSTGRESQL:
         {

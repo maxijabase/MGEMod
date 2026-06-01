@@ -74,6 +74,15 @@ void RunMigration(const char[] migrationName)
         g_migrationProgress.SetValue(migrationName, 12);
         Migration_004_AddEloTracking();
     }
+    else if (StrEqual(migrationName, "005_utf8mb4_charset"))
+    {
+        switch (g_DatabaseType)
+        {
+            case DB_MYSQL: g_migrationProgress.SetValue(migrationName, 1);
+            default: g_migrationProgress.SetValue(migrationName, 1);
+        }
+        Migration_005_Utf8mb4Charset();
+    }
 }
 
 // Executes individual migration steps with progress tracking and error handling
@@ -118,6 +127,7 @@ void CreateMigrationsTableCallback(Database db, DBResultSet results, const char[
     CheckAndRunMigration("002_duel_timing_columns");
     CheckAndRunMigration("003_add_primary_keys");
     CheckAndRunMigration("004_add_elo_tracking");
+    CheckAndRunMigration("005_utf8mb4_charset");
 }
 
 // Processes migration existence check results and triggers migration execution if needed
@@ -383,6 +393,23 @@ void Migration_004_AddEloTracking()
             // PostgreSQL gets modern schema in CREATE TABLE - mark as complete
             LogMessage("[Migration 004] Skipping migration on PostgreSQL (schema already includes ELO columns)");
             MarkMigrationComplete("004_add_elo_tracking");
+        }
+    }
+}
+
+void Migration_005_Utf8mb4Charset()
+{
+    switch (g_DatabaseType)
+    {
+        case DB_MYSQL:
+        {
+            ExecuteMigrationStep("005_utf8mb4_charset", "ALTER TABLE mgemod_stats CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci", 1);
+        }
+        default:
+        {
+            // SQLite and PostgreSQL handle Unicode natively - mark as complete
+            LogMessage("[Migration 005] Skipping charset migration on non-MySQL backend");
+            MarkMigrationComplete("005_utf8mb4_charset");
         }
     }
 }
