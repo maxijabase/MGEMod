@@ -239,7 +239,7 @@ Action OnTouchHoop(int entity, int other)
         MC_PrintToChat(client, "%t", "bballdunk", foe_name);
 
         g_bPlayerHasIntel[client] = false;
-        g_iArenaScore[arena_index][client_team_slot] += 1;
+        AddArenaTeamScore(arena_index, client_team_slot);
 
         if (fraglimit > 0 && g_iArenaScore[arena_index][client_team_slot] >= fraglimit && g_iArenaStatus[arena_index] >= AS_FIGHT && g_iArenaStatus[arena_index] < AS_REPORTED)
         {

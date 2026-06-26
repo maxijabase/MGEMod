@@ -269,7 +269,7 @@ void ProcessKothArenaCapture(int arena_index)
 void EndKoth(any arena_index, any winner_team)
 {
     PlayEndgameSoundsToArena(arena_index, winner_team);
-    g_iArenaScore[arena_index][winner_team] += 1;
+    AddArenaTeamScore(arena_index, winner_team);
     int fraglimit = g_iArenaFraglimit[arena_index];
     int client = g_iArenaQueue[arena_index][winner_team];
     int client_slot = winner_team;

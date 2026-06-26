@@ -1,5 +1,28 @@
 // ===== MATCH LIFECYCLE MANAGEMENT =====
 
+// Increments an arena team score and notifies API consumers
+void AddArenaTeamScore(int arena_index, int team_slot, int amount = 1)
+{
+    if (arena_index < 1 || arena_index > g_iArenaCount)
+        return;
+    if (team_slot != SLOT_ONE && team_slot != SLOT_TWO)
+        return;
+
+    g_iArenaScore[arena_index][team_slot] += amount;
+    CallForward_OnArenaScoreChange(arena_index, g_iArenaScore[arena_index][SLOT_ONE], g_iArenaScore[arena_index][SLOT_TWO]);
+}
+
+// Resets arena team scores and notifies API consumers
+void ResetArenaScores(int arena_index)
+{
+    if (arena_index < 1 || arena_index > g_iArenaCount)
+        return;
+
+    g_iArenaScore[arena_index][SLOT_ONE] = 0;
+    g_iArenaScore[arena_index][SLOT_TWO] = 0;
+    CallForward_OnArenaScoreChange(arena_index, 0, 0);
+}
+
 // Determines if a match should be completed based on current conditions
 bool ShouldProcessMatchCompletion(int arena_index, int killer_team_slot, int fraglimit)
 {

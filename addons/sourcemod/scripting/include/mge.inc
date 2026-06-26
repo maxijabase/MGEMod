@@ -177,6 +177,15 @@ forward void MGE_On2v2ReadyStart(int arena_index);
 forward void MGE_On2v2PlayerReady(int client, int arena_index, bool ready_status);
 
 /**
+ * Called when arena team scores change or are reset
+ *
+ * @param arena_index    Arena index
+ * @param red_score      Red team score (SLOT_ONE)
+ * @param blu_score      Blue team score (SLOT_TWO)
+ */
+forward void MGE_OnArenaScoreChange(int arena_index, int red_score, int blu_score);
+
+/**
  * Called when a map config file is missing
  * Return Plugin_Handled to suppress SetFailState (e.g. to download the config asynchronously)
  * Return Plugin_Continue to allow normal SetFailState behavior
@@ -329,6 +338,15 @@ native bool MGE_ArenaHasGameMode(int arena_index, int game_mode);
  */
 native bool MGE_IsValidSlotForArena(int arena_index, int slot);
 
+/**
+ * Gets the current score for an arena team
+ *
+ * @param arena_index    Arena index
+ * @param team_slot      Team slot (SLOT_ONE = red, SLOT_TWO = blue)
+ * @return               Team score, or 0 if arena or slot is invalid
+ */
+native int MGE_GetArenaScore(int arena_index, int team_slot);
+
 
 public SharedPlugin __pl_mge = 
 {
@@ -358,5 +376,6 @@ public void __pl_mge_SetNTVOptional()
     MarkNativeAsOptional("MGE_GetPlayerTeammate");
     MarkNativeAsOptional("MGE_ArenaHasGameMode");
     MarkNativeAsOptional("MGE_IsValidSlotForArena");
+    MarkNativeAsOptional("MGE_GetArenaScore");
 }
 #endif

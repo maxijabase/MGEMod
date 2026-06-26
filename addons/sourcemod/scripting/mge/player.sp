@@ -692,7 +692,7 @@ void HandleActivePlayerClassChange(int client, int arena_index)
         // Award points and provide feedback
         if (g_bArenaClassChange[arena_index])
         {
-            g_iArenaScore[arena_index][killer_team_slot] += 1;
+            AddArenaTeamScore(arena_index, killer_team_slot);
             MC_PrintToChat(killer, "%t", "ClassChangePointOpponent");
             MC_PrintToChat(client, "%t", "ClassChangePoint");
         }
@@ -1184,7 +1184,7 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
     }
 
     if (!g_bArenaBBall[arena_index] && !g_bArenaKoth[arena_index] && (!g_bFourPersonArena[arena_index] || (g_bFourPersonArena[arena_index] && !IsPlayerAlive(victim_teammate)))) // Kills shouldn't give points in bball. Or if only 1 player in a two person arena dies
-        g_iArenaScore[arena_index][killer_team_slot] += 1;
+        AddArenaTeamScore(arena_index, killer_team_slot);
 
     if (!g_bArenaEndif[arena_index]) // Endif does not need to display health, since it is one-shot kills.
     {

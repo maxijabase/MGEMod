@@ -833,9 +833,7 @@ Action Timer_Restart2v2Ready(Handle timer, any arena_index)
 
     if (player_count == 4)
     {
-        // Reset scores and return to ready state
-        g_iArenaScore[arena_index][SLOT_ONE] = 0;
-        g_iArenaScore[arena_index][SLOT_TWO] = 0;
+        ResetArenaScores(arena_index);
         // Ensure any players that were placed into spectator (waiting) are restored
         Restore2v2WaitingSpectators(arena_index);
         Start2v2ReadySystem(arena_index);

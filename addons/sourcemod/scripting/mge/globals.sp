@@ -270,5 +270,6 @@ GlobalForward g_hOnArenaPlayerDeath;
 GlobalForward g_hOnPlayerELOChange;
 GlobalForward g_hOn2v2ReadyStart;
 GlobalForward g_hOn2v2PlayerReady;
+GlobalForward g_hOnArenaScoreChange;
 GlobalForward g_hOnMapConfigMissing;
 GlobalForward g_hOnMapConfigInvalid;

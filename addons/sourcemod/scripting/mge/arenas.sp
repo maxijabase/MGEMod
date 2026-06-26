@@ -1832,8 +1832,7 @@ Action Timer_StartDuel(Handle timer, any arena_index)
         g_bTimerRunning[arena_index] = true;
     }
 
-    g_iArenaScore[arena_index][SLOT_ONE] = 0;
-    g_iArenaScore[arena_index][SLOT_TWO] = 0;
+    ResetArenaScores(arena_index);
     g_iArenaDuelStartTime[arena_index] = 0; // Reset duel start time
     UpdateHudForArena(arena_index);
     

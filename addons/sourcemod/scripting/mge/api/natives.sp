@@ -17,6 +17,7 @@ void RegisterNatives()
     CreateNative("MGE_GetPlayerTeammate", Native_GetPlayerTeammate);
     CreateNative("MGE_ArenaHasGameMode", Native_ArenaHasGameMode);
     CreateNative("MGE_IsValidSlotForArena", Native_IsValidSlotForArena);
+    CreateNative("MGE_GetArenaScore", Native_GetArenaScore);
     CreateNative("MGE_ReportConfigUnavailable", Native_ReportConfigUnavailable);
 }
 
@@ -248,6 +249,20 @@ int Native_IsValidSlotForArena(Handle plugin, int numParams)
         return false;
     
     return IsValidSlotForArena(arena_index, slot);
+}
+
+// Gets the current score for an arena team
+int Native_GetArenaScore(Handle plugin, int numParams)
+{
+    int arena_index = GetNativeCell(1);
+    int team_slot = GetNativeCell(2);
+
+    if (arena_index < 1 || arena_index > g_iArenaCount)
+        return 0;
+    if (team_slot != SLOT_ONE && team_slot != SLOT_TWO)
+        return 0;
+
+    return g_iArenaScore[arena_index][team_slot];
 }
 
 
