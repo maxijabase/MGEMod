@@ -598,11 +598,9 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                 g_iArenaQueue[arena_index][player_slot] = next_client;
                 g_iPlayerSlot[next_client] = player_slot;
                 after_leaver_slot = SLOT_FOUR + 2;
-                char playername[MAX_NAME_LENGTH];
                 CreateTimer(2.0, Timer_Restart2v2Ready, arena_index);
-                GetClientName(next_client, playername, sizeof(playername));
 
-                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client], IsPlayerEligibleForElo(next_client));
+                SendArenaJoinMessage(next_client, g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client], IsPlayerEligibleForElo(next_client));
                 
                 UpdateHudForArena(arena_index);
             } else {
@@ -674,11 +672,9 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                 g_iArenaQueue[arena_index][player_slot] = next_client;
                 g_iPlayerSlot[next_client] = player_slot;
                 after_leaver_slot = SLOT_TWO + 2;
-                char playername[MAX_NAME_LENGTH];
                 CreateTimer(2.0, Timer_StartDuel, arena_index);
-                GetClientName(next_client, playername, sizeof(playername));
 
-                SendArenaJoinMessage(playername, g_iPlayerRating[next_client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client], IsPlayerEligibleForElo(next_client));
+                SendArenaJoinMessage(next_client, g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[next_client], IsPlayerEligibleForElo(next_client));
                 
                 UpdateHudForArena(arena_index);
             } else {
@@ -870,10 +866,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
     {
         if (player_slot <= SLOT_FOUR)
         {
-            char name[MAX_NAME_LENGTH];
-            GetClientName(client, name, sizeof(name));
-
-            SendArenaJoinMessage(name, g_iPlayerRating[client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client], IsPlayerEligibleForElo(client));
+            SendArenaJoinMessage(client, g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client], IsPlayerEligibleForElo(client));
 
             // Check if we have exactly 2 players per team for 2v2 match
             int red_count = 0;
@@ -909,10 +902,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
     {
         if (player_slot <= SLOT_TWO)
         {
-            char name[MAX_NAME_LENGTH];
-            GetClientName(client, name, sizeof(name));
-
-            SendArenaJoinMessage(name, g_iPlayerRating[client], g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client], IsPlayerEligibleForElo(client));
+            SendArenaJoinMessage(client, g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client], IsPlayerEligibleForElo(client));
 
             if (g_iArenaQueue[arena_index][SLOT_ONE] && g_iArenaQueue[arena_index][SLOT_TWO])
             {
@@ -1210,12 +1200,18 @@ void ShowMainMenu(int client, bool listplayers = true)
 
             if (!g_bNoDisplayRating && g_bShowElo[client])
             {
+                char red_rating[16], blu_rating[16];
+                if (red_valid)
+                    FormatRatingDisplay(red_f1, red_rating, sizeof(red_rating));
+                if (blu_valid)
+                    FormatRatingDisplay(blu_f1, blu_rating, sizeof(blu_rating));
+
                 if (red_valid && blu_valid)
-                    Format(report, sizeof(report), "%s \x04%N \x03(%d) \x05vs \x04%N (%d) \x05", report, red_f1, g_iPlayerRating[red_f1], blu_f1, g_iPlayerRating[blu_f1]);
+                    Format(report, sizeof(report), "%s \x04%N \x03(%s) \x05vs \x04%N (%s) \x05", report, red_f1, red_rating, blu_f1, blu_rating);
                 else if (red_valid)
-                    Format(report, sizeof(report), "%s \x04%N (%d)\x05", report, red_f1, g_iPlayerRating[red_f1]);
+                    Format(report, sizeof(report), "%s \x04%N (%s)\x05", report, red_f1, red_rating);
                 else if (blu_valid)
-                    Format(report, sizeof(report), "%s \x04%N (%d)\x05", report, blu_f1, g_iPlayerRating[blu_f1]);
+                    Format(report, sizeof(report), "%s \x04%N (%s)\x05", report, blu_f1, blu_rating);
             } else {
                 if (red_valid && blu_valid)
                     Format(report, sizeof(report), "%s \x04%N \x05vs \x04%N \x05", report, red_f1, blu_f1);
@@ -1307,16 +1303,31 @@ int Menu_Main(Menu menu, MenuAction action, int param1, int param2)
 
 // ===== MESSAGING SYSTEM =====
 
-// Send formatted join message with player rating and arena information
-void SendArenaJoinMessage(const char[] playername, int player_rating, const char[] arena_name, bool show_elo, bool is_verified = true)
+// Formats a player's rating for display, showing "BOT" for fake clients instead of their (usually 0) ELO
+void FormatRatingDisplay(int player, char[] output, int output_size)
 {
+    if (IsFakeClient(player))
+        strcopy(output, output_size, "BOT");
+    else
+        IntToString(g_iPlayerRating[player], output, output_size);
+}
+
+// Send formatted join message with player rating and arena information
+void SendArenaJoinMessage(int player, const char[] arena_name, bool show_elo, bool is_verified = true)
+{
+    char playername[MAX_NAME_LENGTH];
+    GetClientName(player, playername, sizeof(playername));
+
+    char rating[16];
+    FormatRatingDisplay(player, rating, sizeof(rating));
+
     for (int i = 1; i <= MaxClients; ++i)
     {
         if (!IsClientInGame(i))
             continue;
-            
+
         if (show_elo && g_bShowElo[i] && is_verified)
-            MC_PrintToChat(i, "%t", "JoinsArena", playername, player_rating, arena_name);
+            MC_PrintToChat(i, "%t", "JoinsArena", playername, rating, arena_name);
         else
             MC_PrintToChat(i, "%t", "JoinsArenaNoStats", playername, arena_name);
     }

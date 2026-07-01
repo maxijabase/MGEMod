@@ -39,7 +39,7 @@
 	}
 	"JoinsArena"
 	{
-		"#format"		"{1:s},{2:i},{3:s}"
+		"#format"		"{1:s},{2:s},{3:s}"
 		"en"			"{green}[MGE]{default} {lightgreen}{1} ({2}) {default}joins arena {green}{3}."
 		"chi"			"{green}[MGE]{default} {lightgreen}{1}（{2}）{default}加入了竞技场：{green}{3}"
 		"de"			"{green}[MGE]{default} {lightgreen}{1} ({2}) {default}betritt Arena {green}{3}."
