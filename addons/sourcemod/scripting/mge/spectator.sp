@@ -1,7 +1,11 @@
 
 // ===== SPECTATOR HUD MANAGEMENT =====
 
-#define OBS_MODE_ROAMING 6
+// TF2 inserts OBS_MODE_POI (Passtime/MvM points of interest) at slot 6,
+// shifting OBS_MODE_ROAMING to 7 here vs. 6 in base Source (HL2DM/CSS)
+#define OBS_MODE_ROAMING 7
+#define SPEC_CHASE_DISTANCE 200.0
+#define SPEC_CHASE_HEIGHT   150.0
 
 // Displays countdown messages to spectators watching a specific arena
 void ShowCountdownToSpec(int arena_index, char[] text)
@@ -25,6 +29,25 @@ void ShowCountdownToSpec(int arena_index, char[] text)
     }
 }
 
+// Computes a third-person-style camera placement behind and slightly above a
+// target (further back than TF2's normal chase cam), facing the target, for
+// use when teleporting a freeroam spectator onto a newly cycled-to player.
+void GetSpecChaseCamPosition(int target, float pos[3], float ang[3])
+{
+    float target_origin[3], target_ang[3];
+    GetClientAbsOrigin(target, target_origin);
+    GetClientEyeAngles(target, target_ang);
+
+    float yaw_rad = DegToRad(target_ang[1]);
+
+    pos[0] = target_origin[0] - (Cosine(yaw_rad) * SPEC_CHASE_DISTANCE);
+    pos[1] = target_origin[1] - (Sine(yaw_rad) * SPEC_CHASE_DISTANCE);
+    pos[2] = target_origin[2] + SPEC_CHASE_HEIGHT;
+
+    float look_dir[3];
+    SubtractVectors(target_origin, pos, look_dir);
+    GetVectorAngles(look_dir, ang);
+}
 
 // ===== TIMER FUNCTIONS =====
 
@@ -91,6 +114,13 @@ Action Timer_ChangeSpecTarget(Handle timer, int userid)
         }
     }
 
+    // Freeroam camera position is independent of m_hObserverTarget, so don't let
+    // the engine's internal target cycling desync the HUD from what's on screen
+    if (GetEntProp(client, Prop_Send, "m_iObserverMode") == OBS_MODE_ROAMING)
+    {
+        return Plugin_Stop;
+    }
+
     int target = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
 
     if (IsValidClient(target) && g_iPlayerArena[target] > 0 && IsPlayerAlive(target))
@@ -130,32 +160,30 @@ Action Timer_ShowAdv(Handle timer, int userid)
 
 // ===== PLAYER COMMANDS =====
 
-// Handles spectator command to detect and update spectator target
-Action Command_Spec(int client, int args)
-{  
-    // Detecting spectator target
-    if (!IsValidClient(client))
-        return Plugin_Handled;
-
-    CreateTimer(0.1, Timer_ChangeSpecTarget, GetClientUserId(client));
-    return Plugin_Continue;
-}
-
-// Intercepts spec_next/spec_prev to cycle only through alive arena players,
-// preventing spectators from landing on players not in any arena (empty HUD).
+// Single entry point for spec_next/spec_prev. Free spectators (not queued in
+// any arena) get their target cycling hijacked so it only ever lands on alive
+// arena players, with an explicit HUD sync and freeroam teleport handled here.
+// Spectators still queued/waiting in an arena aren't hijacked - they keep the
+// engine's default cycling behavior, and just get their HUD resynced afterward
+// via Timer_ChangeSpecTarget once the engine has picked a target.
 Action Command_SpecNavigation(int client, const char[] command, int args)
 {
-    if (!IsValidClient(client) || GetClientTeam(client) != TEAM_SPEC || g_iPlayerArena[client] > 0)
-        return Plugin_Continue;
-
     bool isNext = StrEqual(command, "spec_next");
     bool isPrev = StrEqual(command, "spec_prev");
     if (!isNext && !isPrev)
         return Plugin_Continue;
 
-    int observer_mode = GetEntProp(client, Prop_Send, "m_iObserverMode");
-    if (observer_mode == OBS_MODE_ROAMING)
+    if (!IsValidClient(client) || GetClientTeam(client) != TEAM_SPEC)
         return Plugin_Continue;
+
+    if (g_iPlayerArena[client] > 0)
+    {
+        CreateTimer(0.1, Timer_ChangeSpecTarget, GetClientUserId(client));
+        return Plugin_Continue;
+    }
+
+    int observer_mode = GetEntProp(client, Prop_Send, "m_iObserverMode");
+    bool isRoaming = (observer_mode == OBS_MODE_ROAMING);
 
     int current_target = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
 
@@ -206,6 +234,15 @@ Action Command_SpecNavigation(int client, const char[] command, int args)
 
     if (GetEntProp(client, Prop_Send, "m_iObserverMode") != observer_mode)
         SetEntProp(client, Prop_Send, "m_iObserverMode", observer_mode);
+
+    // In freeroam the camera is the client's own entity, so cycling targets
+    // has to move the player there directly instead of relying on the engine
+    if (isRoaming)
+    {
+        float cam_pos[3], cam_ang[3];
+        GetSpecChaseCamPosition(new_target, cam_pos, cam_ang);
+        TeleportEntity(client, cam_pos, cam_ang, NULL_VECTOR);
+    }
 
     g_iPlayerSpecTarget[client] = new_target;
     UpdateHud(client);

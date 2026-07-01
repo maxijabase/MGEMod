@@ -15,7 +15,7 @@
 #include <convar_class>
 #include <mge>
 
-#define PL_VERSION "3.1.0-beta24"
+#define PL_VERSION "3.1.0-beta25"
 
 #define MAXARENAS 63
 #define MAXSPAWNS 15
@@ -185,8 +185,6 @@ public void OnPluginStart()
     RegConsoleCmd("mgehelp", Command_Help);
     RegConsoleCmd("first", Command_First, "Join the first available arena.");
     RegConsoleCmd("handicap", Command_Handicap, "Reduce your maximum HP. Type '!handicap off' to disable.");
-    RegConsoleCmd("spec_next", Command_Spec);
-    RegConsoleCmd("spec_prev", Command_Spec);
     RegConsoleCmd("autoteam", Command_AutoTeam);
     RegConsoleCmd("jointeam", Command_JoinTeam);
     RegConsoleCmd("joinclass", Command_JoinClass);

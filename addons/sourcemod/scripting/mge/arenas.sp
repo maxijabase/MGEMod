@@ -467,7 +467,7 @@ void UpdateArenaName(int arena)
 
 // Remove player from arena queue with optional statistics calculation and spectator handling
 // TODO: refactor this crap
-void RemoveFromQueue(int client, bool calcstats = false, bool specfix = false)
+void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
 {
     int arena_index = g_iPlayerArena[client];
 
