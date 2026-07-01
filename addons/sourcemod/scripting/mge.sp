@@ -197,7 +197,7 @@ public void OnPluginStart()
     RegAdminCmd("koth", Command_Koth, ADMFLAG_BAN, "Change arena to KOTH Mode");
     RegAdminCmd("mge", Command_Mge, ADMFLAG_BAN, "Change arena to MGE Mode");
     RegAdminCmd("loc", Command_Loc, ADMFLAG_BAN, "Shows client origin and angle vectors");
-    RegAdminCmd("botme", Command_AddBot, ADMFLAG_BAN, "Add bot to your arena");
+    RegAdminCmd("botme", Command_AddBot, ADMFLAG_BAN, "Add bot to your arena. Usage: !botme [class] (default: scout)");
     RegAdminCmd("conntest", Command_ConnectionTest, ADMFLAG_BAN, "MySQL connection test");
     
     // 2v2 Ready System Commands
@@ -270,6 +270,9 @@ void HandleHotReload()
             }
         }
     }
+
+    // Kick all bots
+    ServerCommand("tf_bot_kick all");
     
     // Reset the late flag after handling hot reload
     g_bLate = false;
@@ -324,6 +327,9 @@ public void OnMapStart()
             FindConVar("mp_autoteambalance").SetInt(0);
             FindConVar("mp_teams_unbalance_limit").SetInt(101);
             FindConVar("mp_tournament").SetInt(0);
+            FindConVar("tf_bot_quota").SetInt(0);
+            FindConVar("tf_bot_count").SetInt(0);
+            FindConVar("tf_bot_keep_class_after_death").SetInt(1);
         }
 
         HookEvent("player_death", Event_PlayerDeath, EventHookMode_Pre);

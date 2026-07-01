@@ -52,6 +52,7 @@ void HandleClientAuthentication(int client)
                 pack.WriteCell(GetClientUserId(client));
                 pack.WriteCell(arena_index);
                 g_iPlayerRating[client] = 1551;
+                strcopy(g_sBotDesiredClass[client], sizeof(g_sBotDesiredClass[]), g_sPendingBotClass[i]);
                 g_bPlayerAskedForBot[i] = false;
                 break;
             }
@@ -68,6 +69,10 @@ void HandleClientAuthentication(int client)
 void HandleClientDisconnection(int client)
 {
     CancelEloRetry(client);
+
+    g_sBotDesiredClass[client][0] = '\0';
+    g_sPendingBotClass[client][0] = '\0';
+    g_bPlayerAskedForBot[client] = false;
     
     if (IsValidClient(client, true) && g_iPlayerArena[client])
     {
@@ -119,23 +124,17 @@ void HandleClientDisconnection(int client)
         // Bot cleanup logic (queue advancement is handled by RemoveFromQueue)
         if (IsValidClient(foe) && IsFakeClient(foe))
         {
-            ConVar cvar = FindConVar("tf_bot_quota");
-            int quota = cvar.IntValue;
-            ServerCommand("tf_bot_quota %d", quota - 1);
+            DecrementBotQuota();
         }
 
         if (IsValidClient(foe2) && IsFakeClient(foe2))
         {
-            ConVar cvar = FindConVar("tf_bot_quota");
-            int quota = cvar.IntValue;
-            ServerCommand("tf_bot_quota %d", quota - 1);
+            DecrementBotQuota();
         }
 
         if (IsValidClient(player_teammate) && IsFakeClient(player_teammate))
         {
-            ConVar cvar = FindConVar("tf_bot_quota");
-            int quota = cvar.IntValue;
-            ServerCommand("tf_bot_quota %d", quota - 1);
+            DecrementBotQuota();
         }
 
         // Ensure any 2v2 waiting/spec players are restored on disconnect
@@ -989,6 +988,20 @@ Action Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 {
     int client = GetClientOfUserId(event.GetInt("userid"));
     int arena_index = g_iPlayerArena[client];
+
+    // TFBots can drift to a different class on their own even with tf_bot_keep_class_after_death
+    // set (that cvar only stops it from re-rolling on its own; it doesn't guarantee our previously
+    // forced class "sticks" from the bot's own perspective). Re-enforce it on every spawn instead
+    // of only once, so a bot requested via !botme <class> never wanders off it.
+    if (IsFakeClient(client) && strlen(g_sBotDesiredClass[client]) > 0)
+    {
+        TFClassType desired_class = GetClassTypeFromBotClassArg(g_sBotDesiredClass[client]);
+        if (TF2_GetPlayerClass(client) != desired_class)
+        {
+            TF2_SetPlayerClass(client, desired_class);
+            TF2_RespawnPlayer(client);
+        }
+    }
 
     g_tfctPlayerClass[client] = TF2_GetPlayerClass(client);
 

@@ -212,6 +212,8 @@ ArrayList g_alPlayerDuelClasses[MAXPLAYERS + 1];
 
 // Bot things
 bool g_bPlayerAskedForBot[MAXPLAYERS + 1];
+char g_sPendingBotClass[MAXPLAYERS + 1][16]; // Class requested via !botme, keyed by the requesting client
+char g_sBotDesiredClass[MAXPLAYERS + 1][16]; // Class to force once the bot itself is queued into the arena
 
 // Midair
 int g_iMidairHP;

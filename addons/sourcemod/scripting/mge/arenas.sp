@@ -606,9 +606,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
             } else {
                 if (IsValidClient(foe) && IsFakeClient(foe))
                 {
-                    ConVar cvar = FindConVar("tf_bot_quota");
-                    int quota = cvar.IntValue;
-                    ServerCommand("tf_bot_quota %d", quota - 1);
+                    DecrementBotQuota();
                 }
 
                 if (g_bFourPersonArena[arena_index])
@@ -680,9 +678,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
             } else {
                 if (IsValidClient(foe) && IsFakeClient(foe))
                 {
-                    ConVar cvar = FindConVar("tf_bot_quota");
-                    int quota = cvar.IntValue;
-                    ServerCommand("tf_bot_quota %d", quota - 1);
+                    DecrementBotQuota();
                 }
 
                 g_iArenaStatus[arena_index] = AS_IDLE;
@@ -1623,9 +1619,71 @@ Action Command_Mge(int client, int args)
     return Plugin_Handled;
 }
 
+// Releases one tf_bot_quota slot when a bot leaves an arena for good, never going below 0
+// (tf_bot_quota is a persistent server convar; letting it drift negative causes the engine's
+// quota enforcement to auto-kick any newly added bot, since it believes it already has too many)
+void DecrementBotQuota()
+{
+    ConVar cvar = FindConVar("tf_bot_quota");
+    int quota = cvar.IntValue;
+    if (quota > 0)
+        cvar.SetInt(quota - 1);
+}
+
 // Add bot player to arena queue for testing purposes
+// Maps a user-supplied class name to the argument tf_bot_add expects, defaulting to scout
+void GetBotClassArg(int args, char[] output, int output_size)
+{
+    static const char VALID_CLASSES[9][13] = { "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer" };
+
+    char arg[32] = "scout";
+    if (args >= 1)
+        GetCmdArg(1, arg, sizeof(arg));
+
+    if (StrEqual(arg, "heavy", false))
+        strcopy(arg, sizeof(arg), "heavyweapons");
+
+    for (int i = 0; i < sizeof(VALID_CLASSES); i++)
+    {
+        if (StrEqual(arg, VALID_CLASSES[i], false))
+        {
+            strcopy(output, output_size, VALID_CLASSES[i]);
+            return;
+        }
+    }
+
+    strcopy(output, output_size, "scout");
+}
+
+// Converts a tf_bot_add-style class name (as produced by GetBotClassArg) into its TFClassType
+TFClassType GetClassTypeFromBotClassArg(const char[] name)
+{
+    static const char VALID_CLASSES[9][13] = { "scout", "sniper", "soldier", "demoman", "medic", "heavyweapons", "pyro", "spy", "engineer" };
+
+    for (int i = 0; i < sizeof(VALID_CLASSES); i++)
+    {
+        if (StrEqual(name, VALID_CLASSES[i], false))
+            return view_as<TFClassType>(i + 1);
+    }
+
+    return TFClass_Scout;
+}
+
+// Checks whether any of an arena's active (fighting, not queued) slots already hold a bot
+bool ArenaHasActiveBot(int arena_index)
+{
+    int max_active_slot = g_bFourPersonArena[arena_index] ? SLOT_FOUR : SLOT_TWO;
+    for (int i = SLOT_ONE; i <= max_active_slot; i++)
+    {
+        int occupant = g_iArenaQueue[arena_index][i];
+        if (occupant && IsFakeClient(occupant))
+            return true;
+    }
+    return false;
+}
+
 Action Command_AddBot(int client, int args)
-{  
+{
     // Adding bot to client's arena
     if (!IsValidClient(client))
         return Plugin_Handled;
@@ -1635,8 +1693,39 @@ Action Command_AddBot(int client, int args)
 
     if (arena_index && (player_slot == SLOT_ONE || player_slot == SLOT_TWO || (g_bFourPersonArena[arena_index] && (player_slot == SLOT_THREE || player_slot == SLOT_FOUR))))
     {
+        // Prevent re-requesting while a previous request is still connecting/queueing, or while
+        // a bot from a previous request is already fighting in this arena - stacking requests
+        // races the async bot-connection tracking (which just grabs the first pending request it
+        // sees) and corrupts arena/class attribution for both bots.
+        if (g_bPlayerAskedForBot[client])
+        {
+            MC_PrintToChat(client, "%t", "BotAlreadyRequested");
+            return Plugin_Handled;
+        }
+
+        if (ArenaHasActiveBot(arena_index))
+        {
+            MC_PrintToChat(client, "%t", "BotAlreadyInArena");
+            return Plugin_Handled;
+        }
+
+        // Bots otherwise re-roll a random class (often medic) on every respawn
+        FindConVar("tf_bot_keep_class_after_death").SetInt(1);
+
+        // Note: we deliberately do NOT pass a class to tf_bot_add here. Forcing a class at
+        // creation makes the engine spawn the bot immediately at the map's default team spawns
+        // (before we get a chance to queue it into the arena), and on some maps those default
+        // spawns don't support every class, which gets the bot kicked for failing to spawn.
+        // Instead we stash the desired class and force it once the bot is safely queued into
+        // the arena (which uses the arena's own working spawn points).
+        GetBotClassArg(args, g_sPendingBotClass[client], sizeof(g_sPendingBotClass[]));
+
         ServerCommand("tf_bot_add");
         g_bPlayerAskedForBot[client] = true;
+    }
+    else
+    {
+        MC_PrintToChat(client, "%t", "NotInArena");
     }
     return Plugin_Handled;
 }
@@ -1918,6 +2007,18 @@ Action Timer_AddBotInQueue(Handle timer, DataPack pack)
     int client = GetClientOfUserId(pack.ReadCell());
     int arena_index = pack.ReadCell();
     AddInQueue(client, arena_index);
+
+    // Force the requested class now that the bot is queued into the arena's own spawn points,
+    // rather than at tf_bot_add time (see Command_AddBot for why that's unsafe on some maps).
+    // g_sBotDesiredClass is intentionally left set - Event_PlayerSpawn re-enforces it on every
+    // future respawn too, since TFBots can otherwise still drift off it over time.
+    if (IsValidClient(client) && IsFakeClient(client) && strlen(g_sBotDesiredClass[client]) > 0)
+    {
+        TFClassType desired_class = GetClassTypeFromBotClassArg(g_sBotDesiredClass[client]);
+        g_tfctPlayerClass[client] = desired_class;
+        TF2_SetPlayerClass(client, desired_class);
+        TF2_RespawnPlayer(client);
+    }
 
     return Plugin_Continue;
 }

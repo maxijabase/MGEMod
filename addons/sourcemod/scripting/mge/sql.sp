@@ -131,7 +131,7 @@ void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any dat
     {
         LogError("Database connection test failed: connection lost");
         LogError("Database reconnect failed, next attempt in %i minutes.", g_iReconnectInterval);
-        PrintHintTextToAll("%t", "DatabaseDown", g_iReconnectInterval);
+        PrintHintTextToAll("%t", "DatabaseDownStats", g_iReconnectInterval);
 
         if (g_hDBReconnectTimer == null)
             g_hDBReconnectTimer = CreateTimer(float(60 * g_iReconnectInterval), Timer_ReconnectToDB, TIMER_FLAG_NO_MAPCHANGE);
@@ -140,7 +140,7 @@ void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any dat
     {
         LogError("Database connection test query failed: %s", error);
         LogError("Database reconnect failed, next attempt in %i minutes.", g_iReconnectInterval);
-        PrintHintTextToAll("%t", "DatabaseDown", g_iReconnectInterval);
+        PrintHintTextToAll("%t", "DatabaseDownStats", g_iReconnectInterval);
 
         if (g_hDBReconnectTimer == null)
             g_hDBReconnectTimer = CreateTimer(float(60 * g_iReconnectInterval), Timer_ReconnectToDB, TIMER_FLAG_NO_MAPCHANGE);
@@ -286,7 +286,7 @@ void SQL_OnGenericQueryFinished(Database db, DBResultSet results, const char[] e
         if (!g_bNoStats)
         {
             g_bNoStats = true;
-            PrintHintTextToAll("%t", "DatabaseDown", g_iReconnectInterval);
+            PrintHintTextToAll("%t", "DatabaseDownStats", g_iReconnectInterval);
 
             // Refresh all huds to get rid of stats display.
             UpdateHudForAll();

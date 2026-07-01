@@ -376,7 +376,7 @@
 		"es"			"{green}[MGE]{default} No puedes cambiar de clase en este momento."
 		"pt"			"{green}[MGE]{default} Não pode mudar de classe neste momento."
 	}
-	"DatabaseDown"
+	"DatabaseDownStats"
 	{
 		"#format"		"{1:i}"
 		"en"			"{green}[MGE]{default} Database connection failed, disabling stats.\nA reconnect will be attempted in {green}{1}{default} minutes."
@@ -636,6 +636,14 @@
 		"ru"			"{green}[MGE]{default} Вы не на арене!"
 		"es"			"{green}[MGE]{default} ¡No estás en una arena!"
 		"pt"			"{green}[MGE]{default} Você não está em uma arena!"
+	}
+	"BotAlreadyRequested"
+	{
+		"en"			"{green}[MGE]{default} You already have a bot request being processed."
+	}
+	"BotAlreadyInArena"
+	{
+		"en"			"{green}[MGE]{default} There is already a bot in your arena."
 	}
 	"ReadyOnlyFor2v2"
 	{
