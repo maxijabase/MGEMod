@@ -243,10 +243,13 @@ native bool MGE_GetPlayerStats(int client, any[] stats);
 native bool MGE_GetArenaInfo(int arena_index, any[] info);
 
 /**
- * Checks if a player is currently in an MGE arena
+ * Checks if a player currently occupies an active arena slot - either
+ * waiting to play (e.g. alone in the arena, or during countdown) or
+ * actively playing. Players queued behind the active slots (spectating
+ * while waiting for their turn) are NOT considered to be "in arena".
  *
  * @param client         Client index
- * @return               True if in arena, false otherwise
+ * @return               True if occupying an active slot, false otherwise
  */
 native bool MGE_IsPlayerInArena(int client);
 

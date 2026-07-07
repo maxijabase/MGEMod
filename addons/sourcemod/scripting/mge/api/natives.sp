@@ -54,15 +54,22 @@ int Native_GetPlayerStats(Handle plugin, int numParams)
     return true;
 }
 
-// Checks if a player is currently in an MGE arena
+// Checks if a player currently occupies an active arena slot (waiting to
+// play or playing). Players queued behind the active slots (spectating
+// while waiting for their turn) are not considered "in arena".
 int Native_IsPlayerInArena(Handle plugin, int numParams)
 {
     int client = GetNativeCell(1);
     
     if (!IsValidClient(client))
         return false;
-        
-    return (g_iPlayerArena[client] > 0);
+    
+    int arena_index = g_iPlayerArena[client];
+    if (arena_index <= 0)
+        return false;
+    
+    int maxSlot = g_bFourPersonArena[arena_index] ? SLOT_FOUR : SLOT_TWO;
+    return (g_iPlayerSlot[client] >= SLOT_ONE && g_iPlayerSlot[client] <= maxSlot);
 }
 
 // ===== ARENA INFORMATION NATIVES =====
