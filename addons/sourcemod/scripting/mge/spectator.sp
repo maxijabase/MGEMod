@@ -58,6 +58,20 @@ Action Timer_SpecFix(Handle timer, int userid)
     if (!IsValidClient(client))
         return Plugin_Continue;
 
+    // Player may have since joined a new arena as an active fighter (e.g. hopping
+    // arenas via !add) - don't clobber that back to spectator
+    int player_arena = g_iPlayerArena[client];
+    int player_slot = g_iPlayerSlot[client];
+    if (player_arena > 0 && player_slot > 0)
+    {
+        int max_active_slot = g_bFourPersonArena[player_arena] ? SLOT_FOUR : SLOT_TWO;
+        if (player_slot <= max_active_slot)
+            return Plugin_Continue;
+    }
+
+    if (GetClientTeam(client) != TEAM_SPEC)
+        return Plugin_Continue;
+
     ChangeClientTeam(client, TEAM_RED);
     ChangeClientTeam(client, TEAM_SPEC);
 
