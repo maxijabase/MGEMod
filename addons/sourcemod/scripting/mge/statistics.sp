@@ -21,13 +21,13 @@ int Panel_TopPlayers(Menu menu, MenuAction action, int param1, int param2)
                     {
                         g_iTopPlayersPage[param1]--;
                         GetSelectTopPlayersQuery(query, sizeof(query));
-                        g_DB.Query(SQL_OnTopPlayersReceived, query, param1);
+                        g_DB.Query(SQL_OnTopPlayersReceived, query, GetClientUserId(param1));
                     }
                     case 2: // Next Page
                     {
                         g_iTopPlayersPage[param1]++;
                         GetSelectTopPlayersQuery(query, sizeof(query));
-                        g_DB.Query(SQL_OnTopPlayersReceived, query, param1);
+                        g_DB.Query(SQL_OnTopPlayersReceived, query, GetClientUserId(param1));
                     }
                     case 3: // Close
                     {
@@ -162,11 +162,12 @@ void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
 // Processes database query results for top players rankings display
 void SQL_OnTopPlayersReceived(Database db, DBResultSet results, const char[] error, any data)
 {
-    int client = data;
+    int client = GetClientOfUserId(data);
 
     if (db == null)
     {
         LogError("[TopPlayersPanel] Query failed: database connection lost");
+        HandleDatabaseConnectionLoss(client);
         return;
     }
     
@@ -176,9 +177,9 @@ void SQL_OnTopPlayersReceived(Database db, DBResultSet results, const char[] err
         return;
     }
 
-    if (client < 1 || client > MaxClients || !IsClientConnected(client))
+    if (client == 0 || !IsClientConnected(client))
     {
-        LogError("SQL_OnTopPlayersReceived failed: client %d <%s> is invalid.", client, g_sPlayerSteamID[client]);
+        LogError("SQL_OnTopPlayersReceived failed: requesting client is no longer connected.");
         return;
     }
 
@@ -207,7 +208,7 @@ Action Command_Top5(int client, int args)
     g_iTopPlayersPage[client] = 0;
     char query[512];
     GetSelectTopPlayersQuery(query, sizeof(query));
-    g_DB.Query(SQL_OnTopPlayersReceived, query, client);
+    g_DB.Query(SQL_OnTopPlayersReceived, query, GetClientUserId(client));
     return Plugin_Handled;
 }
 
@@ -241,35 +242,56 @@ Action Command_Rank(int client, int args)
 // Initiates database queries to get all rank data for a player
 void GetPlayerRankData(int requestingClient, int targetPlayer)
 {
-    if (!IsValidClient(targetPlayer) || g_bNoStats)
+    if (!IsValidClient(requestingClient) || !IsValidClient(targetPlayer) || g_bNoStats)
         return;
+
+    if (!IsPlayerStatsLoaded(targetPlayer))
+    {
+        MC_PrintToChat(requestingClient, "%t", "StatsUnavailable");
+        return;
+    }
     
     // Query for rating rank
     char query[512];
     GetSelectPlayerRatingRankQuery(query, sizeof(query), g_sPlayerSteamID[targetPlayer]);
-    DataPack dp = new DataPack();
-    dp.WriteCell(requestingClient);
-    dp.WriteCell(targetPlayer);
-    dp.WriteCell(1); // Query type: 1=rating, 2=wins, 3=losses
-    g_DB.Query(SQL_OnPlayerRankReceived, query, dp);
+    g_DB.Query(SQL_OnPlayerRankReceived, query, CreatePlayerRankDataPack(requestingClient, targetPlayer, 1));
+}
+
+DataPack CreatePlayerRankDataPack(int requestingClient, int targetPlayer, int queryType)
+{
+    DataPack pack = new DataPack();
+    pack.WriteCell(GetClientUserId(requestingClient));
+    pack.WriteCell(GetClientUserId(targetPlayer));
+    pack.WriteCell(g_iPlayerStatsLoadGeneration[targetPlayer]);
+    pack.WriteCell(queryType);
+    return pack;
 }
 
 // Database callback for player rank queries
 void SQL_OnPlayerRankReceived(Database db, DBResultSet results, const char[] error, DataPack dp)
 {
     dp.Reset();
-    int requestingClient = dp.ReadCell();
-    int targetPlayer = dp.ReadCell();
+    int requestingUserid = dp.ReadCell();
+    int targetUserid = dp.ReadCell();
+    int targetGeneration = dp.ReadCell();
     int queryType = dp.ReadCell();
     delete dp;
+
+    int requestingClient = GetClientOfUserId(requestingUserid);
+    int targetPlayer = GetClientOfUserId(targetUserid);
     
     if (db == null || results == null)
     {
         LogError("[PlayerRank] Query failed (type %d): %s", queryType, error);
+        if (db == null)
+            HandleDatabaseConnectionLoss(targetPlayer);
         return;
     }
     
-    if (!IsValidClient(requestingClient) || !IsValidClient(targetPlayer))
+    if (!IsValidClient(requestingClient)
+        || !IsValidClient(targetPlayer)
+        || !IsPlayerStatsLoaded(targetPlayer)
+        || targetGeneration != g_iPlayerStatsLoadGeneration[targetPlayer])
         return;
         
     int rank = 0;
@@ -285,11 +307,7 @@ void SQL_OnPlayerRankReceived(Database db, DBResultSet results, const char[] err
             // Continue with wins query
             char query[512];
             GetSelectPlayerWinsRankQuery(query, sizeof(query), g_sPlayerSteamID[targetPlayer]);
-            DataPack newDp = new DataPack();
-            newDp.WriteCell(requestingClient);
-            newDp.WriteCell(targetPlayer);
-            newDp.WriteCell(2);
-            g_DB.Query(SQL_OnPlayerRankReceived, query, newDp);
+            g_DB.Query(SQL_OnPlayerRankReceived, query, CreatePlayerRankDataPack(requestingClient, targetPlayer, 2));
         }
         case 2:
         {
@@ -297,11 +315,7 @@ void SQL_OnPlayerRankReceived(Database db, DBResultSet results, const char[] err
             // Continue with losses query
             char query[512];
             GetSelectPlayerLossesRankQuery(query, sizeof(query), g_sPlayerSteamID[targetPlayer]);
-            DataPack newDp = new DataPack();
-            newDp.WriteCell(requestingClient);
-            newDp.WriteCell(targetPlayer);
-            newDp.WriteCell(3);
-            g_DB.Query(SQL_OnPlayerRankReceived, query, newDp);
+            g_DB.Query(SQL_OnPlayerRankReceived, query, CreatePlayerRankDataPack(requestingClient, targetPlayer, 3));
         }
         case 3:
         {
@@ -385,7 +399,11 @@ void ShowPlayerRankPanel(int client, int targetPlayer)
     panel.DrawText(winPercentLine);
     
     // Win chance display (only if looking at another player and rating is enabled)
-    if (client != targetPlayer && !g_bNoDisplayRating && g_bShowElo[client])
+    if (client != targetPlayer
+        && !g_bNoDisplayRating
+        && g_bShowElo[client]
+        && IsPlayerStatsLoaded(client)
+        && IsPlayerStatsLoaded(targetPlayer))
     {
         panel.DrawText(" ");
         int winChance = RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targetPlayer] - g_iPlayerRating[client])) / 400) + 1)) * 100);

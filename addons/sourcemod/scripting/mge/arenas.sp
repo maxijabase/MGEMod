@@ -705,10 +705,53 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
     CallForward_OnPlayerArenaRemoved(client, arena_index);
 }
 
+bool CanPlayerJoinArena(int client, int arena_index, bool showmsg)
+{
+    if (IsFakeClient(client)
+        || g_iPlayerArena[client] == arena_index
+        || !gcvar_stats.BoolValue
+        || (g_iArenaMinRating[arena_index] <= 0 && g_iArenaMaxRating[arena_index] <= 0))
+        return true;
+
+    if (!IsPlayerStatsLoaded(client))
+    {
+        if (showmsg)
+        {
+            if (g_ePlayerStatsLoadState[client] == MGE_STATS_AUTH_FAILED)
+                MC_PrintToChat(client, "%t", "StatsAuthFailedRestrictedArena");
+            else if (g_ePlayerStatsLoadState[client] == MGE_STATS_DB_FAILED)
+                MC_PrintToChat(client, "%t", "StatsLoadFailedRestrictedArena");
+            else
+                MC_PrintToChat(client, "%t", "StatsLoadingRestrictedArena");
+        }
+        return false;
+    }
+
+    int rating = g_iPlayerRating[client];
+    if (g_iArenaMinRating[arena_index] > 0 && rating < g_iArenaMinRating[arena_index])
+    {
+        if (showmsg)
+            MC_PrintToChat(client, "%t", "LowRating", rating, g_iArenaMinRating[arena_index]);
+        return false;
+    }
+
+    if (g_iArenaMaxRating[arena_index] > 0 && rating > g_iArenaMaxRating[arena_index])
+    {
+        if (showmsg)
+            MC_PrintToChat(client, "%t", "HighRating", rating, g_iArenaMaxRating[arena_index]);
+        return false;
+    }
+
+    return true;
+}
+
 // Add player to arena queue with team preference and menu options
 void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPrefTeam = 0, bool show2v2Menu = true, int forcedSlot = 0)
 {
     if (!IsValidClient(client))
+        return;
+
+    if (!CanPlayerJoinArena(client, arena_index, showmsg))
         return;
 
     // Handle case where player is already in an arena
@@ -825,15 +868,6 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
             player_slot++;
     }
 
-    // Validate ELO authentication before allowing arena join
-    char reason[128];
-    if (!IsPlayerEloValid(client, reason, sizeof(reason)))
-    {
-        if (showmsg)
-            MC_PrintToChat(client, "%t", "CannotJoinArena", reason);
-        return;
-    }
-    
     // If committing to a different arena now, cleanly remove from current first
     if (g_iPlayerArena[client] && g_iPlayerArena[client] != arena_index)
     {
@@ -1196,18 +1230,16 @@ void ShowMainMenu(int client, bool listplayers = true)
 
             if (!g_bNoDisplayRating && g_bShowElo[client])
             {
-                char red_rating[16], blu_rating[16];
                 if (red_valid)
-                    FormatRatingDisplay(red_f1, red_rating, sizeof(red_rating));
-                if (blu_valid)
-                    FormatRatingDisplay(blu_f1, blu_rating, sizeof(blu_rating));
+                    AppendPlayerWithOptionalRating(report, sizeof(report), red_f1);
 
                 if (red_valid && blu_valid)
-                    Format(report, sizeof(report), "%s \x04%N \x03(%s) \x05vs \x04%N (%s) \x05", report, red_f1, red_rating, blu_f1, blu_rating);
-                else if (red_valid)
-                    Format(report, sizeof(report), "%s \x04%N (%s)\x05", report, red_f1, red_rating);
-                else if (blu_valid)
-                    Format(report, sizeof(report), "%s \x04%N (%s)\x05", report, blu_f1, blu_rating);
+                    StrCat(report, sizeof(report), " \x05vs ");
+
+                if (blu_valid)
+                    AppendPlayerWithOptionalRating(report, sizeof(report), blu_f1);
+
+                StrCat(report, sizeof(report), "\x05");
             } else {
                 if (red_valid && blu_valid)
                     Format(report, sizeof(report), "%s \x04%N \x05vs \x04%N \x05", report, red_f1, blu_f1);
@@ -1252,31 +1284,6 @@ int Menu_Main(Menu menu, MenuAction action, int param1, int param2)
 
             if (arena_index > 0 && arena_index <= g_iArenaCount)
             {
-                char reason[128];
-                if (!IsPlayerEloValid(client, reason, sizeof(reason)))
-                {
-                    MC_PrintToChat(client, "%t", "CannotJoinArena", reason);
-                    return 0;
-                }
-                
-                // Checking rating (but allow re-selection of same arena)
-                if (arena_index != g_iPlayerArena[client])
-                {
-                    int playerrating = g_iPlayerRating[client];
-                    int minrating = g_iArenaMinRating[arena_index];
-                    int maxrating = g_iArenaMaxRating[arena_index];
-
-                    if (minrating > 0 && playerrating < minrating)
-                    {
-                        MC_PrintToChat(client, "%t", "LowRating", playerrating, minrating);
-                        ShowMainMenu(client, false);
-                        return 0;
-                    } else if (maxrating > 0 && playerrating > maxrating) {
-                        MC_PrintToChat(client, "%t", "HighRating", playerrating, maxrating);
-                        ShowMainMenu(client, false);
-                        return 0;
-                    }
-                }
                 // Always call AddInQueue - it handles re-selection logic internally
                 AddInQueue(client, arena_index);
 
@@ -1299,13 +1306,29 @@ int Menu_Main(Menu menu, MenuAction action, int param1, int param2)
 
 // ===== MESSAGING SYSTEM =====
 
-// Formats a player's rating for display, showing "BOT" for fake clients instead of their (usually 0) ELO
+// Formats a player's rating for display
 void FormatRatingDisplay(int player, char[] output, int output_size)
 {
     if (IsFakeClient(player))
         strcopy(output, output_size, "BOT");
+    else if (!IsPlayerStatsLoaded(player))
+        output[0] = '\0';
     else
         IntToString(g_iPlayerRating[player], output, output_size);
+}
+
+void AppendPlayerWithOptionalRating(char[] output, int output_size, int player)
+{
+    char segment[MAX_NAME_LENGTH + 32];
+    char rating[16];
+    FormatRatingDisplay(player, rating, sizeof(rating));
+
+    if (rating[0] == '\0')
+        Format(segment, sizeof(segment), " \x04%N", player);
+    else
+        Format(segment, sizeof(segment), " \x04%N \x03(%s)", player, rating);
+
+    StrCat(output, output_size, segment);
 }
 
 // Send formatted join message with player rating and arena information

@@ -12,6 +12,7 @@ void RegisterForwards()
     g_hOn2v2MatchEnd = new GlobalForward("MGE_On2v2MatchEnd", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
     g_hOnArenaPlayerDeath = new GlobalForward("MGE_OnArenaPlayerDeath", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
     g_hOnPlayerELOChange = new GlobalForward("MGE_OnPlayerELOChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
+    g_hOnPlayerStatsLoadStateChanged = new GlobalForward("MGE_OnPlayerStatsLoadStateChanged", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
     g_hOn2v2ReadyStart = new GlobalForward("MGE_On2v2ReadyStart", ET_Ignore, Param_Cell);
     g_hOn2v2PlayerReady = new GlobalForward("MGE_On2v2PlayerReady", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
     g_hOnArenaScoreChange = new GlobalForward("MGE_OnArenaScoreChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
@@ -130,6 +131,16 @@ void CallForward_OnPlayerELOChange(int client, int old_elo, int new_elo, int are
     Call_PushCell(old_elo);
     Call_PushCell(new_elo);
     Call_PushCell(arena_index);
+    Call_Finish();
+}
+
+// Call the OnPlayerStatsLoadStateChanged forward
+void CallForward_OnPlayerStatsLoadStateChanged(int client, MGEPlayerStatsLoadState old_state, MGEPlayerStatsLoadState new_state)
+{
+    Call_StartForward(g_hOnPlayerStatsLoadStateChanged);
+    Call_PushCell(client);
+    Call_PushCell(old_state);
+    Call_PushCell(new_state);
     Call_Finish();
 }
 

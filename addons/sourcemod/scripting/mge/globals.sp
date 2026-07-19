@@ -4,8 +4,10 @@
 // Sounds
 #define DEFAULT_COUNTDOWN_TIME 3
 
-#define MAX_ELO_RETRIES         5
+#define MAX_ELO_FAST_RETRIES    5
 #define ELO_RETRY_BASE_DELAY    3.0
+#define ELO_RETRY_SLOW_INTERVAL 60.0
+#define DEFAULT_STARTING_ELO    1600
 
 #define MODEL_POINT             "models/props_gameplay/cap_point_base.mdl"
 #define MODEL_BRIEFCASE         "models/flag/briefcase.mdl"
@@ -23,6 +25,7 @@ DatabaseType g_DatabaseType;
 
 bool
     g_bNoStats,
+    g_bSuppressEloUpdates,
     g_bNoDisplayRating,
     g_bLate,
     g_bDeferred;
@@ -46,8 +49,7 @@ bool g_bBlockFallDamage,
      g_bAutoCvar,
      g_b2v2SkipCountdown,
      g_b2v2Elo,
-     g_bClearProjectiles,
-     g_bAllowUnverifiedPlayers;
+     g_bClearProjectiles;
 
 int
     g_iDefaultFragLimit,
@@ -79,8 +81,7 @@ Convar
     gcvar_reconnectInterval,
     gcvar_2v2SkipCountdown,
     gcvar_2v2Elo,
-    gcvar_clearProjectiles,
-    gcvar_allowUnverifiedPlayers;
+    gcvar_clearProjectiles;
 
 // Classes
 bool g_tfctClassAllowed[10];
@@ -178,10 +179,15 @@ bool
     g_iPlayerWaiting        [MAXPLAYERS + 1],
     g_bCanPlayerSwap        [MAXPLAYERS + 1],
     g_bCanPlayerGetIntel    [MAXPLAYERS + 1],
-    g_bPlayerEloVerified    [MAXPLAYERS + 1]; // ELO loaded from authenticated Steam account
+    g_bEloSlowRetry         [MAXPLAYERS + 1];
 
 Handle g_hEloRetryTimer     [MAXPLAYERS + 1];
-int g_iEloRetryCount        [MAXPLAYERS + 1];
+int
+    g_iEloRetryCount        [MAXPLAYERS + 1],
+    g_iPlayerStatsLoadGeneration[MAXPLAYERS + 1];
+
+MGEPlayerStatsLoadState g_ePlayerStatsLoadState[MAXPLAYERS + 1];
+MGEPlayerStatsLoadState g_ePlayerStatsRetryFailureState[MAXPLAYERS + 1];
 
 int
     g_iPlayerArena          [MAXPLAYERS + 1],
@@ -270,6 +276,7 @@ GlobalForward g_hOn2v2MatchStart;
 GlobalForward g_hOn2v2MatchEnd;
 GlobalForward g_hOnArenaPlayerDeath;
 GlobalForward g_hOnPlayerELOChange;
+GlobalForward g_hOnPlayerStatsLoadStateChanged;
 GlobalForward g_hOn2v2ReadyStart;
 GlobalForward g_hOn2v2PlayerReady;
 GlobalForward g_hOnArenaScoreChange;

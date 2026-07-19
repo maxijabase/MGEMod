@@ -5,31 +5,22 @@ void HandleClientConnection(int client)
 {
     if (IsFakeClient(client))
         return;
-        
-    CancelEloRetry(client);
-    
+
+    ResetPlayerStatsIdentity(client);
+
     ChangeClientTeam(client, TEAM_SPEC);
     g_bShowHud[client] = true;
     g_bPlayerRestoringAmmo[client] = false;
-    g_bPlayerEloVerified[client] = false;
-    
-    // Clear any inherited statistics data immediately (but preserve if already properly loaded)
-    // This prevents stats from being inherited from previous client in the same slot
-    if (g_iPlayerRating[client] == 0 || strlen(g_sPlayerSteamID[client]) == 0)
-    {
-        g_iPlayerRating[client] = 0;
-        g_iPlayerWins[client] = 0;
-        g_iPlayerLosses[client] = 0;
-        g_bPlayerEloVerified[client] = false;
-    }
     
     // Initialize class tracking ArrayList
     if (g_alPlayerDuelClasses[client] != null)
         delete g_alPlayerDuelClasses[client];
     g_alPlayerDuelClasses[client] = new ArrayList();
     
-    // Try to load player stats (will retry in HandleClientAuthentication if Steam ID not ready)
-    TryLoadPlayerStats(client, false);
+    if (g_bNoStats && !gcvar_stats.BoolValue)
+        SetPlayerStatsLoadState(client, MGE_STATS_DISABLED);
+    else
+        TryLoadPlayerStats(client, false);
     
     CreateTimer(5.0, Timer_ShowAdv, GetClientUserId(client));
     CreateTimer(15.0, Timer_WelcomePlayer, GetClientUserId(client));
@@ -68,8 +59,6 @@ void HandleClientAuthentication(int client)
 // Handle client disconnection and cleanup
 void HandleClientDisconnection(int client)
 {
-    CancelEloRetry(client);
-
     g_sBotDesiredClass[client][0] = '\0';
     g_sPendingBotClass[client][0] = '\0';
     g_bPlayerAskedForBot[client] = false;
@@ -110,11 +99,6 @@ void HandleClientDisconnection(int client)
         // Clear 2v2 ready status
         g_bPlayer2v2Ready[client] = false;
         
-        // Clear player statistics to prevent inheritance by new clients with same ID
-        g_iPlayerRating[client] = 0;
-        g_iPlayerWins[client] = 0;
-        g_iPlayerLosses[client] = 0;
-        
         // Clear hud text if arena was in ready state
         if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
         {
@@ -145,18 +129,115 @@ void HandleClientDisconnection(int client)
         }
 
         g_iArenaStatus[arena_index] = AS_IDLE;
-        return;
     }
+
+    ResetPlayerStatsIdentity(client);
+}
+
+void SetPlayerStatsLoadState(int client, MGEPlayerStatsLoadState new_state)
+{
+    MGEPlayerStatsLoadState old_state = g_ePlayerStatsLoadState[client];
+    if (old_state == new_state)
+        return;
+
+    g_ePlayerStatsLoadState[client] = new_state;
+    CallForward_OnPlayerStatsLoadStateChanged(client, old_state, new_state);
+
+    if (IsClientInGame(client))
+    {
+        if (new_state == MGE_STATS_AUTH_FAILED)
+            MC_PrintToChat(client, "%t", "StatsAuthFailed");
+        else if (new_state == MGE_STATS_DB_FAILED)
+            MC_PrintToChat(client, "%t", "StatsLoadFailed");
+        else if (new_state == MGE_STATS_LOADED
+            && (old_state == MGE_STATS_AUTH_FAILED || old_state == MGE_STATS_DB_FAILED))
+            MC_PrintToChat(client, "%t", "StatsLoaded");
+
+        if (g_iPlayerArena[client] > 0)
+            UpdateHudForArena(g_iPlayerArena[client]);
+    }
+}
+
+void ResetPlayerStatsIdentity(int client)
+{
+    CancelEloRetry(client);
+    g_iPlayerStatsLoadGeneration[client]++;
+    g_sPlayerSteamID[client][0] = '\0';
+    g_iPlayerRating[client] = 0;
+    g_iPlayerWins[client] = 0;
+    g_iPlayerLosses[client] = 0;
+    g_iPlayerRatingRank[client] = 0;
+    g_iPlayerWinsRank[client] = 0;
+    g_iPlayerLossesRank[client] = 0;
+    g_ePlayerStatsRetryFailureState[client] = MGE_STATS_DB_FAILED;
+    SetPlayerStatsLoadState(client, MGE_STATS_NONE);
+}
+
+void DisablePlayerStatsLoading(int client)
+{
+    CancelEloRetry(client);
+    g_iPlayerStatsLoadGeneration[client]++;
+    SetPlayerStatsLoadState(client, MGE_STATS_DISABLED);
+}
+
+DataPack CreatePlayerStatsLoadData(int client)
+{
+    DataPack pack = new DataPack();
+    pack.WriteCell(GetClientUserId(client));
+    pack.WriteCell(g_iPlayerStatsLoadGeneration[client]);
+    pack.WriteString(g_sPlayerSteamID[client]);
+    return pack;
+}
+
+bool ReadPlayerStatsLoadData(any data, int &client)
+{
+    DataPack pack = view_as<DataPack>(data);
+    pack.Reset();
+
+    int userid = pack.ReadCell();
+    int generation = pack.ReadCell();
+    char steamid[32];
+    pack.ReadString(steamid, sizeof(steamid));
+    delete pack;
+
+    client = GetClientOfUserId(userid);
+    return client > 0
+        && IsClientConnected(client)
+        && generation == g_iPlayerStatsLoadGeneration[client]
+        && StrEqual(steamid, g_sPlayerSteamID[client]);
 }
 
 // Attempts to load player statistics from database with Steam ID validation
 void TryLoadPlayerStats(int client, bool isRetry)
 {
-    if (g_bNoStats || !IsValidClient(client))
+    if (!IsValidClient(client) || IsFakeClient(client))
         return;
-    
+
+    if (g_bNoStats && !gcvar_stats.BoolValue)
+    {
+        SetPlayerStatsLoadState(client, MGE_STATS_DISABLED);
+        return;
+    }
+
+    if (g_bNoStats && g_DB == null)
+    {
+        g_bNoStats = false;
+        PrepareSQL();
+
+        if (g_DB == null)
+        {
+            if (!g_bEloSlowRetry[client])
+                SetPlayerStatsLoadState(client, MGE_STATS_LOADING);
+            if (isRetry)
+                ScheduleEloRetry(client);
+            return;
+        }
+    }
+
     if (g_DB == null)
     {
+        if (!g_bEloSlowRetry[client])
+            SetPlayerStatsLoadState(client, MGE_STATS_LOADING);
         if (isRetry)
             ScheduleEloRetry(client);
         return;
@@ -164,45 +245,70 @@ void TryLoadPlayerStats(int client, bool isRetry)
     
     char steamid_dirty[31], steamid[64], query[256];
     
-    if (!GetClientAuthId(client, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty))) {
-        if (isRetry) {
+    if (!GetClientAuthId(client, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty)))
+    {
+        if (!g_bEloSlowRetry[client])
+            SetPlayerStatsLoadState(client, MGE_STATS_LOADING);
+        if (isRetry)
+        {
             LogError("Failed to get Steam ID for client %d after Steam auth, scheduling retry", client);
-            ScheduleEloRetry(client);
+            ScheduleEloRetry(client, MGE_STATS_AUTH_FAILED);
         }
         return;
     }
     
     g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
     
-    if (g_bPlayerEloVerified[client] && StrEqual(g_sPlayerSteamID[client], steamid)) {
+    if (g_ePlayerStatsLoadState[client] == MGE_STATS_LOADED && StrEqual(g_sPlayerSteamID[client], steamid))
         return;
-    }
-    
+
+    if (g_sPlayerSteamID[client][0] != '\0' && !StrEqual(g_sPlayerSteamID[client], steamid))
+        ResetPlayerStatsIdentity(client);
+
+    if (!g_bEloSlowRetry[client])
+        SetPlayerStatsLoadState(client, MGE_STATS_LOADING);
+
     strcopy(g_sPlayerSteamID[client], 32, steamid);
-    
+    g_iPlayerStatsLoadGeneration[client]++;
+
     GetSelectPlayerStatsQuery(query, sizeof(query), steamid);
-    g_DB.Query(SQL_OnPlayerReceived, query, GetClientUserId(client));
+    g_DB.Query(SQL_OnPlayerReceived, query, CreatePlayerStatsLoadData(client));
 }
 
-void ScheduleEloRetry(int client)
+void ScheduleEloRetry(int client, MGEPlayerStatsLoadState failure_state = MGE_STATS_DB_FAILED)
 {
     if (!IsValidClient(client) || IsFakeClient(client))
         return;
+
+    g_ePlayerStatsRetryFailureState[client] = failure_state;
     
-    g_iEloRetryCount[client]++;
-    
-    if (g_iEloRetryCount[client] > MAX_ELO_RETRIES)
+    float delay;
+
+    if (g_bEloSlowRetry[client])
     {
-        LogError("ELO load for client %d failed after %d retries, giving up", client, MAX_ELO_RETRIES);
-        return;
+        SetPlayerStatsLoadState(client, g_ePlayerStatsRetryFailureState[client]);
+        delay = ELO_RETRY_SLOW_INTERVAL;
     }
-    
+    else
+    {
+        g_iEloRetryCount[client]++;
+
+        if (g_iEloRetryCount[client] > MAX_ELO_FAST_RETRIES)
+        {
+            g_bEloSlowRetry[client] = true;
+            SetPlayerStatsLoadState(client, g_ePlayerStatsRetryFailureState[client]);
+            delay = ELO_RETRY_SLOW_INTERVAL;
+            LogError("ELO load for client %d failed after %d fast retries, continuing with background retries", client, MAX_ELO_FAST_RETRIES);
+        }
+        else
+        {
+            delay = ELO_RETRY_BASE_DELAY * Pow(2.0, float(g_iEloRetryCount[client] - 1));
+            LogMessage("Scheduling ELO retry %d/%d for client %d in %.0fs", g_iEloRetryCount[client], MAX_ELO_FAST_RETRIES, client, delay);
+        }
+    }
+
     CancelEloRetry(client, false);
-    
-    float delay = ELO_RETRY_BASE_DELAY * Pow(2.0, float(g_iEloRetryCount[client] - 1));
-    g_hEloRetryTimer[client] = CreateTimer(delay, Timer_RetryEloLoad, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-    
-    LogMessage("Scheduling ELO retry %d/%d for client %d in %.0fs", g_iEloRetryCount[client], MAX_ELO_RETRIES, client, delay);
+    g_hEloRetryTimer[client] = CreateTimer(delay, Timer_RetryEloLoad, GetClientUserId(client));
 }
 
 void CancelEloRetry(int client, bool resetCount = true)
@@ -214,7 +320,10 @@ void CancelEloRetry(int client, bool resetCount = true)
     }
     
     if (resetCount)
+    {
         g_iEloRetryCount[client] = 0;
+        g_bEloSlowRetry[client] = false;
+    }
 }
 
 Action Timer_RetryEloLoad(Handle timer, int userid)
@@ -226,48 +335,26 @@ Action Timer_RetryEloLoad(Handle timer, int userid)
     
     g_hEloRetryTimer[client] = null;
     
-    if (g_bPlayerEloVerified[client])
+    if (g_ePlayerStatsLoadState[client] == MGE_STATS_LOADED
+        || g_ePlayerStatsLoadState[client] == MGE_STATS_DISABLED)
         return Plugin_Stop;
     
     TryLoadPlayerStats(client, true);
     return Plugin_Stop;
 }
 
-// Validates if player's ELO is verified and safe for arena play
-bool IsPlayerEloValid(int client, char[] reason, int reason_size)
+bool IsPlayerStatsLoaded(int client)
 {
-    if (IsFakeClient(client))
-        return true; // Bots are always valid
-        
-    if (g_bNoStats)
-        return true; // Stats disabled, allow anyone
-    
-    if (!g_bPlayerEloVerified[client]) {
-        if (g_bAllowUnverifiedPlayers) {
-            return true; // Allow unverified players when convar enabled
-        }
-        Format(reason, reason_size, "%T", "EloNotVerified", client);
-        return false;
-    }
-    
-    if (strlen(g_sPlayerSteamID[client]) == 0) {
-        Format(reason, reason_size, "%T", "InvalidSteamID", client);
-        return false;
-    }
-    
-    return true;
+    return IsValidClient(client, true)
+        && !IsFakeClient(client)
+        && !g_bNoStats
+        && g_ePlayerStatsLoadState[client] == MGE_STATS_LOADED;
 }
 
 // Checks if player should be included in ELO calculations
 bool IsPlayerEligibleForElo(int client)
 {
-    if (IsFakeClient(client))
-        return false; // Bots never affect ELO
-        
-    if (g_bNoStats)
-        return false; // Stats disabled globally
-        
-    return g_bPlayerEloVerified[client]; // Only verified players eligible for ELO
+    return IsPlayerStatsLoaded(client);
 }
 
 // Resets player state including health, class, team assignment, and teleports to spawn

@@ -112,7 +112,6 @@ public void OnPluginStart()
     gcvar_2v2SkipCountdown = new Convar("mgemod_2v2_skip_countdown", "0", "Skip countdown between 2v2 rounds? (0 = Normal countdown, 1 = Skip countdown)", FCVAR_NONE, true, 0.0, true, 1.0);
     gcvar_2v2Elo = new Convar("mgemod_2v2_elo", "1", "Enable ELO calculation and display for 2v2 matches? (0 = Disabled, 1 = Enabled)", FCVAR_NONE, true, 0.0, true, 1.0);
     gcvar_clearProjectiles = new Convar("mgemod_clear_projectiles", "0", "Clear projectiles when a new round starts? (0 = Disabled, 1 = Enabled)", FCVAR_NONE, true, 0.0, true, 1.0);
-    gcvar_allowUnverifiedPlayers = new Convar("mgemod_allow_unverified_players", "0", "Allow players with unverified ELO to play? ELO calculations will be skipped for them. (0 = Block unverified, 1 = Allow but skip ELO)", FCVAR_NONE, true, 0.0, true, 1.0);
 
     // Create config file
     Convar.CreateConfig("mge");
@@ -128,7 +127,6 @@ public void OnPluginStart()
     g_b2v2SkipCountdown = gcvar_2v2SkipCountdown.IntValue ? true : false;
     g_b2v2Elo = gcvar_2v2Elo.IntValue ? true : false;
     g_bClearProjectiles = gcvar_clearProjectiles.IntValue ? true : false;
-    g_bAllowUnverifiedPlayers = gcvar_allowUnverifiedPlayers.IntValue ? true : false;
 
     gcvar_dbConfig.GetString(g_sDBConfig, sizeof(g_sDBConfig));
     gcvar_bballParticle_red.GetString(g_sBBallParticleRed, sizeof(g_sBBallParticleRed));
@@ -169,7 +167,6 @@ public void OnPluginStart()
     gcvar_2v2SkipCountdown.AddChangeHook(handler_ConVarChange);
     gcvar_2v2Elo.AddChangeHook(handler_ConVarChange);
     gcvar_clearProjectiles.AddChangeHook(handler_ConVarChange);
-    gcvar_allowUnverifiedPlayers.AddChangeHook(handler_ConVarChange);
 
     // Client commands
     RegConsoleCmd("mgemod", Command_Menu, "MGEMod Menu");
@@ -252,21 +249,17 @@ void HandleHotReload()
                 ChangeClientTeam(i, TFTeam_Spectator);
                 g_bShowHud[i] = true;
                 g_bPlayerRestoringAmmo[i] = false;
-                g_bPlayerEloVerified[i] = false;
-                
-                // Load stats from database if available
-                if (!g_bNoStats && g_DB != null)
+
+                ResetPlayerStatsIdentity(i);
+                if (g_bNoStats && !gcvar_stats.BoolValue)
+                    SetPlayerStatsLoadState(i, MGE_STATS_DISABLED);
+                else if (g_DB == null)
                 {
-                    char steamid_dirty[31], steamid[64], query[256];
-                    
-                    if (GetClientAuthId(i, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty)))
-                    {
-                        g_DB.Escape(steamid_dirty, steamid, sizeof(steamid));
-                        strcopy(g_sPlayerSteamID[i], 32, steamid);
-                        GetSelectPlayerStatsQuery(query, sizeof(query), steamid);
-                        g_DB.Query(SQL_OnPlayerReceived, query, GetClientUserId(i));
-                    }
+                    SetPlayerStatsLoadState(i, MGE_STATS_LOADING);
+                    ScheduleEloRetry(i);
                 }
+                else
+                    TryLoadPlayerStats(i, true);
             }
         }
     }
@@ -291,7 +284,8 @@ public void OnMapStart()
     // Used for ultiduo/koth arenas
     PrecacheModel(MODEL_POINT, true);
 
-    g_bNoStats = gcvar_stats.BoolValue ? false : true; /* Reset this variable, since it is forced to false during Event_WinPanel */
+    g_bNoStats = gcvar_stats.BoolValue ? false : true;
+    g_bSuppressEloUpdates = false;
     g_bDeferred = false;
 
     // Reject maps that are not MGE maps before attempting any config load
@@ -523,7 +517,50 @@ void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] new
     else if (convar == gcvar_dbConfig)
         strcopy(g_sDBConfig, sizeof(g_sDBConfig), newValue);
     else if (convar == gcvar_stats)
+    {
         g_bNoStats = !boolValue;
+
+        if (!boolValue)
+        {
+            delete g_hDBReconnectTimer;
+            g_hDBReconnectTimer = null;
+
+            for (int i = 1; i <= MaxClients; i++)
+            {
+                if (IsValidClient(i) && !IsFakeClient(i))
+                    DisablePlayerStatsLoading(i);
+            }
+        }
+        else
+        {
+            if (g_DB == null)
+                PrepareSQL();
+
+            if (g_DB != null)
+            {
+                for (int i = 1; i <= MaxClients; i++)
+                {
+                    if (IsValidClient(i) && !IsFakeClient(i))
+                    {
+                        ResetPlayerStatsIdentity(i);
+                        TryLoadPlayerStats(i, true);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 1; i <= MaxClients; i++)
+                {
+                    if (IsValidClient(i) && !IsFakeClient(i))
+                    {
+                        ResetPlayerStatsIdentity(i);
+                        SetPlayerStatsLoadState(i, MGE_STATS_LOADING);
+                        ScheduleEloRetry(i);
+                    }
+                }
+            }
+        }
+    }
     else if (convar == gcvar_airshotHeight)
         g_iAirshotHeight = intValue;
     else if (convar == gcvar_midairHP)
@@ -550,8 +587,6 @@ void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] new
         g_b2v2Elo = boolValue;
     else if (convar == gcvar_clearProjectiles)
         g_bClearProjectiles = boolValue;
-    else if (convar == gcvar_allowUnverifiedPlayers)
-        g_bAllowUnverifiedPlayers = boolValue;
 }
 
 
@@ -660,7 +695,7 @@ Action Sound_BlockSound(int clients[MAXPLAYERS], int& numClients, char sample[PL
 Action Event_WinPanel(Event event, const char[] name, bool dontBroadcast)
 {
     // Disable stats so people leaving at the end of the map don't lose points.
-    g_bNoStats = true;
+    g_bSuppressEloUpdates = true;
     return Plugin_Continue;
 }
 

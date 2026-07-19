@@ -60,6 +60,16 @@ enum
     AS_WAITING_READY
 };
 
+enum MGEPlayerStatsLoadState
+{
+    MGE_STATS_NONE = 0,
+    MGE_STATS_LOADING,
+    MGE_STATS_LOADED,
+    MGE_STATS_AUTH_FAILED,
+    MGE_STATS_DB_FAILED,
+    MGE_STATS_DISABLED
+};
+
 /**
  * Called before a player is added to an arena - can be blocked
  *
@@ -161,6 +171,15 @@ forward void MGE_OnArenaPlayerDeath(int victim, int attacker, int arena_index);
 forward void MGE_OnPlayerELOChange(int client, int old_elo, int new_elo, int arena_index);
 
 /**
+ * Called when a player's statistics loading state changes
+ *
+ * @param client         Client index
+ * @param old_state      Previous MGEPlayerStatsLoadState value
+ * @param new_state      New MGEPlayerStatsLoadState value
+ */
+forward void MGE_OnPlayerStatsLoadStateChanged(int client, MGEPlayerStatsLoadState old_state, MGEPlayerStatsLoadState new_state);
+
+/**
  * Called when 2v2 ready system starts
  *
  * @param arena_index    2v2 arena index
@@ -232,6 +251,14 @@ native int MGE_GetPlayerArena(int client);
  * @return               True on success, false otherwise
  */
 native bool MGE_GetPlayerStats(int client, any[] stats);
+
+/**
+ * Gets a player's statistics loading state
+ *
+ * @param client         Client index
+ * @return               Current MGEPlayerStatsLoadState value
+ */
+native MGEPlayerStatsLoadState MGE_GetPlayerStatsLoadState(int client);
 
 /**
  * Gets complete arena information
@@ -367,6 +394,7 @@ public void __pl_mge_SetNTVOptional()
 {
     MarkNativeAsOptional("MGE_GetPlayerArena");
     MarkNativeAsOptional("MGE_GetPlayerStats");
+    MarkNativeAsOptional("MGE_GetPlayerStatsLoadState");
     MarkNativeAsOptional("MGE_GetArenaInfo");
     MarkNativeAsOptional("MGE_IsPlayerInArena");
     MarkNativeAsOptional("MGE_GetArenaCount");

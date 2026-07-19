@@ -4,7 +4,7 @@
 // Calculates ELO ratings for 1v1 duels and updates player statistics in database
 void CalcELO(int winner, int loser)
 {
-    if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats)
+    if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || g_bSuppressEloUpdates)
         return;
         
     // Skip ELO calculations if either player has unverified ELO
@@ -68,7 +68,7 @@ void CalcELO(int winner, int loser)
 // Calculates ELO ratings for 2v2 duels using team-averaged ratings and updates player statistics
 void CalcELO2(int winner, int winner2, int loser, int loser2)
 {
-    if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || IsFakeClient(loser2) || IsFakeClient(winner2) || !g_b2v2Elo)
+    if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || g_bSuppressEloUpdates || IsFakeClient(loser2) || IsFakeClient(winner2) || !g_b2v2Elo)
         return;
         
     // Skip ELO calculations if any player has unverified ELO

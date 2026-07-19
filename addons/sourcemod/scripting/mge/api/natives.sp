@@ -5,6 +5,7 @@ void RegisterNatives()
 {
     CreateNative("MGE_GetPlayerArena", Native_GetPlayerArena);
     CreateNative("MGE_GetPlayerStats", Native_GetPlayerStats);
+    CreateNative("MGE_GetPlayerStatsLoadState", Native_GetPlayerStatsLoadState);
     CreateNative("MGE_GetArenaInfo", Native_GetArenaInfo);
     CreateNative("MGE_IsPlayerInArena", Native_IsPlayerInArena);
     CreateNative("MGE_GetArenaCount", Native_GetArenaCount);
@@ -39,7 +40,7 @@ int Native_GetPlayerStats(Handle plugin, int numParams)
 {
     int client = GetNativeCell(1);
     
-    if (!IsValidClient(client))
+    if (!IsValidClient(client) || !IsPlayerStatsLoaded(client))
         return false;
     
     MGEPlayerStats stats;
@@ -52,6 +53,17 @@ int Native_GetPlayerStats(Handle plugin, int numParams)
     
     SetNativeArray(2, stats, sizeof(stats));
     return true;
+}
+
+// Gets a player's statistics loading state
+int Native_GetPlayerStatsLoadState(Handle plugin, int numParams)
+{
+    int client = GetNativeCell(1);
+
+    if (!IsValidClient(client) || IsFakeClient(client))
+        return view_as<int>(MGE_STATS_NONE);
+
+    return view_as<int>(g_ePlayerStatsLoadState[client]);
 }
 
 // Checks if a player currently occupies an active arena slot (waiting to
@@ -151,7 +163,7 @@ int Native_AddPlayerToArena(Handle plugin, int numParams)
     // Call the enhanced AddInQueue function with all parameters
     // showmsg=false for API calls, no team preference, no 2v2 menu, with forced slot
     AddInQueue(client, arena_index, false, 0, false, slot);
-    return true;
+    return g_iPlayerArena[client] == arena_index;
 }
 
 // Removes a player from their current arena

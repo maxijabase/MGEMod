@@ -11,7 +11,6 @@ This is a fork of sappho's repository, with the following improvements:
 
 ## New ConVars
 
-* `mgemod_allow_unverified_players` (0/1) - server flexibility with unverified players - allows them to play but skips ELO calculations
 * `mgemod_clear_projectiles` (0/1) - allow server owners to enable/disable projectile deletion upon the start of a new round
 
 ## Database & Backend

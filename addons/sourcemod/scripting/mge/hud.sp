@@ -282,6 +282,8 @@ void FormatPlayerScoreLine(int player, int score, bool show_elo, char[] output, 
         Format(output, output_size, "%N : %d", player, score);
     else if (IsFakeClient(player))
         Format(output, output_size, "%N (BOT): %d", player, score);
+    else if (!IsPlayerStatsLoaded(player))
+        Format(output, output_size, "%N : %d", player, score);
     else
         Format(output, output_size, "%N (%d): %d", player, g_iPlayerRating[player], score);
 }
@@ -301,7 +303,9 @@ void FormatTeamScoreLine(int player1, int player2, int score, bool show_elo, boo
     
     if (valid1 && valid2)
     {
-        if (g_bNoStats || g_bNoDisplayRating || !show_elo || !show_2v2_elo || IsFakeClient(player1) || IsFakeClient(player2))
+        if (g_bNoStats || g_bNoDisplayRating || !show_elo || !show_2v2_elo
+            || IsFakeClient(player1) || IsFakeClient(player2)
+            || !IsPlayerStatsLoaded(player1) || !IsPlayerStatsLoaded(player2))
             Format(output, output_size, "«%N» and «%N» : %d", player1, player2, score);
         else
             Format(output, output_size, "«%N» and «%N» (%d): %d", player1, player2, g_iPlayerRating[player1], score);

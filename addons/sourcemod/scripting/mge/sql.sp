@@ -19,8 +19,10 @@ void PrepareSQL()
         
         if (g_DB == null)
         {
-            LogError("Could not connect to SQLite database: %s - stats will be disabled", error);
+            LogError("Could not connect to SQLite database: %s - stats will retry in the background", error);
             g_bNoStats = true;
+            if (g_bLate)
+                HandleHotReload();
             return;
         }
     }
@@ -38,8 +40,10 @@ void PrepareSQL()
             
             if (g_DB == null)
             {
-                LogError("Could not connect to SQLite fallback database: %s - stats will be disabled", error);
+                LogError("Could not connect to SQLite fallback database: %s - stats will retry in the background", error);
                 g_bNoStats = true;
+                if (g_bLate)
+                    HandleHotReload();
                 return;
             }
         }
@@ -62,10 +66,12 @@ void PrepareSQL()
     }
     else
     {
-        LogError("Unsupported database type: %s - stats will be disabled", ident);
+        LogError("Unsupported database type: %s - stats will remain unavailable", ident);
         g_bNoStats = true;
         delete g_DB;
         g_DB = null;
+        if (g_bLate)
+            HandleHotReload();
         return;
     }
 
@@ -152,29 +158,10 @@ void SQLDbConnTest(Database db, DBResultSet results, const char[] error, any dat
             // Database connection successful - handle both reconnection and hot-loading scenarios
             for (int i = 1; i <= MaxClients; i++)
             {
-                if (IsValidClient(i))
+                if (IsValidClient(i) && !IsFakeClient(i))
                 {
-                    char steamid_dirty[31], steamid[64], query[256];
-                    
-                    // Get Steam ID and validate the operation succeeded
-                    if (!GetClientAuthId(i, AuthId_Steam2, steamid_dirty, sizeof(steamid_dirty))) {
-                        LogError("Failed to get Steam ID for client %d during reconnection - skipping", i);
-                        continue;
-                    }
-
-                    db.Escape(steamid_dirty, steamid, sizeof(steamid));
-                    strcopy(g_sPlayerSteamID[i], 32, steamid);
-                    GetSelectPlayerStatsQuery(query, sizeof(query), steamid);
-                    db.Query(SQL_OnPlayerReceived, query, GetClientUserId(i));
-                    
-                    // Handle hot-loading case: initialize client state that requires DB
-                    if (!IsFakeClient(i))
-                    {
-                        // Ensure spectator team and proper client setup
-                        ChangeClientTeam(i, TFTeam_Spectator);
-                        g_bShowHud[i] = true;
-                        g_bPlayerRestoringAmmo[i] = false;
-                    }
+                    ResetPlayerStatsIdentity(i);
+                    TryLoadPlayerStats(i, true);
                 }
             }
 
@@ -224,19 +211,51 @@ void SQL_OnTestReceived(Database db, DBResultSet results, const char[] error, an
         MC_PrintToChat(client, "%t", "DatabaseDown");
 }
 
+void HandleDatabaseConnectionLoss(int failed_client = 0)
+{
+    if (!gcvar_stats.BoolValue)
+        return;
+
+    if (g_hDBReconnectTimer != null)
+    {
+        if (failed_client > 0)
+        {
+            CancelEloRetry(failed_client);
+            g_iPlayerStatsLoadGeneration[failed_client]++;
+            g_bEloSlowRetry[failed_client] = true;
+            ScheduleEloRetry(failed_client, MGE_STATS_DB_FAILED);
+        }
+        return;
+    }
+
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsValidClient(i) && !IsFakeClient(i))
+        {
+            CancelEloRetry(i);
+            g_iPlayerStatsLoadGeneration[i]++;
+            g_bEloSlowRetry[i] = true;
+            ScheduleEloRetry(i, MGE_STATS_DB_FAILED);
+        }
+    }
+
+    PrintHintTextToAll("%t", "DatabaseDownStats", g_iReconnectInterval);
+    UpdateHudForAll();
+    LogError("Lost connection to database, attempting reconnect in %i minutes.", g_iReconnectInterval);
+    g_hDBReconnectTimer = CreateTimer(float(60 * g_iReconnectInterval), Timer_ReconnectToDB, TIMER_FLAG_NO_MAPCHANGE);
+}
+
 // Handles player statistics retrieval from database and creates new player records if needed
 void SQL_OnPlayerReceived(Database db, DBResultSet results, const char[] error, any data)
 {
-    int userid = data;
-    int client = GetClientOfUserId(userid);
-    
-    if (client == 0)
+    int client;
+    if (!ReadPlayerStatsLoadData(data, client))
         return;
 
     if (db == null)
     {
         LogError("SQL_OnPlayerReceived failed: database connection lost for client %d", client);
-        ScheduleEloRetry(client);
+        HandleDatabaseConnectionLoss(client);
         return;
     }
     
@@ -256,24 +275,50 @@ void SQL_OnPlayerReceived(Database db, DBResultSet results, const char[] error, 
     GetClientName(client, namesql_dirty, sizeof(namesql_dirty));
     db.Escape(namesql_dirty, namesql, sizeof(namesql));
 
-    g_iEloRetryCount[client] = 0;
-
     if (results.FetchRow())
     {
         g_iPlayerRating[client] = results.FetchInt(0);
         g_iPlayerWins[client] = results.FetchInt(1);
         g_iPlayerLosses[client] = results.FetchInt(2);
-        g_bPlayerEloVerified[client] = true;
+        CancelEloRetry(client);
+        SetPlayerStatsLoadState(client, MGE_STATS_LOADED);
 
         GetUpdatePlayerNameQuery(query, sizeof(query), namesql, g_sPlayerSteamID[client]);
         db.Query(SQL_OnGenericQueryFinished, query);
-    } else {
-        GetInsertPlayerQuery(query, sizeof(query), g_sPlayerSteamID[client], namesql, GetTime());
-        db.Query(SQL_OnGenericQueryFinished, query);
-
-        g_iPlayerRating[client] = 1600;
-        g_bPlayerEloVerified[client] = true;
     }
+    else
+    {
+        GetInsertPlayerQuery(query, sizeof(query), g_sPlayerSteamID[client], namesql, GetTime());
+        db.Query(SQL_OnPlayerInserted, query, CreatePlayerStatsLoadData(client));
+    }
+}
+
+// Confirms that a new statistics row exists before exposing its default values
+void SQL_OnPlayerInserted(Database db, DBResultSet results, const char[] error, any data)
+{
+    int client;
+    if (!ReadPlayerStatsLoadData(data, client))
+        return;
+
+    if (db == null)
+    {
+        LogError("SQL_OnPlayerInserted failed: database connection lost for client %d", client);
+        HandleDatabaseConnectionLoss(client);
+        return;
+    }
+
+    if (!StrEqual("", error))
+    {
+        LogError("SQL_OnPlayerInserted failed for client %d (%s): %s", client, g_sPlayerSteamID[client], error);
+        ScheduleEloRetry(client);
+        return;
+    }
+
+    g_iPlayerRating[client] = DEFAULT_STARTING_ELO;
+    g_iPlayerWins[client] = 0;
+    g_iPlayerLosses[client] = 0;
+    CancelEloRetry(client);
+    SetPlayerStatsLoadState(client, MGE_STATS_LOADED);
 }
 
 // Generic callback for database queries with error handling and connection monitoring
@@ -282,20 +327,7 @@ void SQL_OnGenericQueryFinished(Database db, DBResultSet results, const char[] e
     if (db == null)
     {
         LogError("SQL_OnGenericQueryFinished: Database connection lost (db handle is null)");
-        
-        if (!g_bNoStats)
-        {
-            g_bNoStats = true;
-            PrintHintTextToAll("%t", "DatabaseDownStats", g_iReconnectInterval);
-
-            // Refresh all huds to get rid of stats display.
-            UpdateHudForAll();
-
-            LogError("Lost connection to database, attempting reconnect in %i minutes.", g_iReconnectInterval);
-
-            if (g_hDBReconnectTimer == null)
-                g_hDBReconnectTimer = CreateTimer(float(60 * g_iReconnectInterval), Timer_ReconnectToDB, TIMER_FLAG_NO_MAPCHANGE);
-        }
+        HandleDatabaseConnectionLoss();
     }
     else if (!StrEqual("", error))
     {
