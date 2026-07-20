@@ -18,6 +18,7 @@ This is a fork of sappho's repository, with the following improvements:
 * Added a database migration mechanism to leave room for future features and improvements that require modifying the schema
 * Fixed some database connection issues
 * Added PostgreSQL support (only <=9.6 as per SourceMod's limitations)
+* MySQL connections call `SetCharset("utf8mb4")` after connect so player names from `GetClientName` are stored correctly (SourceMod 1.10+; pairs with the `005_utf8mb4_charset` table migration)
 * Added some measures to prevent ELOs from corrupting randomly due to database connection errors
 * Added an API layer of natives and forwards
 * Added ELO verification system to prevent players with failed Steam authentication from affecting ratings

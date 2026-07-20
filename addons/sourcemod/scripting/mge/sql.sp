@@ -75,6 +75,18 @@ void PrepareSQL()
         return;
     }
 
+    if (g_DatabaseType == DB_MYSQL)
+    {
+        if (!g_DB.SetCharset("utf8mb4"))
+        {
+            LogError("Failed to set MySQL connection charset to utf8mb4 - player names may be stored incorrectly");
+        }
+        else
+        {
+            LogMessage("MySQL connection charset set to utf8mb4");
+        }
+    }
+
     if (usingFallback)
     {
         LogMessage("Successfully connected to fallback database 'storage-local' [%s]", ident);
