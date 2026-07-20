@@ -611,7 +611,9 @@ bool ShootsRocketsOrPipes(int client)
 {
     char weapon[64];
     GetClientWeapon(client, weapon, sizeof(weapon));
-    return (StrContains(weapon, "tf_weapon_rocketlauncher") == 0) || StrEqual(weapon, "tf_weapon_grenadelauncher");
+    return (StrContains(weapon, "tf_weapon_rocketlauncher") == 0)
+        || StrEqual(weapon, "tf_weapon_particle_cannon")
+        || StrEqual(weapon, "tf_weapon_grenadelauncher");
 }
 
 // Forces closure of any open menu for a specific client

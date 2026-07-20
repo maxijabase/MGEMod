@@ -15,7 +15,7 @@
 #include <convar_class>
 #include <mge>
 
-#define PL_VERSION "3.1.0-beta25"
+#define PL_VERSION "3.1.0-beta26"
 
 #define MAXARENAS 63
 #define MAXSPAWNS 15
@@ -483,7 +483,16 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
     int arena_index = g_iPlayerArena[client];
     if (g_bArenaInfAmmo[arena_index])
     {
-        if (!g_bPlayerRestoringAmmo[client] && (buttons & IN_ATTACK))
+        bool shouldRestoreAmmo = view_as<bool>(buttons & IN_ATTACK);
+
+        if (!shouldRestoreAmmo && (buttons & IN_ATTACK2))
+        {
+            int primary = GetPlayerWeaponSlot(client, TFWeaponSlot_Primary);
+            shouldRestoreAmmo = IsValidEntity(primary)
+                && GetEntProp(primary, Prop_Send, "m_iItemDefinitionIndex") == ITEM_DEFINDEX_COW_MANGLER;
+        }
+
+        if (!g_bPlayerRestoringAmmo[client] && shouldRestoreAmmo)
         {
             g_bPlayerRestoringAmmo[client] = true;
             CreateTimer(0.4, Timer_GiveAmmo, GetClientUserId(client));

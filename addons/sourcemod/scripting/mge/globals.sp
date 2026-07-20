@@ -14,6 +14,10 @@
 #define MODEL_AMMOPACK          "models/items/ammopack_small.mdl"
 #define MODEL_LARGE_AMMOPACK    "models/items/ammopack_large.mdl"
 
+#define ITEM_DEFINDEX_COW_MANGLER       441
+#define ITEM_DEFINDEX_BEGGARS_BAZOOKA   730
+#define BEGGARS_BAZOOKA_RESERVE_AMMO    20
+
 // Database types
 enum DatabaseType {
     DB_SQLITE = 0,

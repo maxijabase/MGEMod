@@ -8,10 +8,13 @@ void ResetClientAmmoCounts(int client)
     g_iPlayerClip[client][SLOT_TWO] = -1;
 
     // Check how much ammo each gun can hold in its clip and store it in a global variable so it can be set to that amount later.
-    if (IsValidEntity(GetPlayerWeaponSlot(client, 0)))
-        g_iPlayerClip[client][SLOT_ONE] = GetEntProp(GetPlayerWeaponSlot(client, 0), Prop_Data, "m_iClip1");
-    if (IsValidEntity(GetPlayerWeaponSlot(client, 1)))
-        g_iPlayerClip[client][SLOT_TWO] = GetEntProp(GetPlayerWeaponSlot(client, 1), Prop_Data, "m_iClip1");
+    int primary = GetPlayerWeaponSlot(client, TFWeaponSlot_Primary);
+    if (IsValidEntity(primary) && GetEntProp(primary, Prop_Send, "m_iItemDefinitionIndex") != ITEM_DEFINDEX_BEGGARS_BAZOOKA)
+        g_iPlayerClip[client][SLOT_ONE] = GetEntProp(primary, Prop_Data, "m_iClip1");
+
+    int secondary = GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
+    if (IsValidEntity(secondary))
+        g_iPlayerClip[client][SLOT_TWO] = GetEntProp(secondary, Prop_Data, "m_iClip1");
 }
 
 
@@ -48,19 +51,29 @@ Action Timer_GiveAmmo(Handle timer, int userid)
 
     g_bPlayerRestoringAmmo[client] = false;
 
-    int weapon;
-
-    if (g_iPlayerClip[client][SLOT_ONE] != -1)
+    int weapon = GetPlayerWeaponSlot(client, TFWeaponSlot_Primary);
+    if (IsValidEntity(weapon))
     {
-        weapon = GetPlayerWeaponSlot(client, 0);
-
-        if (IsValidEntity(weapon))
+        int itemDefinitionIndex = GetEntProp(weapon, Prop_Send, "m_iItemDefinitionIndex");
+        if (itemDefinitionIndex == ITEM_DEFINDEX_COW_MANGLER && HasEntProp(weapon, Prop_Send, "m_flEnergy"))
+        {
+            SetEntPropFloat(weapon, Prop_Send, "m_flEnergy", 100.0);
+        }
+        else if (itemDefinitionIndex == ITEM_DEFINDEX_BEGGARS_BAZOOKA)
+        {
+            int ammoType = GetEntProp(weapon, Prop_Send, "m_iPrimaryAmmoType");
+            if (ammoType >= 0)
+                SetEntProp(client, Prop_Send, "m_iAmmo", BEGGARS_BAZOOKA_RESERVE_AMMO, 4, ammoType);
+        }
+        else if (g_iPlayerClip[client][SLOT_ONE] != -1)
+        {
             SetEntProp(weapon, Prop_Send, "m_iClip1", g_iPlayerClip[client][SLOT_ONE]);
+        }
     }
 
     if (g_iPlayerClip[client][SLOT_TWO] != -1)
     {
-        weapon = GetPlayerWeaponSlot(client, 1);
+        weapon = GetPlayerWeaponSlot(client, TFWeaponSlot_Secondary);
 
         if (IsValidEntity(weapon))
             SetEntProp(weapon, Prop_Send, "m_iClip1", g_iPlayerClip[client][SLOT_TWO]);
