@@ -889,14 +889,13 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
     SetPlayerToAllowedClass(client, arena_index);
 
     if (showmsg)
-    {
         MC_PrintToChat(client, "%t", "ChoseArena", g_sArenaName[arena_index]);
-    }
+
     if (g_bFourPersonArena[arena_index])
     {
         if (player_slot <= SLOT_FOUR)
         {
-            SendArenaJoinMessage(client, g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client], IsPlayerEligibleForElo(client));
+            SendArenaJoinMessage(client, g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client], IsPlayerEligibleForElo(client), client);
 
             // Check if we have exactly 2 players per team for 2v2 match
             int red_count = 0;
@@ -932,7 +931,7 @@ void AddInQueue(int client, int arena_index, bool showmsg = true, int playerPref
     {
         if (player_slot <= SLOT_TWO)
         {
-            SendArenaJoinMessage(client, g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client], IsPlayerEligibleForElo(client));
+            SendArenaJoinMessage(client, g_sArenaName[arena_index], !g_bNoStats && !g_bNoDisplayRating && g_bShowElo[client], IsPlayerEligibleForElo(client), client);
 
             if (g_iArenaQueue[arena_index][SLOT_ONE] && g_iArenaQueue[arena_index][SLOT_TWO])
             {
@@ -1288,7 +1287,7 @@ int Menu_Main(Menu menu, MenuAction action, int param1, int param2)
                 AddInQueue(client, arena_index);
 
             } else {
-                RemoveFromQueue(client, true);
+                RemovePlayerWithConfirmation(client);
             }
         }
         case MenuAction_Cancel:
@@ -1332,7 +1331,7 @@ void AppendPlayerWithOptionalRating(char[] output, int output_size, int player)
 }
 
 // Send formatted join message with player rating and arena information
-void SendArenaJoinMessage(int player, const char[] arena_name, bool show_elo, bool is_verified = true)
+void SendArenaJoinMessage(int player, const char[] arena_name, bool show_elo, bool is_verified = true, int actor = 0)
 {
     char playername[MAX_NAME_LENGTH];
     GetClientName(player, playername, sizeof(playername));
@@ -1342,13 +1341,27 @@ void SendArenaJoinMessage(int player, const char[] arena_name, bool show_elo, bo
 
     for (int i = 1; i <= MaxClients; ++i)
     {
-        if (!IsClientInGame(i))
+        if (!IsClientInGame(i) || i == actor)
             continue;
 
         if (show_elo && g_bShowElo[i] && is_verified)
             MC_PrintToChat(i, "%t", "JoinsArena", playername, rating, arena_name);
         else
             MC_PrintToChat(i, "%t", "JoinsArenaNoStats", playername, arena_name);
+    }
+}
+
+void SendArenaLeaveMessage(int player, const char[] arena_name)
+{
+    char playername[MAX_NAME_LENGTH];
+    GetClientName(player, playername, sizeof(playername));
+
+    for (int i = 1; i <= MaxClients; ++i)
+    {
+        if (!IsClientInGame(i) || i == player)
+            continue;
+
+        MC_PrintToChat(i, "%t", "LeavesArena", playername, arena_name);
     }
 }
 
@@ -1465,12 +1478,30 @@ Action Command_Menu(int client, int args)
 }
 
 // Remove player from current arena queue
+bool RemovePlayerWithConfirmation(int client)
+{
+    int arena_index = g_iPlayerArena[client];
+    if (arena_index <= 0)
+        return false;
+
+    char arena_name[64];
+    strcopy(arena_name, sizeof(arena_name), g_sArenaName[arena_index]);
+
+    RemoveFromQueue(client, true);
+    if (g_iPlayerArena[client] != 0)
+        return false;
+
+    MC_PrintToChat(client, "%t", "LeftArena", arena_name);
+    SendArenaLeaveMessage(client, arena_name);
+    return true;
+}
+
 Action Command_Remove(int client, int args)
 {
     if (!IsValidClient(client))
         return Plugin_Continue;
 
-    RemoveFromQueue(client, true);
+    RemovePlayerWithConfirmation(client);
     return Plugin_Handled;
 }
 

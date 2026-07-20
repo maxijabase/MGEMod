@@ -67,6 +67,26 @@
 		"es"			"{green}[MGE]{default} Has elegido la arena {green}{1}{default}."
 		"pt"			"{green}[MGE]{default} Você escolheu a arena {green}{1}{default}."
 	}
+	"LeftArena"
+	{
+		"#format"		"{1:s}"
+		"en"			"{green}[MGE]{default} You left arena {green}{1}{default}."
+		"chi"			"{green}[MGE]{default} 您已离开竞技场：{green}{1}{default}"
+		"de"			"{green}[MGE]{default} Du hast Arena {green}{1}{default} verlassen."
+		"ru"			"{green}[MGE]{default} Вы покинули арену {green}{1}{default}."
+		"es"			"{green}[MGE]{default} Has salido de la arena {green}{1}{default}."
+		"pt"			"{green}[MGE]{default} Você saiu da arena {green}{1}{default}."
+	}
+	"LeavesArena"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"{green}[MGE]{default} {lightgreen}{1} {default}leaves arena {green}{2}."
+		"chi"			"{green}[MGE]{default} {lightgreen}{1} {default}离开了竞技场：{green}{2}"
+		"de"			"{green}[MGE]{default} {lightgreen}{1} {default}verlässt Arena {green}{2}."
+		"ru"			"{green}[MGE]{default} {lightgreen}{1} {default}покидает арену {green}{2}."
+		"es"			"{green}[MGE]{default} {lightgreen}{1} {default}salió de la arena {green}{2}."
+		"pt"			"{green}[MGE]{default} {lightgreen}{1} {default}saiu da arena {green}{2}."
+	}
 	"NextInLine"
 	{
 		"en"			"{green}[MGE]{default} You are {green}next{default} in line."

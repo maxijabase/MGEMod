@@ -842,9 +842,14 @@ Action Command_JoinTeam(int client, int args)
         int arena_index = g_iPlayerArena[client];
         if (arena_index > 0)
         {
+            char arena_name[64];
+            strcopy(arena_name, sizeof(arena_name), g_sArenaName[arena_index]);
+
             // For any arena (1v1 or 2v2), going to spec means they want to leave
             MC_PrintToChat(client, "%t", "SpecRemove");
             RemoveFromQueue(client, true);
+            if (g_iPlayerArena[client] == 0)
+                SendArenaLeaveMessage(client, arena_name);
         }
 
         // Handle spectator HUD and target logic (moved from Event_PlayerTeam)
