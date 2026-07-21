@@ -128,6 +128,9 @@ void PrepareSQL()
         
         g_DB.Format(migrationQuery, sizeof(migrationQuery), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('005_utf8mb4_charset', %d) ON CONFLICT (migration_name) DO NOTHING", currentTime);
         g_DB.Query(SQL_OnGenericQueryFinished, migrationQuery);
+        
+        g_DB.Format(migrationQuery, sizeof(migrationQuery), "INSERT INTO mgemod_migrations (migration_name, executed_at) VALUES ('006_drop_hitblip_column', %d) ON CONFLICT (migration_name) DO NOTHING", currentTime);
+        g_DB.Query(SQL_OnGenericQueryFinished, migrationQuery);
     }
 
     RunDatabaseMigrations();

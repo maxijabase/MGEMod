@@ -83,6 +83,10 @@ void RunMigration(const char[] migrationName)
         }
         Migration_005_Utf8mb4Charset();
     }
+    else if (StrEqual(migrationName, "006_drop_hitblip_column"))
+    {
+        Migration_006_DropHitblipColumn();
+    }
 }
 
 // Executes individual migration steps with progress tracking and error handling
@@ -128,6 +132,7 @@ void CreateMigrationsTableCallback(Database db, DBResultSet results, const char[
     CheckAndRunMigration("003_add_primary_keys");
     CheckAndRunMigration("004_add_elo_tracking");
     CheckAndRunMigration("005_utf8mb4_charset");
+    CheckAndRunMigration("006_drop_hitblip_column");
 }
 
 // Processes migration existence check results and triggers migration execution if needed
@@ -412,4 +417,43 @@ void Migration_005_Utf8mb4Charset()
             MarkMigrationComplete("005_utf8mb4_charset");
         }
     }
+}
+
+void Migration_006_DropHitblipColumn()
+{
+    LogMessage("[Migration 006] Removing unused hitblip column from mgemod_stats");
+
+    switch (g_DatabaseType)
+    {
+        case DB_SQLITE, DB_MYSQL:
+        {
+            g_DB.Query(DropHitblipColumnCallback, "ALTER TABLE mgemod_stats DROP COLUMN hitblip");
+        }
+        case DB_POSTGRESQL:
+        {
+            // hitblip was never part of the PostgreSQL schema
+            LogMessage("[Migration 006] Skipping on PostgreSQL (column never existed)");
+            MarkMigrationComplete("006_drop_hitblip_column");
+        }
+    }
+}
+
+void DropHitblipColumnCallback(Database db, DBResultSet results, const char[] error, any data)
+{
+    if (db == null)
+    {
+        LogError("[Migration 006] Database connection lost while dropping hitblip column");
+        return;
+    }
+
+    if (!StrEqual("", error))
+    {
+        LogMessage("[Migration 006] Column already absent or unsupported by backend (continuing): %s", error);
+    }
+    else
+    {
+        LogMessage("[Migration 006] hitblip column dropped successfully");
+    }
+
+    MarkMigrationComplete("006_drop_hitblip_column");
 }
