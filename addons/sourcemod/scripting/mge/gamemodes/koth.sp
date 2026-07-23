@@ -294,7 +294,7 @@ void EndKoth(any arena_index, any winner_team)
 
     if (fraglimit > 0 && g_iArenaScore[arena_index][winner_team] >= fraglimit && g_iArenaStatus[arena_index] >= AS_FIGHT && g_iArenaStatus[arena_index] < AS_REPORTED)
     {
-        g_iArenaStatus[arena_index] = AS_REPORTED;
+        SetArenaStatus(arena_index, AS_REPORTED);
         char foe_name[MAX_NAME_LENGTH];
         GetClientName(foe, foe_name, sizeof(foe_name));
         char client_name[MAX_NAME_LENGTH];

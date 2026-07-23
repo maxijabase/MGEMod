@@ -39,7 +39,7 @@ bool ShouldProcessMatchCompletion(int arena_index, int killer_team_slot, int fra
 void ProcessMatchCompletion(int arena_index, int winner1, int winner2, int loser1, int loser2, int winner_team_slot, int loser_team_slot, int fraglimit)
 {
     // Set match as completed
-    g_iArenaStatus[arena_index] = AS_REPORTED;
+    SetArenaStatus(arena_index, AS_REPORTED);
     
     // Format team names for announcement
     char winner_names[128];

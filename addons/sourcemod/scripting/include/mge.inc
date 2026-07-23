@@ -205,6 +205,16 @@ forward void MGE_On2v2PlayerReady(int client, int arena_index, bool ready_status
 forward void MGE_OnArenaScoreChange(int arena_index, int red_score, int blu_score);
 
 /**
+ * Called whenever an arena's status changes, regardless of cause (countdown, fight start/end,
+ * a player leaving mid-match, timeout, etc.)
+ *
+ * @param arena_index    Arena index
+ * @param old_status     Previous status (AS_* constant)
+ * @param new_status     New status (AS_* constant)
+ */
+forward void MGE_OnArenaStatusChange(int arena_index, int old_status, int new_status);
+
+/**
  * Called when a map config file is missing
  * Return Plugin_Handled to suppress SetFailState (e.g. to download the config asynchronously)
  * Return Plugin_Continue to allow normal SetFailState behavior

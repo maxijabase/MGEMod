@@ -463,6 +463,19 @@ void UpdateArenaName(int arena)
 }
 
 
+// ===== ARENA STATUS =====
+
+// Sets an arena's status and notifies API consumers, but only if it actually changed
+void SetArenaStatus(int arena_index, int status)
+{
+    int old_status = g_iArenaStatus[arena_index];
+    if (old_status == status)
+        return;
+
+    g_iArenaStatus[arena_index] = status;
+    CallForward_OnArenaStatusChange(arena_index, old_status, status);
+}
+
 // ===== QUEUE MANAGEMENT =====
 
 // Remove player from arena queue with optional statistics calculation and spectator handling
@@ -577,7 +590,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                 Format(foe_name, sizeof(foe_name), "%s and %s", foe_name, foe2_name);
                 Format(player_name, sizeof(player_name), "%s and %s", player_name, player_teammate_name);
 
-                g_iArenaStatus[arena_index] = AS_REPORTED;
+                SetArenaStatus(arena_index, AS_REPORTED);
 
                 if (g_iArenaScore[arena_index][foe_team_slot] > g_iArenaScore[arena_index][player_team_slot])
                 {
@@ -615,7 +628,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                     CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
                 }
 
-                g_iArenaStatus[arena_index] = AS_IDLE;
+                SetArenaStatus(arena_index, AS_IDLE);
                 
                 UpdateHudForArena(arena_index);
                 return;
@@ -651,7 +664,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                 GetClientName(foe, foe_name, sizeof(foe_name));
                 GetClientName(client, player_name, sizeof(player_name));
 
-                g_iArenaStatus[arena_index] = AS_REPORTED;
+                SetArenaStatus(arena_index, AS_REPORTED);
 
                 if (g_iArenaScore[arena_index][foe_slot] > g_iArenaScore[arena_index][player_slot])
                 {
@@ -681,7 +694,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                     DecrementBotQuota();
                 }
 
-                g_iArenaStatus[arena_index] = AS_IDLE;
+                SetArenaStatus(arena_index, AS_IDLE);
                 
                 UpdateHudForArena(arena_index);
                 return;
@@ -1038,7 +1051,7 @@ int StartCountDown(int arena_index)
             }
 
             g_iArenaCd[arena_index] = g_iArenaCdTime[arena_index] + 1;
-            g_iArenaStatus[arena_index] = AS_PRECOUNTDOWN;
+            SetArenaStatus(arena_index, AS_PRECOUNTDOWN);
             CreateTimer(0.1, Timer_CountDown, arena_index, TIMER_FLAG_NO_MAPCHANGE);
             return 1;
         } else {
@@ -1046,7 +1059,7 @@ int StartCountDown(int arena_index)
             {
                 Restore2v2WaitingSpectators(arena_index);
             }
-            g_iArenaStatus[arena_index] = AS_IDLE;
+            SetArenaStatus(arena_index, AS_IDLE);
             return 0;
         }
     }
@@ -1094,7 +1107,7 @@ int StartCountDown(int arena_index)
             }
 
             g_iArenaCd[arena_index] = g_iArenaCdTime[arena_index] + 1;
-            g_iArenaStatus[arena_index] = AS_PRECOUNTDOWN;
+            SetArenaStatus(arena_index, AS_PRECOUNTDOWN);
             CreateTimer(0.1, Timer_CountDown, arena_index, TIMER_FLAG_NO_MAPCHANGE);
             return 1;
         }
@@ -1104,7 +1117,7 @@ int StartCountDown(int arena_index)
             {
                 Restore2v2WaitingSpectators(arena_index);
             }
-            g_iArenaStatus[arena_index] = AS_IDLE;
+            SetArenaStatus(arena_index, AS_IDLE);
             return 0;
         }
     }
@@ -1849,9 +1862,9 @@ Action Timer_CountDown(Handle timer, any arena_index)
                 PrintCenterText(red_f2, msg);
                 PrintCenterText(blu_f2, msg);
                 ShowCountdownToSpec(arena_index, msg);
-                g_iArenaStatus[arena_index] = AS_COUNTDOWN;
+                SetArenaStatus(arena_index, AS_COUNTDOWN);
             } else if (g_iArenaCd[arena_index] <= 0) {
-                g_iArenaStatus[arena_index] = AS_FIGHT;
+                SetArenaStatus(arena_index, AS_FIGHT);
                 g_iArenaDuelStartTime[arena_index] = GetTime(); // Capture duel start time
                 char msg[64];
                 Format(msg, sizeof(msg), "FIGHT", g_iArenaCd[arena_index]);
@@ -1881,7 +1894,7 @@ Action Timer_CountDown(Handle timer, any arena_index)
             {
                 Restore2v2WaitingSpectators(arena_index);
             }
-            g_iArenaStatus[arena_index] = AS_IDLE;
+            SetArenaStatus(arena_index, AS_IDLE);
             g_iArenaCd[arena_index] = 0;
             return Plugin_Stop;
         }
@@ -1924,9 +1937,9 @@ Action Timer_CountDown(Handle timer, any arena_index)
                 PrintCenterText(red_f1, msg);
                 PrintCenterText(blu_f1, msg);
                 ShowCountdownToSpec(arena_index, msg);
-                g_iArenaStatus[arena_index] = AS_COUNTDOWN;
+                SetArenaStatus(arena_index, AS_COUNTDOWN);
             } else if (g_iArenaCd[arena_index] <= 0) {
-                g_iArenaStatus[arena_index] = AS_FIGHT;
+                SetArenaStatus(arena_index, AS_FIGHT);
                 g_iArenaDuelStartTime[arena_index] = GetTime(); // Capture duel start time
                 char msg[64];
                 Format(msg, sizeof(msg), "FIGHT", g_iArenaCd[arena_index]);
@@ -1948,7 +1961,7 @@ Action Timer_CountDown(Handle timer, any arena_index)
             CreateTimer(1.0, Timer_CountDown, arena_index, TIMER_REPEAT | TIMER_FLAG_NO_MAPCHANGE);
             return Plugin_Stop;
         } else {
-            g_iArenaStatus[arena_index] = AS_IDLE;
+            SetArenaStatus(arena_index, AS_IDLE);
             g_iArenaCd[arena_index] = 0;
             return Plugin_Stop;
         }

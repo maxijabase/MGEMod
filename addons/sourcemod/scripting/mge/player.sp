@@ -128,7 +128,7 @@ void HandleClientDisconnection(int client)
             CreateTimer(3.0, Timer_Restart2v2Ready, arena_index);
         }
 
-        g_iArenaStatus[arena_index] = AS_IDLE;
+        SetArenaStatus(arena_index, AS_IDLE);
     }
 
     ResetPlayerStatsIdentity(client);
@@ -1324,7 +1324,7 @@ Action Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 
     if ((!g_bFourPersonArena[arena_index] && (g_bArenaAmmomod[arena_index] || g_bArenaMidair[arena_index])) ||
         (g_bFourPersonArena[arena_index] && !IsPlayerAlive(victim_teammate) && !g_bArenaBBall[arena_index] && !g_bArenaKoth[arena_index]))
-    g_iArenaStatus[arena_index] = AS_AFTERFIGHT;
+    SetArenaStatus(arena_index, AS_AFTERFIGHT);
 
     if (ShouldProcessMatchCompletion(arena_index, killer_team_slot, fraglimit))
     {

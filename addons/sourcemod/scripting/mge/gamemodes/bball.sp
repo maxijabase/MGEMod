@@ -243,7 +243,7 @@ Action OnTouchHoop(int entity, int other)
 
         if (fraglimit > 0 && g_iArenaScore[arena_index][client_team_slot] >= fraglimit && g_iArenaStatus[arena_index] >= AS_FIGHT && g_iArenaStatus[arena_index] < AS_REPORTED)
         {
-            g_iArenaStatus[arena_index] = AS_REPORTED;
+            SetArenaStatus(arena_index, AS_REPORTED);
             GetClientName(client, client_name, sizeof(client_name));
 
             if (g_bFourPersonArena[arena_index])

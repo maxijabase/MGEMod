@@ -284,5 +284,6 @@ GlobalForward g_hOnPlayerStatsLoadStateChanged;
 GlobalForward g_hOn2v2ReadyStart;
 GlobalForward g_hOn2v2PlayerReady;
 GlobalForward g_hOnArenaScoreChange;
+GlobalForward g_hOnArenaStatusChange;
 GlobalForward g_hOnMapConfigMissing;
 GlobalForward g_hOnMapConfigInvalid;

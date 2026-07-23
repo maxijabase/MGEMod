@@ -214,7 +214,7 @@ void Start2v2ReadySystem(int arena_index)
     }
 
     // Set arena status to waiting for ready
-    g_iArenaStatus[arena_index] = AS_WAITING_READY;
+    SetArenaStatus(arena_index, AS_WAITING_READY);
 
     // Call 2v2 ready start forward
     CallForward_On2v2ReadyStart(arena_index);
@@ -513,7 +513,7 @@ void Check2v2TeamBalance(int arena_index)
         {
             // Match just ended and players were promoted, transition to ready system
             Clear2v2ReadyHud(arena_index);
-            g_iArenaStatus[arena_index] = AS_IDLE;
+            SetArenaStatus(arena_index, AS_IDLE);
             // Restore any waiting/spec players before readying again
             if (g_bFourPersonArena[arena_index])
             {
@@ -528,7 +528,7 @@ void Check2v2TeamBalance(int arena_index)
         if (g_iArenaStatus[arena_index] == AS_WAITING_READY)
         {
             Clear2v2ReadyHud(arena_index);
-            g_iArenaStatus[arena_index] = AS_IDLE;
+            SetArenaStatus(arena_index, AS_IDLE);
             if (g_bFourPersonArena[arena_index])
             {
                 Restore2v2WaitingSpectators(arena_index);
@@ -843,7 +843,7 @@ Action Timer_Restart2v2Ready(Handle timer, any arena_index)
     {
         // Not enough players, revert to normal behavior
         Clear2v2ReadyHud(arena_index);
-        g_iArenaStatus[arena_index] = AS_IDLE;
+        SetArenaStatus(arena_index, AS_IDLE);
         // Still restore any parked spectators in case teams refill
         Restore2v2WaitingSpectators(arena_index);
         ResetArena(arena_index);
@@ -869,7 +869,7 @@ Action Timer_New2v2Round(Handle timer, any arena_index) {
     if (red_f2) ResetPlayer(red_f2);
     if (blu_f2) ResetPlayer(blu_f2);
 
-    g_iArenaStatus[arena_index] = AS_FIGHT;
+    SetArenaStatus(arena_index, AS_FIGHT);
 
     return Plugin_Continue;
 }

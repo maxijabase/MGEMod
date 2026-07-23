@@ -16,6 +16,7 @@ void RegisterForwards()
     g_hOn2v2ReadyStart = new GlobalForward("MGE_On2v2ReadyStart", ET_Ignore, Param_Cell);
     g_hOn2v2PlayerReady = new GlobalForward("MGE_On2v2PlayerReady", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
     g_hOnArenaScoreChange = new GlobalForward("MGE_OnArenaScoreChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
+    g_hOnArenaStatusChange = new GlobalForward("MGE_OnArenaStatusChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
     g_hOnMapConfigMissing = new GlobalForward("MGE_OnMapConfigMissing", ET_Hook, Param_String, Param_String);
     g_hOnMapConfigInvalid = new GlobalForward("MGE_OnMapConfigInvalid", ET_Hook, Param_String, Param_String);
 }
@@ -169,6 +170,16 @@ void CallForward_OnArenaScoreChange(int arena_index, int red_score, int blu_scor
     Call_PushCell(arena_index);
     Call_PushCell(red_score);
     Call_PushCell(blu_score);
+    Call_Finish();
+}
+
+// Call the OnArenaStatusChange forward
+void CallForward_OnArenaStatusChange(int arena_index, int old_status, int new_status)
+{
+    Call_StartForward(g_hOnArenaStatusChange);
+    Call_PushCell(arena_index);
+    Call_PushCell(old_status);
+    Call_PushCell(new_status);
     Call_Finish();
 }
 
