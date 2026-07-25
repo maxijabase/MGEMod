@@ -2229,7 +2229,7 @@ void RemoveArenaProjectiles(int arena_index)
         entity = entitiesToRemove.Get(i);
         if (IsValidEntity(entity))
         {
-            RemoveEdict(entity);
+            RemoveEntity(entity);
         }
     }
     

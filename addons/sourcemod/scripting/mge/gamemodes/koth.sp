@@ -14,7 +14,7 @@ void SetupKothCapturePoints()
 
             if (IsValidEdict(g_iCapturePoint[i]) && g_iCapturePoint[i] > 0)
             {
-                RemoveEdict(g_iCapturePoint[i]);
+                RemoveEntity(g_iCapturePoint[i]);
                 g_iCapturePoint[i] = -1;
             }
             else if (g_iCapturePoint[i] != -1)

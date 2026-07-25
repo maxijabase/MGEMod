@@ -522,7 +522,7 @@ void RemoveClientParticle(int client)
     int particle = EntRefToEntIndex(g_iClientParticle[client]);
 
     if (particle != 0 && IsValidEntity(particle))
-        RemoveEdict(particle);
+        RemoveEntity(particle);
 
     g_iClientParticle[client] = 0;
 }
