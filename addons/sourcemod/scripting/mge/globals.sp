@@ -287,3 +287,4 @@ GlobalForward g_hOnArenaScoreChange;
 GlobalForward g_hOnArenaStatusChange;
 GlobalForward g_hOnMapConfigMissing;
 GlobalForward g_hOnMapConfigInvalid;
+GlobalForward g_hOnFormatHudLines;

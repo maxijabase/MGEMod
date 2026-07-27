@@ -19,6 +19,7 @@ void RegisterForwards()
     g_hOnArenaStatusChange = new GlobalForward("MGE_OnArenaStatusChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
     g_hOnMapConfigMissing = new GlobalForward("MGE_OnMapConfigMissing", ET_Hook, Param_String, Param_String);
     g_hOnMapConfigInvalid = new GlobalForward("MGE_OnMapConfigInvalid", ET_Hook, Param_String, Param_String);
+    g_hOnFormatHudLines = new GlobalForward("MGE_OnFormatHudLines", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Array, Param_Array);
 }
 
 // ===== FORWARD CALL HELPERS =====
@@ -180,6 +181,18 @@ void CallForward_OnArenaStatusChange(int arena_index, int old_status, int new_st
     Call_PushCell(arena_index);
     Call_PushCell(old_status);
     Call_PushCell(new_status);
+    Call_Finish();
+}
+
+// Call the OnFormatHudLines forward so external plugins can rewrite both score-line parentheticals at once
+void CallForward_OnFormatHudLines(int arena_index, int client, bool is_spectator, MGEHudLineInfo redLine, MGEHudLineInfo bluLine)
+{
+    Call_StartForward(g_hOnFormatHudLines);
+    Call_PushCell(arena_index);
+    Call_PushCell(client);
+    Call_PushCell(is_spectator);
+    Call_PushArrayEx(redLine, sizeof(redLine), SM_PARAM_COPYBACK);
+    Call_PushArrayEx(bluLine, sizeof(bluLine), SM_PARAM_COPYBACK);
     Call_Finish();
 }
 

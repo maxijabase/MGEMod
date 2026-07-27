@@ -215,7 +215,7 @@ void ShowFullHud(int client, int arena_index, bool is_spectator)
     }
 
     // Both players and spectators get score display
-    char report[256];
+    char report[384];
     SetHudTextParams(0.01, 0.01, HUDFADEOUTTIME, 255, 255, 255, 255);
     BuildArenaScoreReport(arena_index, client, is_spectator, report, sizeof(report));
     ShowSyncHudText(client, hm_Score, "%s", report);
@@ -269,8 +269,23 @@ void HideHud(int client)
 
 // ===== HUD FORMATTING FUNCTIONS =====
 
-// Formats a single player's score line with optional ELO display
-void FormatPlayerScoreLine(int player, int score, bool show_elo, char[] output, int output_size)
+// Populates a HUD line's context and defaults its display text to the raw ELO digits;
+// called for both score lines before MGE_OnFormatHudLines fires, regardless of whether
+// that line will end up showing ELO at render time
+void PopulateHudLineInfo(int viewer, int player, int arena_index, int slot, bool is_spectator, int score, MGEHudLineInfo info)
+{
+    info.viewer = viewer;
+    info.player = player;
+    info.arena_index = arena_index;
+    info.slot = slot;
+    info.score = score;
+    info.isSpectator = is_spectator;
+    info.elo = (player && IsValidClient(player)) ? g_iPlayerRating[player] : 0;
+    Format(info.extraDisplay, sizeof(info.extraDisplay), "%d", info.elo);
+}
+
+// Renders a single player's score line, using the line's (possibly plugin-modified) display text
+void RenderPlayerScoreLine(int player, int score, bool show_elo, const MGEHudLineInfo info, char[] output, int output_size)
 {
     if (!player || !IsValidClient(player))
     {
@@ -285,11 +300,11 @@ void FormatPlayerScoreLine(int player, int score, bool show_elo, char[] output, 
     else if (!IsPlayerStatsLoaded(player))
         Format(output, output_size, "%N : %d", player, score);
     else
-        Format(output, output_size, "%N (%d): %d", player, g_iPlayerRating[player], score);
+        Format(output, output_size, "%N (%s): %d", player, info.extraDisplay, score);
 }
 
-// Formats a team score line for 2v2 with optional ELO display  
-void FormatTeamScoreLine(int player1, int player2, int score, bool show_elo, bool show_2v2_elo, char[] output, int output_size)
+// Renders a team score line for 2v2, using the line's (possibly plugin-modified) display text
+void RenderTeamScoreLine(int player1, int player2, int score, bool show_elo, bool show_2v2_elo, const MGEHudLineInfo info, char[] output, int output_size)
 {
     // Validate both players
     bool valid1 = (player1 && IsValidClient(player1));
@@ -308,15 +323,15 @@ void FormatTeamScoreLine(int player1, int player2, int score, bool show_elo, boo
             || !IsPlayerStatsLoaded(player1) || !IsPlayerStatsLoaded(player2))
             Format(output, output_size, "«%N» and «%N» : %d", player1, player2, score);
         else
-            Format(output, output_size, "«%N» and «%N» (%d): %d", player1, player2, g_iPlayerRating[player1], score);
+            Format(output, output_size, "«%N» and «%N» (%s): %d", player1, player2, info.extraDisplay, score);
     }
     else if (valid1)
     {
-        FormatPlayerScoreLine(player1, score, show_elo && show_2v2_elo, output, output_size);
+        RenderPlayerScoreLine(player1, score, show_elo && show_2v2_elo, info, output, output_size);
     }
     else if (valid2)
     {
-        FormatPlayerScoreLine(player2, score, show_elo && show_2v2_elo, output, output_size);
+        RenderPlayerScoreLine(player2, score, show_elo && show_2v2_elo, info, output, output_size);
     }
 }
 
@@ -361,21 +376,27 @@ void BuildArenaScoreReport(int arena_index, int client, bool for_spectator, char
     strcopy(output, output_size, header);
     
     bool show_elo = g_bShowElo[client];
-    
+
+    MGEHudLineInfo redInfo, bluInfo;
+    PopulateHudLineInfo(client, red_f1, arena_index, SLOT_ONE, for_spectator, g_iArenaScore[arena_index][SLOT_ONE], redInfo);
+    PopulateHudLineInfo(client, blu_f1, arena_index, SLOT_TWO, for_spectator, g_iArenaScore[arena_index][SLOT_TWO], bluInfo);
+
+    CallForward_OnFormatHudLines(arena_index, client, for_spectator, redInfo, bluInfo);
+
     if (is_2v2)
     {
         char red_line[128], blu_line[128];
         
         if (red_f1 || red_f2)
         {
-            FormatTeamScoreLine(red_f1, red_f2, g_iArenaScore[arena_index][SLOT_ONE], show_elo, g_b2v2Elo, red_line, sizeof(red_line));
+            RenderTeamScoreLine(red_f1, red_f2, g_iArenaScore[arena_index][SLOT_ONE], show_elo, g_b2v2Elo, redInfo, red_line, sizeof(red_line));
             if (red_line[0] != '\0')
                 Format(output, output_size, "%s\n%s", output, red_line);
         }
         
         if (blu_f1 || blu_f2)
         {
-            FormatTeamScoreLine(blu_f1, blu_f2, g_iArenaScore[arena_index][SLOT_TWO], show_elo, g_b2v2Elo, blu_line, sizeof(blu_line));
+            RenderTeamScoreLine(blu_f1, blu_f2, g_iArenaScore[arena_index][SLOT_TWO], show_elo, g_b2v2Elo, bluInfo, blu_line, sizeof(blu_line));
             if (blu_line[0] != '\0')
                 Format(output, output_size, "%s\n%s", output, blu_line);
         }
@@ -384,11 +405,11 @@ void BuildArenaScoreReport(int arena_index, int client, bool for_spectator, char
     {
         char red_line[128], blu_line[128];
         
-        FormatPlayerScoreLine(red_f1, g_iArenaScore[arena_index][SLOT_ONE], show_elo, red_line, sizeof(red_line));
+        RenderPlayerScoreLine(red_f1, g_iArenaScore[arena_index][SLOT_ONE], show_elo, redInfo, red_line, sizeof(red_line));
         if (red_line[0] != '\0')
             Format(output, output_size, "%s\n%s", output, red_line);
         
-        FormatPlayerScoreLine(blu_f1, g_iArenaScore[arena_index][SLOT_TWO], show_elo, blu_line, sizeof(blu_line));
+        RenderPlayerScoreLine(blu_f1, g_iArenaScore[arena_index][SLOT_TWO], show_elo, bluInfo, blu_line, sizeof(blu_line));
         if (blu_line[0] != '\0')
             Format(output, output_size, "%s\n%s", output, blu_line);
     }

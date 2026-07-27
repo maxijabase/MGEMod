@@ -37,6 +37,21 @@ enum struct MGEPlayerStats
     float rating;       // Win/Loss ratio
 }
 
+// HUD Score Line Context
+// Append-only: new fields must be added at the end so existing compiled
+// consumers keep reading correct offsets for the fields they know about.
+enum struct MGEHudLineInfo
+{
+    int viewer;          // Client who will see this HUD line
+    int player;          // Player whose score/rating this line represents
+    int arena_index;     // Arena this line belongs to
+    int slot;            // SLOT_ONE..SLOT_FOUR team/player slot for this line
+    int score;           // Current score being shown on this line
+    int elo;             // Player's current global ELO rating (read-only reference)
+    bool isSpectator;    // True if the viewer is spectating/queued rather than actively fighting
+    char extraDisplay[32]; // Mutable text placed inside the "(...)" on the HUD line; defaults to the ELO digits, but any plugin (ELO, ranks, streaks, etc.) may rewrite it
+}
+
 // Arena Information Structure
 enum struct MGEArenaInfo
 {
@@ -213,6 +228,29 @@ forward void MGE_OnArenaScoreChange(int arena_index, int red_score, int blu_scor
  * @param new_status     New status (AS_* constant)
  */
 forward void MGE_OnArenaStatusChange(int arena_index, int old_status, int new_status);
+
+/**
+ * Called once per HUD score report, after both score lines' context has been
+ * built and before their text is rendered. lines[0] is the red/SLOT_ONE line,
+ * lines[1] is the blu/SLOT_TWO line (2v2 team lines still carry only one
+ * representative player, same as what's shown in the parentheses today).
+ * External plugins may rewrite lines[i].extraDisplay in place (e.g.
+ * "1500/1610", or any other per-line text: ranks, streaks, badges, etc.)
+ * without needing to parse HUD text. Multiple plugins can chain off this
+ * same forward - each one should read the current extraDisplay and
+ * append/rewrite it, rather than assuming it starts empty. extraDisplay
+ * text only ends up on screen for a given line if that line would
+ * otherwise show an ELO value (stats loaded, not a bot, ELO display
+ * enabled) - the forward still fires every time so plugins always see
+ * the full report context.
+ *
+ * @param arena_index    Arena whose score report is being shown
+ * @param client         Client who will receive the HUD text
+ * @param is_spectator   True if the client is spectating (or queued), false if actively fighting
+ * @param redLine        Mutable HUD line context for the red/SLOT_ONE line
+ * @param bluLine        Mutable HUD line context for the blu/SLOT_TWO line
+ */
+forward void MGE_OnFormatHudLines(int arena_index, int client, bool is_spectator, MGEHudLineInfo redLine, MGEHudLineInfo bluLine);
 
 /**
  * Called when a map config file is missing
