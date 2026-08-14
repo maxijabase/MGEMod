@@ -2206,7 +2206,7 @@ void RemoveArenaProjectiles(int arena_index)
         if (StrContains(classname, "tf_projectile_", false) == 0)
         {
             int owner = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
-            if (owner == -1)
+            if (owner == -1 && HasEntProp(entity, Prop_Send, "m_hThrower"))
                 owner = GetEntPropEnt(entity, Prop_Send, "m_hThrower");
                 
             if (IsValidClient(owner) && g_iPlayerArena[owner] == arena_index)
@@ -2216,6 +2216,9 @@ void RemoveArenaProjectiles(int arena_index)
         }
         else if (StrEqual(classname, "tf_ball_ornament", false))
         {
+            if (!HasEntProp(entity, Prop_Send, "m_hThrower"))
+                continue;
+
             int owner = GetEntPropEnt(entity, Prop_Send, "m_hThrower");
             if (IsValidClient(owner) && g_iPlayerArena[owner] == arena_index)
             {
