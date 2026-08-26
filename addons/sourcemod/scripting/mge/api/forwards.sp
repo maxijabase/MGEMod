@@ -12,6 +12,7 @@ void RegisterForwards()
     g_hOn2v2MatchEnd = new GlobalForward("MGE_On2v2MatchEnd", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
     g_hOnArenaPlayerDeath = new GlobalForward("MGE_OnArenaPlayerDeath", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
     g_hOnPlayerELOChange = new GlobalForward("MGE_OnPlayerELOChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Cell);
+    g_hOnPlayerRatingChange = new GlobalForward("MGE_OnPlayerRatingChange", ET_Ignore, Param_Cell, Param_Cell, Param_Cell, Param_Float, Param_Float, Param_Cell);
     g_hOnPlayerStatsLoadStateChanged = new GlobalForward("MGE_OnPlayerStatsLoadStateChanged", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
     g_hOn2v2ReadyStart = new GlobalForward("MGE_On2v2ReadyStart", ET_Ignore, Param_Cell);
     g_hOn2v2PlayerReady = new GlobalForward("MGE_On2v2PlayerReady", ET_Ignore, Param_Cell, Param_Cell, Param_Cell);
@@ -132,6 +133,19 @@ void CallForward_OnPlayerELOChange(int client, int old_elo, int new_elo, int are
     Call_PushCell(client);
     Call_PushCell(old_elo);
     Call_PushCell(new_elo);
+    Call_PushCell(arena_index);
+    Call_Finish();
+}
+
+// Call the OnPlayerRatingChange forward
+void CallForward_OnPlayerRatingChange(int client, int old_rating, int new_rating, float old_rd, float new_rd, int arena_index)
+{
+    Call_StartForward(g_hOnPlayerRatingChange);
+    Call_PushCell(client);
+    Call_PushCell(old_rating);
+    Call_PushCell(new_rating);
+    Call_PushFloat(old_rd);
+    Call_PushFloat(new_rd);
     Call_PushCell(arena_index);
     Call_Finish();
 }

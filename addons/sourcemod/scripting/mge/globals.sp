@@ -27,6 +27,24 @@ enum DatabaseType {
 
 DatabaseType g_DatabaseType;
 
+// Rating engines
+enum RatingEngine {
+    RATING_ENGINE_ELO = 0,
+    RATING_ENGINE_GLICKO2 = 1
+}
+
+RatingEngine g_eRatingEngine;
+float g_fGlickoTau;
+float g_fGlickoPeriodDays;
+float g_fGlickoProvisionalRd;
+
+#define GLICKO2_SCALE               173.7178
+#define GLICKO2_MAX_RD              350.0
+#define GLICKO2_DEFAULT_VOLATILITY  0.06
+#define GLICKO2_CONVERGENCE_EPSILON 0.000001
+#define GLICKO2_E                   2.718281828459045
+#define GLICKO2_PI                  3.14159265358979323846
+
 bool
     g_bNoStats,
     g_bSuppressEloUpdates,
@@ -85,7 +103,11 @@ Convar
     gcvar_reconnectInterval,
     gcvar_2v2SkipCountdown,
     gcvar_2v2Elo,
-    gcvar_clearProjectiles;
+    gcvar_clearProjectiles,
+    gcvar_ratingEngine,
+    gcvar_glickoTau,
+    gcvar_glickoPeriodDays,
+    gcvar_glickoProvisionalRd;
 
 // Classes
 bool g_tfctClassAllowed[10];
@@ -204,7 +226,14 @@ int
     g_iPlayerWins           [MAXPLAYERS + 1],
     g_iPlayerLosses         [MAXPLAYERS + 1],
     g_iPlayerRating         [MAXPLAYERS + 1],
+    g_iPlayerLastPlayed     [MAXPLAYERS + 1],
     g_iPlayerHandicap       [MAXPLAYERS + 1];
+
+// Glicko-2 rating engine state (only meaningful when mgemod_rating_engine is "glicko2")
+bool g_bPlayerGlickoSeeded [MAXPLAYERS + 1];
+float
+    g_fPlayerRD             [MAXPLAYERS + 1],
+    g_fPlayerVolatility     [MAXPLAYERS + 1];
 
 // Pending arena context used when presenting menus without committing to arena changes yet
 int g_iPendingArena[MAXPLAYERS + 1];
@@ -280,6 +309,7 @@ GlobalForward g_hOn2v2MatchStart;
 GlobalForward g_hOn2v2MatchEnd;
 GlobalForward g_hOnArenaPlayerDeath;
 GlobalForward g_hOnPlayerELOChange;
+GlobalForward g_hOnPlayerRatingChange;
 GlobalForward g_hOnPlayerStatsLoadStateChanged;
 GlobalForward g_hOn2v2ReadyStart;
 GlobalForward g_hOn2v2PlayerReady;

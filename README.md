@@ -12,6 +12,21 @@ This is a fork of sappho's repository, with the following improvements:
 ## New ConVars
 
 * `mgemod_clear_projectiles` (0/1) - allow server owners to enable/disable projectile deletion upon the start of a new round
+* `mgemod_rating_engine` (`elo`/`glicko2`) - selects the rating engine used to score every duel. Defaults to `elo`, which is the exact same math as before this convar existed. See [Rating Engines](#rating-engines) below.
+* `mgemod_glicko_tau` (float) - Glicko-2 system constant controlling how fast volatility can change. Only used when `mgemod_rating_engine` is `glicko2`.
+* `mgemod_glicko_period_days` (float) - length in days of a Glicko-2 "rating period" for inactivity RD decay. Only used when `mgemod_rating_engine` is `glicko2`.
+* `mgemod_glicko_provisional_rd` (float) - RD threshold above which a player's rating is considered provisional. Only used when `mgemod_rating_engine` is `glicko2`.
+
+## Rating Engines
+
+MGEMod supports two pluggable rating engines, selected server-wide via `mgemod_rating_engine`. Only one engine is active at a time; there is no dual leaderboard.
+
+* **Elo (default)**: the original K-factor Elo formula this plugin has always used. Selecting this engine (or leaving the convar untouched) is a zero-behavior-change no-op.
+* **Glicko-2 (opt-in)**: an extension of Elo that tracks each player's Rating Deviation (RD, a confidence measure) and Volatility (how erratic their results are) alongside their rating. This lets the system react faster to smurfs and improving players, and pushes inactive players' displayed rating down over time as their RD grows. See [glicko.net](http://www.glicko.net/glicko/glicko2.pdf) for the published algorithm this implementation follows.
+
+Both engines share the same `rating` column and the same leaderboard/`!rank`/`min_elo`/`max_elo` gating; Glicko-2 additionally persists `rd` and `volatility` in two nullable columns on `mgemod_stats`. A player's Glicko-2 profile is lazily seeded (`rd = 350`, `volatility = 0.06`) the first time a duel is scored under `glicko2`, keeping whatever rating they already had. Switching `mgemod_rating_engine` back to `elo` at any point simply stops reading/writing `rd`/`volatility`; the `rating` column itself is never frozen or reinterpreted, so external tools reading it directly will keep seeing live numbers regardless of which engine produced them, though the meaning of the number differs between engines (raw Elo vs. Glicko-2's conservative rating).
+
+2v2 duels are scored the same way under both engines: each team's rating (and RD/volatility, for Glicko-2) is averaged into a single "virtual player" for the calculation, and the resulting delta is applied identically to both teammates. This mirrors the existing Elo 2v2 behavior and is not a pairwise per-player breakdown.
 
 ## Database & Backend
 

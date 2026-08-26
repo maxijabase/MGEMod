@@ -295,6 +295,21 @@ void SQL_OnPlayerReceived(Database db, DBResultSet results, const char[] error, 
         g_iPlayerRating[client] = results.FetchInt(0);
         g_iPlayerWins[client] = results.FetchInt(1);
         g_iPlayerLosses[client] = results.FetchInt(2);
+
+        if (results.IsFieldNull(3))
+        {
+            g_bPlayerGlickoSeeded[client] = false;
+            g_fPlayerRD[client] = 0.0;
+            g_fPlayerVolatility[client] = 0.0;
+        }
+        else
+        {
+            g_bPlayerGlickoSeeded[client] = true;
+            g_fPlayerRD[client] = results.FetchFloat(3);
+            g_fPlayerVolatility[client] = results.FetchFloat(4);
+        }
+        g_iPlayerLastPlayed[client] = results.FetchInt(5);
+
         CancelEloRetry(client);
         SetPlayerStatsLoadState(client, MGE_STATS_LOADED);
 
@@ -332,6 +347,10 @@ void SQL_OnPlayerInserted(Database db, DBResultSet results, const char[] error, 
     g_iPlayerRating[client] = DEFAULT_STARTING_ELO;
     g_iPlayerWins[client] = 0;
     g_iPlayerLosses[client] = 0;
+    g_bPlayerGlickoSeeded[client] = false;
+    g_fPlayerRD[client] = 0.0;
+    g_fPlayerVolatility[client] = 0.0;
+    g_iPlayerLastPlayed[client] = 0;
     CancelEloRetry(client);
     SetPlayerStatsLoadState(client, MGE_STATS_LOADED);
 }
@@ -383,7 +402,7 @@ void GetCreateTableQuery_Stats(char[] query, int maxlen)
         }
         case DB_POSTGRESQL:
         {
-            strcopy(query, maxlen, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INTEGER NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INTEGER NOT NULL, losses INTEGER NOT NULL, lastplayed INTEGER NOT NULL)");
+            strcopy(query, maxlen, "CREATE TABLE IF NOT EXISTS mgemod_stats (rating INTEGER NOT NULL, steamid VARCHAR(32) NOT NULL, name VARCHAR(64) NOT NULL, wins INTEGER NOT NULL, losses INTEGER NOT NULL, lastplayed INTEGER NOT NULL, rd REAL, volatility REAL)");
         }
     }
 }
@@ -471,7 +490,7 @@ void GetInsertPlayerQuery(char[] query, int maxlen, const char[] steamid, const 
 // Gets database-specific SELECT statement for player stats
 void GetSelectPlayerStatsQuery(char[] query, int maxlen, const char[] steamid)
 {
-    g_DB.Format(query, maxlen, "SELECT rating, wins, losses FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
+    g_DB.Format(query, maxlen, "SELECT rating, wins, losses, rd, volatility, lastplayed FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
 }
 
 // Gets database-specific UPDATE statement for player name
@@ -490,6 +509,18 @@ void GetUpdateWinnerStatsQuery(char[] query, int maxlen, int rating, int timesta
 void GetUpdateLoserStatsQuery(char[] query, int maxlen, int rating, int timestamp, const char[] steamid)
 {
     g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'", rating, timestamp, steamid);
+}
+
+// Gets database-specific UPDATE statement for winner stats under the Glicko-2 engine (also persists rd/volatility)
+void GetUpdateWinnerGlickoStatsQuery(char[] query, int maxlen, int rating, float rd, float volatility, int timestamp, const char[] steamid)
+{
+    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=%i,rd=%f,volatility=%f,wins=wins+1,lastplayed=%i WHERE steamid='%s'", rating, rd, volatility, timestamp, steamid);
+}
+
+// Gets database-specific UPDATE statement for loser stats under the Glicko-2 engine (also persists rd/volatility)
+void GetUpdateLoserGlickoStatsQuery(char[] query, int maxlen, int rating, float rd, float volatility, int timestamp, const char[] steamid)
+{
+    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=%i,rd=%f,volatility=%f,losses=losses+1,lastplayed=%i WHERE steamid='%s'", rating, rd, volatility, timestamp, steamid);
 }
 
 // Gets database-specific INSERT statement for duel results
@@ -526,18 +557,6 @@ void GetInsert2v2DuelQuery(char[] query, int maxlen, const char[] winner, const 
                 winner, winner2, loser, loser2, winnerScore, loserScore, fragLimit, endTime, startTime, mapName, arenaName, winnerClass, winner2Class, loserClass, loser2Class, winnerPrevElo, winnerNewElo, winner2PrevElo, winner2NewElo, loserPrevElo, loserNewElo, loser2PrevElo, loser2NewElo);
         }
     }
-}
-
-// Gets database-specific SELECT statement for top players
-void GetSelectTopPlayersQuery(char[] query, int maxlen)
-{
-    g_DB.Format(query, maxlen, "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
-}
-
-// Gets database-specific SELECT statement for player rating rank
-void GetSelectPlayerRatingRankQuery(char[] query, int maxlen, const char[] steamid)
-{
-    g_DB.Format(query, maxlen, "SELECT COUNT(*) + 1 FROM mgemod_stats WHERE rating > (SELECT rating FROM mgemod_stats WHERE steamid='%s')", steamid);
 }
 
 // Gets database-specific SELECT statement for player wins rank

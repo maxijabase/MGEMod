@@ -15,7 +15,7 @@
 #include <convar_class>
 #include <mge>
 
-#define PL_VERSION "3.1.0-beta30"
+#define PL_VERSION "3.1.0-beta31"
 
 #define MAXARENAS 63
 #define MAXSPAWNS 15
@@ -27,7 +27,9 @@
 #include "mge/globals.sp"
 
 // Modules
-#include "mge/elo.sp"
+#include "mge/rating/rating_core.sp"
+#include "mge/rating/engine_elo.sp"
+#include "mge/rating/engine_glicko2.sp"
 #include "mge/sql.sp"
 #include "mge/hud.sp"
 #include "mge/arenas.sp"
@@ -112,6 +114,10 @@ public void OnPluginStart()
     gcvar_2v2SkipCountdown = new Convar("mgemod_2v2_skip_countdown", "0", "Skip countdown between 2v2 rounds? (0 = Normal countdown, 1 = Skip countdown)", FCVAR_NONE, true, 0.0, true, 1.0);
     gcvar_2v2Elo = new Convar("mgemod_2v2_elo", "1", "Enable ELO calculation and display for 2v2 matches? (0 = Disabled, 1 = Enabled)", FCVAR_NONE, true, 0.0, true, 1.0);
     gcvar_clearProjectiles = new Convar("mgemod_clear_projectiles", "0", "Clear projectiles when a new round starts? (0 = Disabled, 1 = Enabled)", FCVAR_NONE, true, 0.0, true, 1.0);
+    gcvar_ratingEngine = new Convar("mgemod_rating_engine", "elo", "Rating engine used to score duels: \"elo\" (default) or \"glicko2\" (opt-in). One engine active server-wide, no dual leaderboard.");
+    gcvar_glickoTau = new Convar("mgemod_glicko_tau", "0.5", "Glicko-2 system constant controlling how fast volatility reacts to surprising results. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 0.2, true, 1.2);
+    gcvar_glickoPeriodDays = new Convar("mgemod_glicko_period_days", "1.0", "Number of days considered one Glicko-2 rating period for RD inflation due to inactivity. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 0.1);
+    gcvar_glickoProvisionalRd = new Convar("mgemod_glicko_provisional_rd", "200.0", "RD threshold above which a player's Glicko-2 rating is considered provisional. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 50.0, true, 350.0);
 
     // Create config file
     Convar.CreateConfig("mge");
@@ -127,6 +133,13 @@ public void OnPluginStart()
     g_b2v2SkipCountdown = gcvar_2v2SkipCountdown.IntValue ? true : false;
     g_b2v2Elo = gcvar_2v2Elo.IntValue ? true : false;
     g_bClearProjectiles = gcvar_clearProjectiles.IntValue ? true : false;
+    g_fGlickoTau = gcvar_glickoTau.FloatValue;
+    g_fGlickoPeriodDays = gcvar_glickoPeriodDays.FloatValue;
+    g_fGlickoProvisionalRd = gcvar_glickoProvisionalRd.FloatValue;
+
+    char sRatingEngine[16];
+    gcvar_ratingEngine.GetString(sRatingEngine, sizeof(sRatingEngine));
+    g_eRatingEngine = StrEqual(sRatingEngine, "glicko2", false) ? RATING_ENGINE_GLICKO2 : RATING_ENGINE_ELO;
 
     gcvar_dbConfig.GetString(g_sDBConfig, sizeof(g_sDBConfig));
     gcvar_bballParticle_red.GetString(g_sBBallParticleRed, sizeof(g_sBBallParticleRed));
@@ -167,6 +180,10 @@ public void OnPluginStart()
     gcvar_2v2SkipCountdown.AddChangeHook(handler_ConVarChange);
     gcvar_2v2Elo.AddChangeHook(handler_ConVarChange);
     gcvar_clearProjectiles.AddChangeHook(handler_ConVarChange);
+    gcvar_ratingEngine.AddChangeHook(handler_ConVarChange);
+    gcvar_glickoTau.AddChangeHook(handler_ConVarChange);
+    gcvar_glickoPeriodDays.AddChangeHook(handler_ConVarChange);
+    gcvar_glickoProvisionalRd.AddChangeHook(handler_ConVarChange);
 
     // Client commands
     RegConsoleCmd("mgemod", Command_Menu, "MGEMod Menu");
@@ -596,6 +613,14 @@ void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] new
         g_b2v2Elo = boolValue;
     else if (convar == gcvar_clearProjectiles)
         g_bClearProjectiles = boolValue;
+    else if (convar == gcvar_ratingEngine)
+        g_eRatingEngine = StrEqual(newValue, "glicko2", false) ? RATING_ENGINE_GLICKO2 : RATING_ENGINE_ELO;
+    else if (convar == gcvar_glickoTau)
+        g_fGlickoTau = floatValue;
+    else if (convar == gcvar_glickoPeriodDays)
+        g_fGlickoPeriodDays = floatValue;
+    else if (convar == gcvar_glickoProvisionalRd)
+        g_fGlickoProvisionalRd = floatValue;
 }
 
 

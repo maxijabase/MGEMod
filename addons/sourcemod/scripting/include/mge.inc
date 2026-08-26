@@ -29,7 +29,9 @@
 // Player Statistics Structure
 enum struct MGEPlayerStats
 {
-    int elo;            // Current ELO rating
+    int elo;            // Display rating from the currently active rating engine (mgemod_rating_engine).
+                         // Under Elo this is the raw rating; under Glicko-2 this is the conservative
+                         // display value (rating - 2*RD), matching what players see in the HUD/!rank.
     int kills;          // Total kills
     int deaths;         // Total deaths  
     int wins;           // Total wins
@@ -176,14 +178,32 @@ forward void MGE_On2v2MatchEnd(int arena_index, int winning_team, int winning_sc
 forward void MGE_OnArenaPlayerDeath(int victim, int attacker, int arena_index);
 
 /**
- * Called when a player's ELO changes
+ * Called when a player's rating changes, regardless of active rating engine.
+ * Fires for the winner before the loser - external plugins that pair calls by call
+ * order (e.g. per-class ELO trackers) rely on this and it is preserved across engines.
  *
  * @param client         Client index
- * @param old_elo        Previous ELO rating
- * @param new_elo        New ELO rating
+ * @param old_elo        Previous rating
+ * @param new_elo        New rating
  * @param arena_index    Arena where change occurred
  */
 forward void MGE_OnPlayerELOChange(int client, int old_elo, int new_elo, int arena_index);
+
+/**
+ * Called when a player's rating changes under the Glicko-2 rating engine, carrying the
+ * rating deviation (RD) alongside the rating itself. Only fires when mgemod_rating_engine
+ * is "glicko2" - MGE_OnPlayerELOChange still fires alongside it for every engine, including
+ * this one, for consumers that only care about the plain rating number.
+ * Fires for the winner before the loser, same ordering guarantee as MGE_OnPlayerELOChange.
+ *
+ * @param client         Client index
+ * @param old_rating     Previous rating
+ * @param new_rating     New rating
+ * @param old_rd         Previous rating deviation
+ * @param new_rd         New rating deviation
+ * @param arena_index    Arena where change occurred
+ */
+forward void MGE_OnPlayerRatingChange(int client, int old_rating, int new_rating, float old_rd, float new_rd, int arena_index);
 
 /**
  * Called when a player's statistics loading state changes

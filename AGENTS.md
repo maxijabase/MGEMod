@@ -30,12 +30,15 @@ addons/sourcemod/scripting/
 │   ├── arenas.sp             # Map config loading, spawn parsing, arena setup
 │   ├── player.sp             # Player lifecycle, queue, damage hooks, menus
 │   ├── match.sp              # Match flow, frag limits, round end, queue rotation
-│   ├── elo.sp                # ELO rating calculations
 │   ├── sql.sp                # DB connection, driver detection, queries
 │   ├── migrations.sp         # Schema migrations (SQLite/MySQL/PostgreSQL)
 │   ├── hud.sp                # HUD text rendering (scores, timers, HP)
 │   ├── spectator.sp          # Spectator behavior
 │   ├── statistics.sp         # Stats and rank display
+│   ├── rating/
+│   │   ├── rating_core.sp    # Rating_ReportResult dispatcher, display/leaderboard/win-chance helpers
+│   │   ├── engine_elo.sp     # Default rating engine (original ELO math, unchanged)
+│   │   └── engine_glicko2.sp # Opt-in Glicko-2 rating engine (mgemod_rating_engine "glicko2")
 │   ├── gamemodes/
 │   │   ├── bball.sp          # Basketball mode
 │   │   ├── koth.sp           # King of the Hill mode
@@ -70,6 +73,7 @@ The public API header. Contains:
 | **Queue** | Players join arenas via `!add` or menu. Losers rotate out when queue has waiting players. |
 | **Arena Status** | State machine: `IDLE → PRECOUNTDOWN → COUNTDOWN → FIGHT → AFTERFIGHT → REPORTED`. Also `WAITING_READY` for 2v2. |
 | **ELO** | Persistent rating stored in DB. Optional — plugin works without a database. |
+| **Rating Engine** | Pluggable algorithm behind ELO: `elo` (default, original K-factor formula) or `glicko2` (opt-in, adds Rating Deviation + Volatility). Selected server-wide via `mgemod_rating_engine`. See `mge/rating/`. |
 | **Frag Limit** | Score target to win a match. Configurable per-arena. |
 
 ## Data Model
@@ -127,6 +131,8 @@ Supports three backends (auto-detected from SourceMod's `databases.cfg`):
 - **PostgreSQL** (≤9.6 due to SourceMod driver limitations)
 
 Schema is managed through `migrations.sp` — migrations run automatically on plugin load. The plugin functions without a database (stats/ELO disabled).
+
+`mgemod_stats.rating` is shared by both rating engines and is always kept up to date regardless of which one is active. `rd` and `volatility` (nullable, added by migration `007_add_glicko_columns`) are only meaningful when `mgemod_rating_engine` is `glicko2`; they stay `NULL` for players who have never been scored under that engine.
 
 ## Build & Release
 

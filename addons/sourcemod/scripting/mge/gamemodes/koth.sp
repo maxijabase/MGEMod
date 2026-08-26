@@ -314,11 +314,7 @@ void EndKoth(any arena_index, any winner_team)
 
         MC_PrintToChatAll("%t", "XdefeatsY", client_name, g_iArenaScore[arena_index][winner_team], foe_name, g_iArenaScore[arena_index][foe_slot], fraglimit, g_sArenaName[arena_index]);
 
-        if (!g_bNoStats && !g_bFourPersonArena[arena_index])
-            CalcELO(client, foe);
-
-        else if (!g_bNoStats)
-            CalcELO2(client, client_teammate, foe, foe_teammate);
+        Rating_ReportResult(client, client_teammate, foe, foe_teammate);
 
         if (g_bFourPersonArena[arena_index] && g_iArenaQueue[arena_index][SLOT_FOUR + 1])
         {

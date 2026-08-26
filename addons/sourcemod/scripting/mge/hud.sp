@@ -280,8 +280,11 @@ void PopulateHudLineInfo(int viewer, int player, int arena_index, int slot, bool
     info.slot = slot;
     info.score = score;
     info.isSpectator = is_spectator;
-    info.elo = (player && IsValidClient(player)) ? g_iPlayerRating[player] : 0;
-    Format(info.extraDisplay, sizeof(info.extraDisplay), "%d", info.elo);
+    info.elo = (player && IsValidClient(player)) ? Rating_GetDisplayValue(player) : 0;
+    if (player && IsValidClient(player) && Rating_IsProvisional(player))
+        Format(info.extraDisplay, sizeof(info.extraDisplay), "%d?", info.elo);
+    else
+        Format(info.extraDisplay, sizeof(info.extraDisplay), "%d", info.elo);
 }
 
 // Renders a single player's score line, using the line's (possibly plugin-modified) display text

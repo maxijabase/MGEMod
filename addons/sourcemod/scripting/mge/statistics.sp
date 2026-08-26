@@ -20,13 +20,13 @@ int Panel_TopPlayers(Menu menu, MenuAction action, int param1, int param2)
                     case 1: // Previous Page
                     {
                         g_iTopPlayersPage[param1]--;
-                        GetSelectTopPlayersQuery(query, sizeof(query));
+                        Rating_GetLeaderboardQuery(query, sizeof(query));
                         g_DB.Query(SQL_OnTopPlayersReceived, query, GetClientUserId(param1));
                     }
                     case 2: // Next Page
                     {
                         g_iTopPlayersPage[param1]++;
-                        GetSelectTopPlayersQuery(query, sizeof(query));
+                        Rating_GetLeaderboardQuery(query, sizeof(query));
                         g_DB.Query(SQL_OnTopPlayersReceived, query, GetClientUserId(param1));
                     }
                     case 3: // Close
@@ -207,7 +207,7 @@ Action Command_Top5(int client, int args)
 
     g_iTopPlayersPage[client] = 0;
     char query[512];
-    GetSelectTopPlayersQuery(query, sizeof(query));
+    Rating_GetLeaderboardQuery(query, sizeof(query));
     g_DB.Query(SQL_OnTopPlayersReceived, query, GetClientUserId(client));
     return Plugin_Handled;
 }
@@ -253,7 +253,7 @@ void GetPlayerRankData(int requestingClient, int targetPlayer)
     
     // Query for rating rank
     char query[512];
-    GetSelectPlayerRatingRankQuery(query, sizeof(query), g_sPlayerSteamID[targetPlayer]);
+    Rating_GetRankQuery(query, sizeof(query), g_sPlayerSteamID[targetPlayer]);
     g_DB.Query(SQL_OnPlayerRankReceived, query, CreatePlayerRankDataPack(requestingClient, targetPlayer, 1));
 }
 
@@ -353,7 +353,7 @@ void ShowPlayerRankPanel(int client, int targetPlayer)
     if (!g_bNoDisplayRating && g_bShowElo[client])
     {
         char ratingLine[256];
-        Format(ratingLine, sizeof(ratingLine), "Rating: %d (#%d)", g_iPlayerRating[targetPlayer], g_iPlayerRatingRank[targetPlayer]);
+        Format(ratingLine, sizeof(ratingLine), "Rating: %d (#%d)", Rating_GetDisplayValue(targetPlayer), g_iPlayerRatingRank[targetPlayer]);
         panel.DrawText(ratingLine);
     }
     
@@ -406,7 +406,7 @@ void ShowPlayerRankPanel(int client, int targetPlayer)
         && IsPlayerStatsLoaded(targetPlayer))
     {
         panel.DrawText(" ");
-        int winChance = RoundFloat((1 / (Pow(10.0, float((g_iPlayerRating[targetPlayer] - g_iPlayerRating[client])) / 400) + 1)) * 100);
+        int winChance = RoundFloat(Rating_GetWinChance(client, targetPlayer) * 100);
         char winChanceLine[256];
         Format(winChanceLine, sizeof(winChanceLine), "%T", "PanelWinChance", client, winChance);
         panel.DrawText(winChanceLine);

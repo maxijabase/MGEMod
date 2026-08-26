@@ -44,7 +44,7 @@ int Native_GetPlayerStats(Handle plugin, int numParams)
         return false;
     
     MGEPlayerStats stats;
-    stats.elo = g_iPlayerRating[client];
+    stats.elo = Rating_GetDisplayValue(client);
     stats.kills = 0; // TODO: Implement kill tracking
     stats.deaths = 0; // TODO: Implement death tracking
     stats.wins = g_iPlayerWins[client];

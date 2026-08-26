@@ -596,9 +596,9 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                 {
                     if (g_iArenaScore[arena_index][foe_team_slot] >= g_iArenaEarlyLeave[arena_index])
                     {
-                        CalcELO(foe, client);
+                        Rating_ReportResult(foe, 0, client, 0);
                         if (IsValidClient(foe2))
-                            CalcELO(foe2, client);
+                            Rating_ReportResult(foe2, 0, client, 0);
                         MC_PrintToChatAll("%t", "XdefeatsYearly", foe_name, g_iArenaScore[arena_index][foe_team_slot], player_name, g_iArenaScore[arena_index][player_team_slot], g_sArenaName[arena_index]);
                     }
                 }
@@ -670,7 +670,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                 {
                     if (g_iArenaScore[arena_index][foe_slot] >= g_iArenaEarlyLeave[arena_index])
                     {
-                        CalcELO(foe, client);
+                        Rating_ReportResult(foe, 0, client, 0);
                         MC_PrintToChatAll("%t", "XdefeatsYearly", foe_name, g_iArenaScore[arena_index][foe_slot], player_name, g_iArenaScore[arena_index][player_slot], g_sArenaName[arena_index]);
                     }
                 }
@@ -740,7 +740,7 @@ bool CanPlayerJoinArena(int client, int arena_index, bool showmsg)
         return false;
     }
 
-    int rating = g_iPlayerRating[client];
+    int rating = Rating_GetDisplayValue(client);
     if (g_iArenaMinRating[arena_index] > 0 && rating < g_iArenaMinRating[arena_index])
     {
         if (showmsg)
@@ -1326,7 +1326,7 @@ void FormatRatingDisplay(int player, char[] output, int output_size)
     else if (!IsPlayerStatsLoaded(player))
         output[0] = '\0';
     else
-        IntToString(g_iPlayerRating[player], output, output_size);
+        IntToString(Rating_GetDisplayValue(player), output, output_size);
 }
 
 void AppendPlayerWithOptionalRating(char[] output, int output_size, int player)

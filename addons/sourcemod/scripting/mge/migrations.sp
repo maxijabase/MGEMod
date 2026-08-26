@@ -87,6 +87,15 @@ void RunMigration(const char[] migrationName)
     {
         Migration_006_DropHitblipColumn();
     }
+    else if (StrEqual(migrationName, "007_add_glicko_columns"))
+    {
+        switch (g_DatabaseType)
+        {
+            case DB_POSTGRESQL: g_migrationProgress.SetValue(migrationName, 1);
+            default: g_migrationProgress.SetValue(migrationName, 2);
+        }
+        Migration_007_AddGlickoColumns();
+    }
 }
 
 // Executes individual migration steps with progress tracking and error handling
@@ -96,6 +105,26 @@ void ExecuteMigrationStep(const char[] migrationName, const char[] query, int st
     pack.WriteString(migrationName);
     pack.WriteCell(stepNumber);
     g_DB.Query(GenericMigrationCallback, query, pack);
+}
+
+bool IsAlreadyAppliedMigrationError(const char[] error)
+{
+    if (StrContains(error, "duplicate column name", false) != -1)
+        return true;
+
+    if (StrContains(error, "multiple primary key", false) != -1)
+        return true;
+
+    if (StrContains(error, "duplicate key name", false) != -1)
+        return true;
+
+    if (StrContains(error, "unknown column 'gametime'", false) != -1)
+        return true;
+
+    if (StrContains(error, "no such column: gametime", false) != -1)
+        return true;
+
+    return false;
 }
 
 // Records successful migration completion in the migrations tracking table
@@ -133,6 +162,7 @@ void CreateMigrationsTableCallback(Database db, DBResultSet results, const char[
     CheckAndRunMigration("004_add_elo_tracking");
     CheckAndRunMigration("005_utf8mb4_charset");
     CheckAndRunMigration("006_drop_hitblip_column");
+    CheckAndRunMigration("007_add_glicko_columns");
 }
 
 // Processes migration existence check results and triggers migration execution if needed
@@ -187,12 +217,9 @@ void GenericMigrationCallback(Database db, DBResultSet results, const char[] err
     
     if (!StrEqual("", error))
     {
-        // Treat "duplicate column" errors as success - the column already exists which is what we wanted
-        // This handles cases where migration 003 (SQLite table recreation) already added columns that 004 tries to add
-        if (StrContains(error, "duplicate column name") != -1)
+        if (IsAlreadyAppliedMigrationError(error))
         {
-            LogMessage("[Migration %s] Step %d: column already exists (continuing)", migrationName, stepNumber);
-            // Fall through to success handling below
+            LogMessage("[Migration %s] Step %d already applied (continuing): %s", migrationName, stepNumber, error);
         }
         else
         {
@@ -456,4 +483,31 @@ void DropHitblipColumnCallback(Database db, DBResultSet results, const char[] er
     }
 
     MarkMigrationComplete("006_drop_hitblip_column");
+}
+
+// Adds the two nullable columns the Glicko-2 rating engine needs (rd, volatility).
+// The existing "rating" column is reused as-is by both engines - no schema change needed there.
+void Migration_007_AddGlickoColumns()
+{
+    LogMessage("[Migration 007] Adding Glicko-2 columns to mgemod_stats");
+
+    switch (g_DatabaseType)
+    {
+        case DB_SQLITE:
+        {
+            ExecuteMigrationStep("007_add_glicko_columns", "ALTER TABLE mgemod_stats ADD COLUMN rd REAL DEFAULT NULL", 1);
+            ExecuteMigrationStep("007_add_glicko_columns", "ALTER TABLE mgemod_stats ADD COLUMN volatility REAL DEFAULT NULL", 2);
+        }
+        case DB_MYSQL:
+        {
+            ExecuteMigrationStep("007_add_glicko_columns", "ALTER TABLE mgemod_stats ADD COLUMN rd FLOAT DEFAULT NULL", 1);
+            ExecuteMigrationStep("007_add_glicko_columns", "ALTER TABLE mgemod_stats ADD COLUMN volatility FLOAT DEFAULT NULL", 2);
+        }
+        case DB_POSTGRESQL:
+        {
+            // PostgreSQL gets modern schema in CREATE TABLE - mark as complete
+            LogMessage("[Migration 007] Skipping migration on PostgreSQL (schema already includes Glicko-2 columns)");
+            MarkMigrationComplete("007_add_glicko_columns");
+        }
+    }
 }

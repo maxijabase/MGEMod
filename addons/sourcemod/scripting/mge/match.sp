@@ -73,14 +73,8 @@ void ProcessMatchCompletion(int arena_index, int winner1, int winner2, int loser
                                 g_iArenaQueue[arena_index][SLOT_TWO], g_iArenaQueue[arena_index][SLOT_FOUR]);
     }
     
-    // Handle ELO calculations
-    if (!g_bNoStats)
-    {
-        if (!g_bFourPersonArena[arena_index])
-            CalcELO(winner1, loser1);
-        else
-            CalcELO2(winner1, winner2, loser1, loser2);
-    }
+    // Handle rating calculations (Elo or Glicko-2, depending on mgemod_rating_engine)
+    Rating_ReportResult(winner1, winner2, loser1, loser2);
     
     // Handle post-match queue rotation and timers
     HandlePostMatchQueueRotation(arena_index, loser1, loser2);

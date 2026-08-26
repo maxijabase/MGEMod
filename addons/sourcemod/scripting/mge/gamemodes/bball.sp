@@ -260,11 +260,7 @@ Action OnTouchHoop(int entity, int other)
 
             MC_PrintToChatAll("%t", "XdefeatsY", client_name, g_iArenaScore[arena_index][client_team_slot], foe_name, g_iArenaScore[arena_index][foe_team_slot], fraglimit, g_sArenaName[arena_index]);
 
-            if (!g_bNoStats && !g_bFourPersonArena[arena_index])
-                CalcELO(client, foe);
-
-            else if (!g_bNoStats)
-                CalcELO2(client, client_teammate, foe, foe_teammate);
+            Rating_ReportResult(client, client_teammate, foe, foe_teammate);
 
             HideIntel(arena_index);
 

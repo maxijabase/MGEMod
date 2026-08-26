@@ -1,8 +1,12 @@
 
-// ===== ELO CALCULATION CORE =====
+// ===== ELO RATING ENGINE =====
+//
+// Default rating engine. Identical math to the original CalcELO/CalcELO2, only renamed to
+// fit the Rating_ReportResult dispatcher contract. Zero behavior change for servers that
+// never touch mgemod_rating_engine.
 
 // Calculates ELO ratings for 1v1 duels and updates player statistics in database
-void CalcELO(int winner, int loser)
+void Engine_Elo_OnMatchResult(int winner, int loser)
 {
     if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || g_bSuppressEloUpdates)
         return;
@@ -66,7 +70,7 @@ void CalcELO(int winner, int loser)
 }
 
 // Calculates ELO ratings for 2v2 duels using team-averaged ratings and updates player statistics
-void CalcELO2(int winner, int winner2, int loser, int loser2)
+void Engine_Elo_OnMatchResult2v2(int winner, int winner2, int loser, int loser2)
 {
     if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || g_bSuppressEloUpdates || IsFakeClient(loser2) || IsFakeClient(winner2) || !g_b2v2Elo)
         return;
@@ -152,40 +156,4 @@ void CalcELO2(int winner, int winner2, int loser, int loser2)
     // Loser's teammate stats
     GetUpdateLoserStatsQuery(query, sizeof(query), g_iPlayerRating[loser2], time, g_sPlayerSteamID[loser2]);
     g_DB.Query(SQL_OnGenericQueryFinished, query);
-}
-
-
-// ===== PLAYER COMMANDS =====
-
-// Toggles ELO rating display for individual players and saves preference to cookies
-Action Command_ToggleElo(int client, int args)
-{
-    if (!IsValidClient(client))
-        return Plugin_Continue;
-
-    g_bShowElo[client] = !g_bShowElo[client];
-
-    // Save the preference to client cookie
-    g_hShowEloCookie.Set(client, g_bShowElo[client] ? "1" : "0");
-
-    char status_text[32];
-    Format(status_text, sizeof(status_text), "%T", g_bShowElo[client] ? "EnabledLabel" : "DisabledLabel", client);
-    MC_PrintToChat(client, "%t", "EloToggle", status_text);
-    
-    // Refresh the appropriate HUD based on player's current state
-    int arena_index = g_iPlayerArena[client];
-    int player_slot = g_iPlayerSlot[client];
-    
-    if (arena_index > 0 && player_slot > 0)
-    {
-        // Player is actively in an arena - show player HUD
-        UpdateHud(client);
-    }
-    else if (TF2_GetClientTeam(client) == TFTeam_Spectator && g_iPlayerSpecTarget[client] > 0)
-    {
-        // Player is spectating someone - show spectator HUD
-        UpdateHud(client);
-    }
-    
-    return Plugin_Handled;
 }
