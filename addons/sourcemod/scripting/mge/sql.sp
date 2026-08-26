@@ -370,6 +370,83 @@ void SQL_OnGenericQueryFinished(Database db, DBResultSet results, const char[] e
 }
 
 
+// ===== RESILIENT MATCH-RESULT PERSISTENCE =====
+//
+// A single duel touches multiple rows: the mgemod_duels(_2v2) audit row and one mgemod_stats
+// UPDATE per participant. Firing those as independent SQL_OnGenericQueryFinished queries means
+// any one of them can silently fail (a transient DB hiccup, lock timeout, brief disconnect)
+// while the others succeed, leaving the duel log and the player's stored rating disagreeing
+// with each other forever - SQL_OnGenericQueryFinished only logs a failure, it never retries.
+//
+// ExecuteMatchResultQueries groups every write for one match into a single SourceMod
+// Transaction (all queries commit together or none do), and retries the whole transaction
+// with backoff if it fails, instead of dropping the write.
+// (MATCH_TXN_* constants are defined in mge/globals.sp, included before this file.)
+
+void ExecuteMatchResultQueries(char queries[MATCH_TXN_MAX_QUERIES][MATCH_TXN_QUERY_LEN], int queryCount, int attempt = 0)
+{
+    Transaction txn = new Transaction();
+    for (int i = 0; i < queryCount; i++)
+        txn.AddQuery(queries[i]);
+
+    DataPack pack = new DataPack();
+    pack.WriteCell(queryCount);
+    for (int i = 0; i < queryCount; i++)
+        pack.WriteString(queries[i]);
+    pack.WriteCell(attempt);
+
+    g_DB.Execute(txn, OnMatchResultTransactionSuccess, OnMatchResultTransactionFailure, pack);
+}
+
+void OnMatchResultTransactionSuccess(Database db, DataPack pack, int numQueries, DBResultSet[] results, any[] queryData)
+{
+    delete pack;
+}
+
+void OnMatchResultTransactionFailure(Database db, DataPack pack, int numQueries, const char[] error, int failIndex, any[] queryData)
+{
+    pack.Reset();
+    int queryCount = pack.ReadCell();
+    char queries[MATCH_TXN_MAX_QUERIES][MATCH_TXN_QUERY_LEN];
+    for (int i = 0; i < queryCount; i++)
+        pack.ReadString(queries[i], MATCH_TXN_QUERY_LEN);
+    int attempt = pack.ReadCell();
+    delete pack;
+
+    if (db == null)
+        HandleDatabaseConnectionLoss();
+
+    LogError("Match-result transaction failed at query %d/%d (attempt %d): %s", failIndex, numQueries, attempt + 1, error);
+
+    if (attempt >= MATCH_TXN_MAX_RETRIES)
+    {
+        LogError("Giving up on match-result transaction after %d attempts - %d quer%s for this match were not applied, manual correction required", attempt + 1, queryCount, queryCount == 1 ? "y" : "ies");
+        return;
+    }
+
+    DataPack retryPack = new DataPack();
+    retryPack.WriteCell(queryCount);
+    for (int i = 0; i < queryCount; i++)
+        retryPack.WriteString(queries[i]);
+    retryPack.WriteCell(attempt + 1);
+    CreateTimer(Pow(2.0, float(attempt + 1)), Timer_RetryMatchResultTransaction, retryPack);
+}
+
+Action Timer_RetryMatchResultTransaction(Handle timer, DataPack pack)
+{
+    pack.Reset();
+    int queryCount = pack.ReadCell();
+    char queries[MATCH_TXN_MAX_QUERIES][MATCH_TXN_QUERY_LEN];
+    for (int i = 0; i < queryCount; i++)
+        pack.ReadString(queries[i], MATCH_TXN_QUERY_LEN);
+    int attempt = pack.ReadCell();
+    delete pack;
+
+    ExecuteMatchResultQueries(queries, queryCount, attempt);
+    return Plugin_Stop;
+}
+
+
 // ===== TIMER FUNCTIONS =====
 
 // Attempts database reconnection after connection loss with periodic retry mechanism
@@ -499,28 +576,36 @@ void GetUpdatePlayerNameQuery(char[] query, int maxlen, const char[] name, const
     g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET name='%s' WHERE steamid='%s'", name, steamid);
 }
 
-// Gets database-specific UPDATE statement for winner stats
-void GetUpdateWinnerStatsQuery(char[] query, int maxlen, int rating, int timestamp, const char[] steamid)
+// Gets database-specific UPDATE statement for winner stats.
+// ratingDelta is applied as "rating = rating + delta" rather than an absolute SET, so this
+// write always lands relative to whatever is currently stored in the row - it can never
+// clobber a newer value written by another game server sharing this region's database in
+// the meantime, even if this server's own cached copy of the player's rating is stale.
+void GetUpdateWinnerStatsQuery(char[] query, int maxlen, int ratingDelta, int timestamp, const char[] steamid)
 {
-    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=%i,wins=wins+1,lastplayed=%i WHERE steamid='%s'", rating, timestamp, steamid);
+    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=rating+(%i),wins=wins+1,lastplayed=%i WHERE steamid='%s'", ratingDelta, timestamp, steamid);
 }
 
-// Gets database-specific UPDATE statement for loser stats
-void GetUpdateLoserStatsQuery(char[] query, int maxlen, int rating, int timestamp, const char[] steamid)
+// Gets database-specific UPDATE statement for loser stats (see GetUpdateWinnerStatsQuery for why ratingDelta is relative).
+void GetUpdateLoserStatsQuery(char[] query, int maxlen, int ratingDelta, int timestamp, const char[] steamid)
 {
-    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=%i,losses=losses+1,lastplayed=%i WHERE steamid='%s'", rating, timestamp, steamid);
+    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=rating+(%i),losses=losses+1,lastplayed=%i WHERE steamid='%s'", ratingDelta, timestamp, steamid);
 }
 
-// Gets database-specific UPDATE statement for winner stats under the Glicko-2 engine (also persists rd/volatility)
-void GetUpdateWinnerGlickoStatsQuery(char[] query, int maxlen, int rating, float rd, float volatility, int timestamp, const char[] steamid)
+// Gets database-specific UPDATE statement for winner stats under the Glicko-2 engine (also persists rd/volatility).
+// rd/volatility are still written as absolute snapshots - they're confidence trackers rather
+// than a point total, so occasional staleness there doesn't lose player-earned/lost rating points
+// the way an absolute rating SET would. ratingDelta itself is relative for the same reason as
+// the classic Elo path above.
+void GetUpdateWinnerGlickoStatsQuery(char[] query, int maxlen, int ratingDelta, float rd, float volatility, int timestamp, const char[] steamid)
 {
-    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=%i,rd=%f,volatility=%f,wins=wins+1,lastplayed=%i WHERE steamid='%s'", rating, rd, volatility, timestamp, steamid);
+    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=rating+(%i),rd=%f,volatility=%f,wins=wins+1,lastplayed=%i WHERE steamid='%s'", ratingDelta, rd, volatility, timestamp, steamid);
 }
 
 // Gets database-specific UPDATE statement for loser stats under the Glicko-2 engine (also persists rd/volatility)
-void GetUpdateLoserGlickoStatsQuery(char[] query, int maxlen, int rating, float rd, float volatility, int timestamp, const char[] steamid)
+void GetUpdateLoserGlickoStatsQuery(char[] query, int maxlen, int ratingDelta, float rd, float volatility, int timestamp, const char[] steamid)
 {
-    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=%i,rd=%f,volatility=%f,losses=losses+1,lastplayed=%i WHERE steamid='%s'", rating, rd, volatility, timestamp, steamid);
+    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=rating+(%i),rd=%f,volatility=%f,losses=losses+1,lastplayed=%i WHERE steamid='%s'", ratingDelta, rd, volatility, timestamp, steamid);
 }
 
 // Gets database-specific INSERT statement for duel results

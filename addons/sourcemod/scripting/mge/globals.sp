@@ -9,6 +9,14 @@
 #define ELO_RETRY_SLOW_INTERVAL 60.0
 #define DEFAULT_STARTING_ELO    1600
 
+// Used by ExecuteMatchResultQueries() (mge/sql.sp) to bundle a match's duel-log insert and all
+// participants' stats updates into a single atomic Transaction. Declared here (included before
+// the rating engines and sql.sp) since #define is a preprocessor construct and must appear
+// textually before any file that uses it, unlike function symbols.
+#define MATCH_TXN_MAX_QUERIES 8
+#define MATCH_TXN_MAX_RETRIES 5
+#define MATCH_TXN_QUERY_LEN 1024
+
 #define MODEL_POINT             "models/props_gameplay/cap_point_base.mdl"
 #define MODEL_BRIEFCASE         "models/flag/briefcase.mdl"
 #define MODEL_AMMOPACK          "models/items/ammopack_small.mdl"

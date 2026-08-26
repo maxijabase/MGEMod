@@ -33,7 +33,7 @@ void Engine_Elo_OnMatchResult(int winner, int loser)
     CallForward_OnPlayerELOChange(winner, winner_previous_elo, g_iPlayerRating[winner], arena_index);
     CallForward_OnPlayerELOChange(loser, loser_previous_elo, g_iPlayerRating[loser], arena_index);
     int time = GetTime();
-    char query[1024], sCleanArenaname[128], sCleanMapName[128];
+    char sCleanArenaname[128], sCleanMapName[128];
 
     g_DB.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
     g_DB.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
@@ -56,17 +56,18 @@ void Engine_Elo_OnMatchResult(int winner, int loser)
     
     int startTime = g_iArenaDuelStartTime[arena_index];
     int endTime = time;
-    
-    GetInsertDuelQuery(query, sizeof(query), g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass, winner_previous_elo, g_iPlayerRating[winner], loser_previous_elo, g_iPlayerRating[loser]);
-    g_DB.Query(SQL_OnGenericQueryFinished, query);
+
+    char txnQueries[MATCH_TXN_MAX_QUERIES][MATCH_TXN_QUERY_LEN];
+
+    GetInsertDuelQuery(txnQueries[0], MATCH_TXN_QUERY_LEN, g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass, winner_previous_elo, g_iPlayerRating[winner], loser_previous_elo, g_iPlayerRating[loser]);
 
     // Winner's stats
-    GetUpdateWinnerStatsQuery(query, sizeof(query), g_iPlayerRating[winner], time, g_sPlayerSteamID[winner]);
-    g_DB.Query(SQL_OnGenericQueryFinished, query);
+    GetUpdateWinnerStatsQuery(txnQueries[1], MATCH_TXN_QUERY_LEN, winnerscore, time, g_sPlayerSteamID[winner]);
 
     // Loser's stats
-    GetUpdateLoserStatsQuery(query, sizeof(query), g_iPlayerRating[loser], time, g_sPlayerSteamID[loser]);
-    g_DB.Query(SQL_OnGenericQueryFinished, query);
+    GetUpdateLoserStatsQuery(txnQueries[2], MATCH_TXN_QUERY_LEN, -loserscore, time, g_sPlayerSteamID[loser]);
+
+    ExecuteMatchResultQueries(txnQueries, 3);
 }
 
 // Calculates ELO ratings for 2v2 duels using team-averaged ratings and updates player statistics
@@ -110,7 +111,7 @@ void Engine_Elo_OnMatchResult2v2(int winner, int winner2, int loser, int loser2)
     int winner_team_slot = (g_iPlayerSlot[winner] > 2) ? (g_iPlayerSlot[winner] - 2) : g_iPlayerSlot[winner];
     int loser_team_slot = (g_iPlayerSlot[loser] > 2) ? (g_iPlayerSlot[loser] - 2) : g_iPlayerSlot[loser];
     int time = GetTime();
-    char query[1024], sCleanArenaname[128], sCleanMapName[128];
+    char sCleanArenaname[128], sCleanMapName[128];
 
     g_DB.Escape(g_sArenaName[g_iPlayerArena[winner]], sCleanArenaname, sizeof(sCleanArenaname));
     g_DB.Escape(g_sMapName, sCleanMapName, sizeof(sCleanMapName));
@@ -137,23 +138,22 @@ void Engine_Elo_OnMatchResult2v2(int winner, int winner2, int loser, int loser2)
     
     int startTime = g_iArenaDuelStartTime[arena_index];
     int endTime = time;
-    
-    GetInsert2v2DuelQuery(query, sizeof(query), g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class, winner_previous_elo, g_iPlayerRating[winner], winner2_previous_elo, g_iPlayerRating[winner2], loser_previous_elo, g_iPlayerRating[loser], loser2_previous_elo, g_iPlayerRating[loser2]);
-    g_DB.Query(SQL_OnGenericQueryFinished, query);
+
+    char txnQueries[MATCH_TXN_MAX_QUERIES][MATCH_TXN_QUERY_LEN];
+
+    GetInsert2v2DuelQuery(txnQueries[0], MATCH_TXN_QUERY_LEN, g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class, winner_previous_elo, g_iPlayerRating[winner], winner2_previous_elo, g_iPlayerRating[winner2], loser_previous_elo, g_iPlayerRating[loser], loser2_previous_elo, g_iPlayerRating[loser2]);
 
     // Winner's stats
-    GetUpdateWinnerStatsQuery(query, sizeof(query), g_iPlayerRating[winner], time, g_sPlayerSteamID[winner]);
-    g_DB.Query(SQL_OnGenericQueryFinished, query);
+    GetUpdateWinnerStatsQuery(txnQueries[1], MATCH_TXN_QUERY_LEN, winnerscore, time, g_sPlayerSteamID[winner]);
 
     // Winner's teammate stats
-    GetUpdateWinnerStatsQuery(query, sizeof(query), g_iPlayerRating[winner2], time, g_sPlayerSteamID[winner2]);
-    g_DB.Query(SQL_OnGenericQueryFinished, query);
+    GetUpdateWinnerStatsQuery(txnQueries[2], MATCH_TXN_QUERY_LEN, winnerscore, time, g_sPlayerSteamID[winner2]);
 
     // Loser's stats
-    GetUpdateLoserStatsQuery(query, sizeof(query), g_iPlayerRating[loser], time, g_sPlayerSteamID[loser]);
-    g_DB.Query(SQL_OnGenericQueryFinished, query);
+    GetUpdateLoserStatsQuery(txnQueries[3], MATCH_TXN_QUERY_LEN, -loserscore, time, g_sPlayerSteamID[loser]);
 
     // Loser's teammate stats
-    GetUpdateLoserStatsQuery(query, sizeof(query), g_iPlayerRating[loser2], time, g_sPlayerSteamID[loser2]);
-    g_DB.Query(SQL_OnGenericQueryFinished, query);
+    GetUpdateLoserStatsQuery(txnQueries[4], MATCH_TXN_QUERY_LEN, -loserscore, time, g_sPlayerSteamID[loser2]);
+
+    ExecuteMatchResultQueries(txnQueries, 5);
 }
