@@ -1325,6 +1325,8 @@ void FormatRatingDisplay(int player, char[] output, int output_size)
         strcopy(output, output_size, "BOT");
     else if (!IsPlayerStatsLoaded(player))
         output[0] = '\0';
+    else if (Rating_IsProvisional(player))
+        Format(output, output_size, "%d?", Rating_GetDisplayValue(player));
     else
         IntToString(Rating_GetDisplayValue(player), output, output_size);
 }

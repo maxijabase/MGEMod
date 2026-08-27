@@ -29,9 +29,8 @@
 // Player Statistics Structure
 enum struct MGEPlayerStats
 {
-    int elo;            // Display rating from the currently active rating engine (mgemod_rating_engine).
-                         // Under Elo this is the raw rating; under Glicko-2 this is the conservative
-                         // display value (rating - 2*RD), matching what players see in the HUD/!rank.
+    int elo;            // Stored rating from the currently active rating engine (mgemod_rating_engine).
+                         // Same number the HUD, !rank, and chat use (raw rating, not rating-2*RD).
     int kills;          // Total kills
     int deaths;         // Total deaths  
     int wins;           // Total wins

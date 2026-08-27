@@ -96,6 +96,11 @@ void RunMigration(const char[] migrationName)
         }
         Migration_007_AddGlickoColumns();
     }
+    else if (StrEqual(migrationName, "008_seed_glicko_rd_defaults"))
+    {
+        g_migrationProgress.SetValue(migrationName, 1);
+        Migration_008_SeedGlickoRdDefaults();
+    }
 }
 
 // Executes individual migration steps with progress tracking and error handling
@@ -163,6 +168,7 @@ void CreateMigrationsTableCallback(Database db, DBResultSet results, const char[
     CheckAndRunMigration("005_utf8mb4_charset");
     CheckAndRunMigration("006_drop_hitblip_column");
     CheckAndRunMigration("007_add_glicko_columns");
+    CheckAndRunMigration("008_seed_glicko_rd_defaults");
 }
 
 // Processes migration existence check results and triggers migration execution if needed
@@ -510,4 +516,21 @@ void Migration_007_AddGlickoColumns()
             MarkMigrationComplete("007_add_glicko_columns");
         }
     }
+}
+
+// One-time backfill fixing existing rows so rd/volatility nullability matches whatever engine
+// is active right now: if mgemod_rating_engine is "glicko2", every row gets rd/volatility
+// defaults instead of leaving pre-existing players (created before this migration existed, or
+// who simply never played a Glicko-2 duel yet) stuck with a NULL rd that's indistinguishable
+// from "this is an Elo player". If the engine is "elo", any leftover rd/volatility values are
+// cleared instead. This only runs once; see Rating_GetGlickoReconcileQuery for the query this
+// reuses and handler_ConVarChange for the live version that keeps this true after engine switches.
+void Migration_008_SeedGlickoRdDefaults()
+{
+    LogMessage("[Migration 008] Reconciling rd/volatility nullability with the active rating engine (%s)",
+        (g_eRatingEngine == RATING_ENGINE_GLICKO2) ? "glicko2" : "elo");
+
+    char query[256];
+    Rating_GetGlickoReconcileQuery(query, sizeof(query));
+    ExecuteMigrationStep("008_seed_glicko_rd_defaults", query, 1);
 }

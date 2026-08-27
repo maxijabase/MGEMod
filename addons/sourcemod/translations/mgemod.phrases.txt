@@ -126,6 +126,26 @@
 		"es"			"{green}[MGE]{default} Has perdido {green}{1}{default} puntos."
 		"pt"			"{green}[MGE]{default} Você perdeu {green}{1}{default} pontos."
 	}
+	"GainedRatingNow"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"{green}[MGE]{default} You gained {green}{1}{default} rating (now {green}{2}{default})."
+		"chi"			"{green}[MGE]{default} 您得到了 {green}{1}{default} 分（现在 {green}{2}{default}）。"
+		"de"			"{green}[MGE]{default} Du hast {green}{1}{default} Wertung erhalten (jetzt {green}{2}{default})."
+		"ru"			"{green}[MGE]{default} Вы получили {green}{1}{default} рейтинга (сейчас {green}{2}{default})."
+		"es"			"{green}[MGE]{default} Has ganado {green}{1}{default} de rating (ahora {green}{2}{default})."
+		"pt"			"{green}[MGE]{default} Você ganhou {green}{1}{default} de rating (agora {green}{2}{default})."
+	}
+	"LostRatingNow"
+	{
+		"#format"		"{1:i},{2:i}"
+		"en"			"{green}[MGE]{default} You lost {green}{1}{default} rating (now {green}{2}{default})."
+		"chi"			"{green}[MGE]{default} 您丢掉了 {green}{1}{default} 分（现在 {green}{2}{default}）。"
+		"de"			"{green}[MGE]{default} Du hast {green}{1}{default} Wertung verloren (jetzt {green}{2}{default})."
+		"ru"			"{green}[MGE]{default} Вы потеряли {green}{1}{default} рейтинга (сейчас {green}{2}{default})."
+		"es"			"{green}[MGE]{default} Has perdido {green}{1}{default} de rating (ahora {green}{2}{default})."
+		"pt"			"{green}[MGE]{default} Você perdeu {green}{1}{default} de rating (agora {green}{2}{default})."
+	}
 	"MyRank"
 	{
 		"#format"		"{1:i},{2:i},{3:i}"

@@ -121,6 +121,14 @@ void ShowTopPlayersPanel(int client, DBResultSet results, int totalRows)
         {
             Format(line, sizeof(line), "#%d %s", rank, name);
         }
+        else if (g_eRatingEngine == RATING_ENGINE_GLICKO2)
+        {
+            bool provisional = results.IsFieldNull(4) || results.FetchFloat(4) > g_fGlickoProvisionalRd;
+            if (provisional)
+                Format(line, sizeof(line), "#%d %s (%d?) [%d/%d]", rank, name, rating, wins, losses);
+            else
+                Format(line, sizeof(line), "#%d %s (%d) [%d/%d]", rank, name, rating, wins, losses);
+        }
         else
         {
             Format(line, sizeof(line), "#%d %s (%d) [%d/%d]", rank, name, rating, wins, losses);
@@ -353,8 +361,35 @@ void ShowPlayerRankPanel(int client, int targetPlayer)
     if (!g_bNoDisplayRating && g_bShowElo[client])
     {
         char ratingLine[256];
-        Format(ratingLine, sizeof(ratingLine), "Rating: %d (#%d)", Rating_GetDisplayValue(targetPlayer), g_iPlayerRatingRank[targetPlayer]);
+        if (Rating_IsProvisional(targetPlayer))
+            Format(ratingLine, sizeof(ratingLine), "Rating: %d? (#%d)", Rating_GetDisplayValue(targetPlayer), g_iPlayerRatingRank[targetPlayer]);
+        else
+            Format(ratingLine, sizeof(ratingLine), "Rating: %d (#%d)", Rating_GetDisplayValue(targetPlayer), g_iPlayerRatingRank[targetPlayer]);
         panel.DrawText(ratingLine);
+
+        if (g_eRatingEngine == RATING_ENGINE_GLICKO2)
+        {
+            char rdLine[64];
+            float rd = g_bPlayerGlickoSeeded[targetPlayer] ? g_fPlayerRD[targetPlayer] : GLICKO2_MAX_RD;
+            Format(rdLine, sizeof(rdLine), "RD: %.0f", rd);
+            panel.DrawText(rdLine);
+
+            char leaderboardLine[128];
+            if (Rating_IsRankQualified(targetPlayer))
+            {
+                Format(leaderboardLine, sizeof(leaderboardLine), "Leaderboard: Ranked");
+            }
+            else
+            {
+                int gamesPlayed = g_iPlayerWins[targetPlayer] + g_iPlayerLosses[targetPlayer];
+                int gamesNeeded = g_iGlickoRankedMinGames - gamesPlayed;
+                if (gamesNeeded > 0)
+                    Format(leaderboardLine, sizeof(leaderboardLine), "Leaderboard: Not ranked (%d more game%s needed)", gamesNeeded, (gamesNeeded == 1) ? "" : "s");
+                else
+                    Format(leaderboardLine, sizeof(leaderboardLine), "Leaderboard: Not ranked (RD too high)");
+            }
+            panel.DrawText(leaderboardLine);
+        }
     }
     
     // Wins display

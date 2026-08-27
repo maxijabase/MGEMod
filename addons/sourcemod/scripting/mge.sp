@@ -118,6 +118,8 @@ public void OnPluginStart()
     gcvar_glickoTau = new Convar("mgemod_glicko_tau", "0.5", "Glicko-2 system constant controlling how fast volatility reacts to surprising results. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 0.2, true, 1.2);
     gcvar_glickoPeriodDays = new Convar("mgemod_glicko_period_days", "1.0", "Number of days considered one Glicko-2 rating period for RD inflation due to inactivity. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 0.1);
     gcvar_glickoProvisionalRd = new Convar("mgemod_glicko_provisional_rd", "200.0", "RD threshold above which a player's Glicko-2 rating is considered provisional. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 50.0, true, 350.0);
+    gcvar_glickoRankedRd = new Convar("mgemod_glicko_ranked_rd", "100.0", "RD threshold a Glicko-2 player must be below to appear on !top and external leaderboards. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 30.0, true, 350.0);
+    gcvar_glickoRankedMinGames = new Convar("mgemod_glicko_ranked_min_games", "10", "Minimum games (wins+losses) a Glicko-2 player needs to appear on !top and external leaderboards. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 0.0, true, 1000.0);
 
     // Create config file
     Convar.CreateConfig("mge");
@@ -136,6 +138,8 @@ public void OnPluginStart()
     g_fGlickoTau = gcvar_glickoTau.FloatValue;
     g_fGlickoPeriodDays = gcvar_glickoPeriodDays.FloatValue;
     g_fGlickoProvisionalRd = gcvar_glickoProvisionalRd.FloatValue;
+    g_fGlickoRankedRd = gcvar_glickoRankedRd.FloatValue;
+    g_iGlickoRankedMinGames = gcvar_glickoRankedMinGames.IntValue;
 
     char sRatingEngine[16];
     gcvar_ratingEngine.GetString(sRatingEngine, sizeof(sRatingEngine));
@@ -184,6 +188,8 @@ public void OnPluginStart()
     gcvar_glickoTau.AddChangeHook(handler_ConVarChange);
     gcvar_glickoPeriodDays.AddChangeHook(handler_ConVarChange);
     gcvar_glickoProvisionalRd.AddChangeHook(handler_ConVarChange);
+    gcvar_glickoRankedRd.AddChangeHook(handler_ConVarChange);
+    gcvar_glickoRankedMinGames.AddChangeHook(handler_ConVarChange);
 
     // Client commands
     RegConsoleCmd("mgemod", Command_Menu, "MGEMod Menu");
@@ -614,13 +620,28 @@ void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] new
     else if (convar == gcvar_clearProjectiles)
         g_bClearProjectiles = boolValue;
     else if (convar == gcvar_ratingEngine)
+    {
         g_eRatingEngine = StrEqual(newValue, "glicko2", false) ? RATING_ENGINE_GLICKO2 : RATING_ENGINE_ELO;
+
+        // Keep rd/volatility nullability truthful the moment the engine actually flips at
+        // runtime too, not just once at startup via migration 008.
+        if (!g_bNoStats && g_DB != null)
+        {
+            char reconcileQuery[256];
+            Rating_GetGlickoReconcileQuery(reconcileQuery, sizeof(reconcileQuery));
+            g_DB.Query(SQL_OnGenericQueryFinished, reconcileQuery);
+        }
+    }
     else if (convar == gcvar_glickoTau)
         g_fGlickoTau = floatValue;
     else if (convar == gcvar_glickoPeriodDays)
         g_fGlickoPeriodDays = floatValue;
     else if (convar == gcvar_glickoProvisionalRd)
         g_fGlickoProvisionalRd = floatValue;
+    else if (convar == gcvar_glickoRankedRd)
+        g_fGlickoRankedRd = floatValue;
+    else if (convar == gcvar_glickoRankedMinGames)
+        g_iGlickoRankedMinGames = intValue;
 }
 
 

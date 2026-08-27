@@ -6,9 +6,13 @@
 //
 // Ratings are stored on the same 1500-centered, ~400-scale as Elo (mgemod_stats.rating,
 // reused as-is) so both engines share one column and one leaderboard. RD and volatility
-// are the two new nullable columns added by migration 007. A player's rd column is NULL
-// until the first time a Glicko-2 duel touches them ("lazy seed": rd=350, volatility=0.06,
-// rating kept as whatever it already was under Elo, or 1600 if brand new).
+// are the two new nullable columns added by migration 007. Their nullability is a strict
+// engine signal, never ambiguous: NULL means Elo is active, non-NULL means Glicko-2 is
+// active - even for a player who has never played a single Glicko-2 duel. New rows get
+// rd=350/volatility=0.06 immediately (GetInsertPlayerQuery), migration 008 backfills rows
+// that predate this, and handler_ConVarChange re-syncs both directions if the engine is
+// ever flipped at runtime. Glicko2_EnsureSeeded below is just an in-memory safety net for
+// the rare case a connected client's cache disagrees with what's on disk.
 
 // Seeds a player's RD/volatility on first contact with the Glicko-2 engine.
 // Their rating is left untouched (Elo value, or DEFAULT_STARTING_ELO for new players).
@@ -191,10 +195,10 @@ void Engine_Glicko2_OnMatchResult(int winner, int loser)
     int loserscore = loser_previous_elo - g_iPlayerRating[loser];
 
     if (IsValidClient(winner) && !g_bNoDisplayRating && g_bShowElo[winner])
-        MC_PrintToChat(winner, "%t", "GainedPoints", (winnerscore >= 0) ? winnerscore : -winnerscore);
+        MC_PrintToChat(winner, "%t", "GainedRatingNow", (winnerscore >= 0) ? winnerscore : -winnerscore, g_iPlayerRating[winner]);
 
     if (IsValidClient(loser) && !g_bNoDisplayRating && g_bShowElo[loser])
-        MC_PrintToChat(loser, "%t", "LostPoints", (loserscore >= 0) ? loserscore : -loserscore);
+        MC_PrintToChat(loser, "%t", "LostRatingNow", (loserscore >= 0) ? loserscore : -loserscore, g_iPlayerRating[loser]);
 
     // This is necessary for when a player leaves a 2v2 arena that is almost done.
     int winner_team_slot = (g_iPlayerSlot[winner] > 2) ? (g_iPlayerSlot[winner] - 2) : g_iPlayerSlot[winner];
@@ -303,16 +307,16 @@ void Engine_Glicko2_OnMatchResult2v2(int winner, int winner2, int loser, int los
     int loser_team_slot = (g_iPlayerSlot[loser] > 2) ? (g_iPlayerSlot[loser] - 2) : g_iPlayerSlot[loser];
 
     if (IsValidClient(winner) && !g_bNoDisplayRating && g_bShowElo[winner])
-        MC_PrintToChat(winner, "%t", "GainedPoints", winnerscore);
+        MC_PrintToChat(winner, "%t", "GainedRatingNow", (winnerscore >= 0) ? winnerscore : -winnerscore, g_iPlayerRating[winner]);
 
     if (IsValidClient(winner2) && !g_bNoDisplayRating && g_bShowElo[winner2])
-        MC_PrintToChat(winner2, "%t", "GainedPoints", winnerscore);
+        MC_PrintToChat(winner2, "%t", "GainedRatingNow", (winnerscore >= 0) ? winnerscore : -winnerscore, g_iPlayerRating[winner2]);
 
     if (IsValidClient(loser) && !g_bNoDisplayRating && g_bShowElo[loser])
-        MC_PrintToChat(loser, "%t", "LostPoints", loserscore);
+        MC_PrintToChat(loser, "%t", "LostRatingNow", (loserscore >= 0) ? loserscore : -loserscore, g_iPlayerRating[loser]);
 
     if (IsValidClient(loser2) && !g_bNoDisplayRating && g_bShowElo[loser2])
-        MC_PrintToChat(loser2, "%t", "LostPoints", loserscore);
+        MC_PrintToChat(loser2, "%t", "LostRatingNow", (loserscore >= 0) ? loserscore : -loserscore, g_iPlayerRating[loser2]);
 
     // DB entry for this specific duel.
     char winnerClass[64], winner2Class[64], loserClass[64], loser2Class[64];

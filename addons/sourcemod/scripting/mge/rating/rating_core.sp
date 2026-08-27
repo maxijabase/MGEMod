@@ -36,13 +36,10 @@ void Rating_ReportResult(int winner1, int winner2, int loser1, int loser2)
 }
 
 // Returns the number to show/gate on for a player, regardless of active engine.
-// Elo: the raw rating. Glicko-2: a conservative rating (rating - 2*RD), the standard
-// Glicko display convention that keeps unproven players from looking artificially strong.
+// Always the stored rating. Glicko-2 uncertainty is the HUD/join "?" via Rating_IsProvisional,
+// not a subtracted display value.
 int Rating_GetDisplayValue(int client)
 {
-    if (g_eRatingEngine == RATING_ENGINE_GLICKO2 && g_bPlayerGlickoSeeded[client])
-        return RoundToNearest(float(g_iPlayerRating[client]) - 2.0 * g_fPlayerRD[client]);
-
     return g_iPlayerRating[client];
 }
 
@@ -59,11 +56,32 @@ bool Rating_IsProvisional(int client)
     return g_fPlayerRD[client] > g_fGlickoProvisionalRd;
 }
 
+// Whether this player meets the bar to show up on !top / external leaderboards: a tighter
+// requirement than "not provisional" (see Rating_IsProvisional), meant to keep players with
+// one or two lucky wins out of the public rankings. Always true under Elo.
+bool Rating_IsRankQualified(int client)
+{
+    if (g_eRatingEngine != RATING_ENGINE_GLICKO2)
+        return true;
+
+    if (!g_bPlayerGlickoSeeded[client])
+        return false;
+
+    int gamesPlayed = g_iPlayerWins[client] + g_iPlayerLosses[client];
+    return g_fPlayerRD[client] < g_fGlickoRankedRd && gamesPlayed >= g_iGlickoRankedMinGames;
+}
+
 // Builds the top players leaderboard query using the active engine's display value.
+// Under Glicko-2, only players below the ranked RD threshold with enough games played
+// show up here, keeping brand-new or barely-played ratings off the public leaderboard.
 void Rating_GetLeaderboardQuery(char[] query, int maxlen)
 {
     if (g_eRatingEngine == RATING_ENGINE_GLICKO2)
-        g_DB.Format(query, maxlen, "SELECT (rating - 2 * COALESCE(rd, 0)) AS display_rating, name, wins, losses FROM mgemod_stats ORDER BY display_rating DESC");
+    {
+        g_DB.Format(query, maxlen,
+            "SELECT rating, name, wins, losses, rd FROM mgemod_stats WHERE rd IS NOT NULL AND rd < %f AND (wins + losses) >= %d ORDER BY rating DESC",
+            g_fGlickoRankedRd, g_iGlickoRankedMinGames);
+    }
     else
         g_DB.Format(query, maxlen, "SELECT rating, name, wins, losses FROM mgemod_stats ORDER BY rating DESC");
 }
@@ -71,10 +89,19 @@ void Rating_GetLeaderboardQuery(char[] query, int maxlen)
 // Builds the rating-rank query (used by !rank) using the active engine's display value.
 void Rating_GetRankQuery(char[] query, int maxlen, const char[] steamid)
 {
+    g_DB.Format(query, maxlen, "SELECT COUNT(*) + 1 FROM mgemod_stats WHERE rating > (SELECT rating FROM mgemod_stats WHERE steamid='%s')", steamid);
+}
+
+// Builds the query that keeps rd/volatility nullability in lockstep with the active engine:
+// NULL means "Elo", non-NULL means "Glicko-2" - never "Glicko-2 player who hasn't played yet".
+// Run once historically by migration 008 and again live whenever mgemod_rating_engine changes,
+// so external tools (platform sync, website) never have to guess what a NULL rd means.
+void Rating_GetGlickoReconcileQuery(char[] query, int maxlen)
+{
     if (g_eRatingEngine == RATING_ENGINE_GLICKO2)
-        g_DB.Format(query, maxlen, "SELECT COUNT(*) + 1 FROM mgemod_stats WHERE (rating - 2 * COALESCE(rd, 0)) > (SELECT (rating - 2 * COALESCE(rd, 0)) FROM mgemod_stats WHERE steamid='%s')", steamid);
+        g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rd = %f, volatility = %f WHERE rd IS NULL", GLICKO2_MAX_RD, GLICKO2_DEFAULT_VOLATILITY);
     else
-        g_DB.Format(query, maxlen, "SELECT COUNT(*) + 1 FROM mgemod_stats WHERE rating > (SELECT rating FROM mgemod_stats WHERE steamid='%s')", steamid);
+        g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rd = NULL, volatility = NULL WHERE rd IS NOT NULL");
 }
 
 // Estimated win chance of "client" against "target", used by the !rank panel.

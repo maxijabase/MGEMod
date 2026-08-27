@@ -347,9 +347,19 @@ void SQL_OnPlayerInserted(Database db, DBResultSet results, const char[] error, 
     g_iPlayerRating[client] = DEFAULT_STARTING_ELO;
     g_iPlayerWins[client] = 0;
     g_iPlayerLosses[client] = 0;
-    g_bPlayerGlickoSeeded[client] = false;
-    g_fPlayerRD[client] = 0.0;
-    g_fPlayerVolatility[client] = 0.0;
+    if (g_eRatingEngine == RATING_ENGINE_GLICKO2)
+    {
+        // Matches the rd/volatility defaults GetInsertPlayerQuery just wrote to the row.
+        g_bPlayerGlickoSeeded[client] = true;
+        g_fPlayerRD[client] = GLICKO2_MAX_RD;
+        g_fPlayerVolatility[client] = GLICKO2_DEFAULT_VOLATILITY;
+    }
+    else
+    {
+        g_bPlayerGlickoSeeded[client] = false;
+        g_fPlayerRD[client] = 0.0;
+        g_fPlayerVolatility[client] = 0.0;
+    }
     g_iPlayerLastPlayed[client] = 0;
     CancelEloRetry(client);
     SetPlayerStatsLoadState(client, MGE_STATS_LOADED);
@@ -544,22 +554,37 @@ void GetCreateTableQuery_Migrations(char[] query, int maxlen)
     }
 }
 
-// Gets database-specific INSERT statement for player stats
+// Gets database-specific INSERT statement for player stats.
+// Under Glicko-2, rd/volatility are seeded to their defaults immediately on row creation instead
+// of staying NULL until the player's first duel - this is what keeps "NULL rd" meaning exactly
+// one thing (Elo is active), never "Glicko-2 player who just hasn't played yet". See
+// Rating_GetGlickoReconcileQuery for the runtime/migration side of the same invariant.
 void GetInsertPlayerQuery(char[] query, int maxlen, const char[] steamid, const char[] name, int timestamp)
 {
+    bool seedGlicko = (g_eRatingEngine == RATING_ENGINE_GLICKO2);
+
     switch (g_DatabaseType)
     {
         case DB_SQLITE:
         {
-            g_DB.Format(query, maxlen, "INSERT INTO mgemod_stats VALUES(1600, '%s', '%s', 0, 0, %i)", steamid, name, timestamp);
+            if (seedGlicko)
+                g_DB.Format(query, maxlen, "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed, rd, volatility) VALUES (1600, '%s', '%s', 0, 0, %i, %f, %f)", steamid, name, timestamp, GLICKO2_MAX_RD, GLICKO2_DEFAULT_VOLATILITY);
+            else
+                g_DB.Format(query, maxlen, "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed) VALUES (1600, '%s', '%s', 0, 0, %i)", steamid, name, timestamp);
         }
         case DB_MYSQL:
         {
-            g_DB.Format(query, maxlen, "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed) VALUES (1600, '%s', '%s', 0, 0, %i)", steamid, name, timestamp);
+            if (seedGlicko)
+                g_DB.Format(query, maxlen, "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed, rd, volatility) VALUES (1600, '%s', '%s', 0, 0, %i, %f, %f)", steamid, name, timestamp, GLICKO2_MAX_RD, GLICKO2_DEFAULT_VOLATILITY);
+            else
+                g_DB.Format(query, maxlen, "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed) VALUES (1600, '%s', '%s', 0, 0, %i)", steamid, name, timestamp);
         }
         case DB_POSTGRESQL:
         {
-            g_DB.Format(query, maxlen, "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed) VALUES (1600, '%s', '%s', 0, 0, %i) ON CONFLICT (steamid) DO UPDATE SET name = EXCLUDED.name, lastplayed = EXCLUDED.lastplayed", steamid, name, timestamp);
+            if (seedGlicko)
+                g_DB.Format(query, maxlen, "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed, rd, volatility) VALUES (1600, '%s', '%s', 0, 0, %i, %f, %f) ON CONFLICT (steamid) DO UPDATE SET name = EXCLUDED.name, lastplayed = EXCLUDED.lastplayed", steamid, name, timestamp, GLICKO2_MAX_RD, GLICKO2_DEFAULT_VOLATILITY);
+            else
+                g_DB.Format(query, maxlen, "INSERT INTO mgemod_stats (rating, steamid, name, wins, losses, lastplayed) VALUES (1600, '%s', '%s', 0, 0, %i) ON CONFLICT (steamid) DO UPDATE SET name = EXCLUDED.name, lastplayed = EXCLUDED.lastplayed", steamid, name, timestamp);
         }
     }
 }

@@ -45,6 +45,8 @@ RatingEngine g_eRatingEngine;
 float g_fGlickoTau;
 float g_fGlickoPeriodDays;
 float g_fGlickoProvisionalRd;
+float g_fGlickoRankedRd;
+int g_iGlickoRankedMinGames;
 
 #define GLICKO2_SCALE               173.7178
 #define GLICKO2_MAX_RD              350.0
@@ -115,7 +117,9 @@ Convar
     gcvar_ratingEngine,
     gcvar_glickoTau,
     gcvar_glickoPeriodDays,
-    gcvar_glickoProvisionalRd;
+    gcvar_glickoProvisionalRd,
+    gcvar_glickoRankedRd,
+    gcvar_glickoRankedMinGames;
 
 // Classes
 bool g_tfctClassAllowed[10];
