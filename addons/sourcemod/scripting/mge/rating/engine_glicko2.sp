@@ -183,6 +183,7 @@ void Engine_Glicko2_OnMatchResult(int winner, int loser)
     g_fPlayerRD[loser] = newLoserRd;
     g_fPlayerVolatility[loser] = newLoserVolatility;
     g_iPlayerLastPlayed[loser] = now;
+    Rating_RecordMatchOutcome(winner, 0, loser, 0);
 
     // Call rating change forwards
     int arena_index = g_iPlayerArena[winner];
@@ -291,6 +292,7 @@ void Engine_Glicko2_OnMatchResult2v2(int winner, int winner2, int loser, int los
     g_iPlayerLastPlayed[winner2] = now;
     g_iPlayerLastPlayed[loser] = now;
     g_iPlayerLastPlayed[loser2] = now;
+    Rating_RecordMatchOutcome(winner, winner2, loser, loser2);
 
     // Call rating change forwards for all players
     int arena_index = g_iPlayerArena[winner];

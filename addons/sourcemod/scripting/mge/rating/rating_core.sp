@@ -35,6 +35,16 @@ void Rating_ReportResult(int winner1, int winner2, int loser1, int loser2)
     }
 }
 
+void Rating_RecordMatchOutcome(int winner1, int winner2, int loser1, int loser2)
+{
+    g_iPlayerWins[winner1]++;
+    g_iPlayerLosses[loser1]++;
+    if (winner2 > 0)
+        g_iPlayerWins[winner2]++;
+    if (loser2 > 0)
+        g_iPlayerLosses[loser2]++;
+}
+
 // Returns the number to show/gate on for a player, regardless of active engine.
 // Always the stored rating. Glicko-2 uncertainty is the HUD/join "?" via Rating_IsProvisional,
 // not a subtracted display value.

@@ -27,7 +27,8 @@ void Engine_Elo_OnMatchResult(int winner, int loser)
     k = (g_iPlayerRating[loser] >= 2400) ? 10 : 15;
     int loserscore = RoundFloat(k * El);
     g_iPlayerRating[loser] -= loserscore;
-    
+    Rating_RecordMatchOutcome(winner, 0, loser, 0);
+
     // Call ELO change forwards
     int arena_index = g_iPlayerArena[winner];
     CallForward_OnPlayerELOChange(winner, winner_previous_elo, g_iPlayerRating[winner], arena_index);
@@ -100,7 +101,8 @@ void Engine_Elo_OnMatchResult2v2(int winner, int winner2, int loser, int loser2)
     int loserscore = RoundFloat(k * El);
     g_iPlayerRating[loser] -= loserscore;
     g_iPlayerRating[loser2] -= loserscore;
-    
+    Rating_RecordMatchOutcome(winner, winner2, loser, loser2);
+
     // Call ELO change forwards for all players
     int arena_index = g_iPlayerArena[winner];
     CallForward_OnPlayerELOChange(winner, winner_previous_elo, g_iPlayerRating[winner], arena_index);
