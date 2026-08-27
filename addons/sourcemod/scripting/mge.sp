@@ -427,7 +427,9 @@ public void OnMapEnd()
 // Hook projectiles for direct hit detection when entities are created
 public void OnEntityCreated(int entity, const char[] classname)
 {
-    if (StrEqual(classname, "tf_projectile_rocket") || StrEqual(classname, "tf_projectile_pipe"))
+    if (StrEqual(classname, "tf_projectile_rocket")
+        || StrEqual(classname, "tf_projectile_pipe")
+        || StrEqual(classname, "tf_projectile_energy_ball"))
         SDKHook(entity, SDKHook_Touch, OnProjectileTouch);
 }
 
