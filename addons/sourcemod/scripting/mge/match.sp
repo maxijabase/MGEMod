@@ -80,6 +80,72 @@ void ProcessMatchCompletion(int arena_index, int winner1, int winner2, int loser
     HandlePostMatchQueueRotation(arena_index, loser1, loser2);
 }
 
+bool ShouldForfeitOnLeave(int stayerScore, int leaverScore)
+{
+    if (stayerScore == 0 && leaverScore == 0)
+        return false;
+
+    return leaverScore <= stayerScore;
+}
+
+void ProcessMatchForfeit(int arena_index, int winner1, int winner2, int loser1, int loser2, int winner_team_slot, int loser_team_slot, int leaver, int leaver_slot)
+{
+    SetArenaStatus(arena_index, AS_REPORTED);
+
+    char winner_names[128];
+    char loser_names[128];
+
+    if (g_bFourPersonArena[arena_index])
+    {
+        FormatTeamPlayerNames(winner1, winner2, winner_names, sizeof(winner_names));
+        FormatTeamPlayerNames(loser1, loser2, loser_names, sizeof(loser_names));
+    }
+    else
+    {
+        GetClientName(winner1, winner_names, sizeof(winner_names));
+        GetClientName(loser1, loser_names, sizeof(loser_names));
+    }
+
+    MC_PrintToChatAll("%t", "XdefeatsYearly", winner_names, g_iArenaScore[arena_index][winner_team_slot],
+                      loser_names, g_iArenaScore[arena_index][loser_team_slot], g_sArenaName[arena_index]);
+
+    int saved_arena = g_iPlayerArena[leaver];
+    int saved_slot = g_iPlayerSlot[leaver];
+    g_iPlayerArena[leaver] = arena_index;
+    g_iPlayerSlot[leaver] = leaver_slot;
+
+    if (!g_bFourPersonArena[arena_index])
+    {
+        CallForward_On1v1MatchEnd(arena_index, winner1, loser1, g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot]);
+    }
+    else
+    {
+        int slotPlayers[5];
+        slotPlayers[SLOT_ONE] = g_iArenaQueue[arena_index][SLOT_ONE];
+        slotPlayers[SLOT_TWO] = g_iArenaQueue[arena_index][SLOT_TWO];
+        slotPlayers[SLOT_THREE] = g_iArenaQueue[arena_index][SLOT_THREE];
+        slotPlayers[SLOT_FOUR] = g_iArenaQueue[arena_index][SLOT_FOUR];
+        slotPlayers[leaver_slot] = leaver;
+
+        int winning_team = (winner_team_slot == SLOT_ONE) ? TEAM_RED : TEAM_BLU;
+        CallForward_On2v2MatchEnd(arena_index, winning_team, g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot],
+                                slotPlayers[SLOT_ONE], slotPlayers[SLOT_THREE],
+                                slotPlayers[SLOT_TWO], slotPlayers[SLOT_FOUR]);
+    }
+
+    if (g_bFourPersonArena[arena_index] && IsValidClient(winner2) && IsValidClient(loser2))
+        Rating_ReportResult(winner1, winner2, loser1, loser2);
+    else
+    {
+        Rating_ReportResult(winner1, 0, loser1, 0);
+        if (g_bFourPersonArena[arena_index] && IsValidClient(winner2))
+            Rating_ReportResult(winner2, 0, loser1, 0);
+    }
+
+    g_iPlayerArena[leaver] = saved_arena;
+    g_iPlayerSlot[leaver] = saved_slot;
+}
+
 
 // ===== QUEUE ROTATION MANAGEMENT =====
 

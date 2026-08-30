@@ -567,40 +567,16 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                 }
             }
 
-            if (g_iArenaStatus[arena_index] >= AS_FIGHT && g_iArenaStatus[arena_index] < AS_REPORTED && calcstats && !g_bNoStats && IsValidClient(foe))
+            if (g_iArenaStatus[arena_index] >= AS_FIGHT && g_iArenaStatus[arena_index] < AS_REPORTED && calcstats && IsValidClient(foe))
             {
-                char foe_name[MAX_NAME_LENGTH * 2];
-                char player_name[MAX_NAME_LENGTH * 2];
-                char foe2_name[MAX_NAME_LENGTH];
-                char player_teammate_name[MAX_NAME_LENGTH];
-
-                GetClientName(foe, foe_name, sizeof(foe_name));
-                GetClientName(client, player_name, sizeof(player_name));
-                
-                if (IsValidClient(foe2))
-                    GetClientName(foe2, foe2_name, sizeof(foe2_name));
-                else
-                    strcopy(foe2_name, sizeof(foe2_name), "Unknown");
-                    
-                if (IsValidClient(player_teammate))
-                    GetClientName(player_teammate, player_teammate_name, sizeof(player_teammate_name));
-                else
-                    strcopy(player_teammate_name, sizeof(player_teammate_name), "Unknown");
-
-                Format(foe_name, sizeof(foe_name), "%s and %s", foe_name, foe2_name);
-                Format(player_name, sizeof(player_name), "%s and %s", player_name, player_teammate_name);
-
                 SetArenaStatus(arena_index, AS_REPORTED);
 
-                if (g_iArenaScore[arena_index][foe_team_slot] > g_iArenaScore[arena_index][player_team_slot])
+                int stayerScore = g_iArenaScore[arena_index][foe_team_slot];
+                int leaverScore = g_iArenaScore[arena_index][player_team_slot];
+
+                if (ShouldForfeitOnLeave(stayerScore, leaverScore))
                 {
-                    if (g_iArenaScore[arena_index][foe_team_slot] >= g_iArenaEarlyLeave[arena_index])
-                    {
-                        Rating_ReportResult(foe, 0, client, 0);
-                        if (IsValidClient(foe2))
-                            Rating_ReportResult(foe2, 0, client, 0);
-                        MC_PrintToChatAll("%t", "XdefeatsYearly", foe_name, g_iArenaScore[arena_index][foe_team_slot], player_name, g_iArenaScore[arena_index][player_team_slot], g_sArenaName[arena_index]);
-                    }
+                    ProcessMatchForfeit(arena_index, foe, foe2, client, player_teammate, foe_team_slot, player_team_slot, client, player_slot);
                 }
             }
 
@@ -631,6 +607,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                 SetArenaStatus(arena_index, AS_IDLE);
                 
                 UpdateHudForArena(arena_index);
+                CallForward_OnPlayerArenaRemoved(client, arena_index);
                 return;
             }
         }
@@ -657,22 +634,16 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                 }
             }
 
-            if (g_iArenaStatus[arena_index] >= AS_FIGHT && g_iArenaStatus[arena_index] < AS_REPORTED && calcstats && !g_bNoStats && IsValidClient(foe))
+            if (g_iArenaStatus[arena_index] >= AS_FIGHT && g_iArenaStatus[arena_index] < AS_REPORTED && calcstats && IsValidClient(foe))
             {
-                char foe_name[MAX_NAME_LENGTH];
-                char player_name[MAX_NAME_LENGTH];
-                GetClientName(foe, foe_name, sizeof(foe_name));
-                GetClientName(client, player_name, sizeof(player_name));
-
                 SetArenaStatus(arena_index, AS_REPORTED);
 
-                if (g_iArenaScore[arena_index][foe_slot] > g_iArenaScore[arena_index][player_slot])
+                int stayerScore = g_iArenaScore[arena_index][foe_slot];
+                int leaverScore = g_iArenaScore[arena_index][player_slot];
+
+                if (ShouldForfeitOnLeave(stayerScore, leaverScore))
                 {
-                    if (g_iArenaScore[arena_index][foe_slot] >= g_iArenaEarlyLeave[arena_index])
-                    {
-                        Rating_ReportResult(foe, 0, client, 0);
-                        MC_PrintToChatAll("%t", "XdefeatsYearly", foe_name, g_iArenaScore[arena_index][foe_slot], player_name, g_iArenaScore[arena_index][player_slot], g_sArenaName[arena_index]);
-                    }
+                    ProcessMatchForfeit(arena_index, foe, 0, client, 0, foe_slot, player_slot, client, player_slot);
                 }
             }
 
@@ -697,6 +668,7 @@ void RemoveFromQueue(int client, bool calcstats = false, bool specfix = true)
                 SetArenaStatus(arena_index, AS_IDLE);
                 
                 UpdateHudForArena(arena_index);
+                CallForward_OnPlayerArenaRemoved(client, arena_index);
                 return;
             }
         }
