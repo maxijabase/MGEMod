@@ -14,7 +14,9 @@ This is a fork of sappho's repository, with the following improvements:
 * `mgemod_clear_projectiles` (0/1) - allow server owners to enable/disable projectile deletion upon the start of a new round
 * `mgemod_rating_engine` (`elo`/`glicko2`) - selects the rating engine used to score every duel. Defaults to `elo`, which is the exact same math as before this convar existed. See [Rating Engines](#rating-engines) below.
 * `mgemod_glicko_tau` (float) - Glicko-2 system constant controlling how fast volatility can change. Only used when `mgemod_rating_engine` is `glicko2`.
-* `mgemod_glicko_period_days` (float) - length in days of a Glicko-2 "rating period" for inactivity RD decay. Only used when `mgemod_rating_engine` is `glicko2`.
+* `mgemod_glicko_period_hours` (int, default 24, range 1-168) - wall-clock length of one Glicko-2 rating period. 12 seals twice a day; 48 seals every other day. Only used when `mgemod_rating_engine` is `glicko2`.
+* `mgemod_glicko_period_hour` / `mgemod_glicko_period_minute` / `mgemod_glicko_period_utc_offset` - phase of the period boundary in local time. mge.tf uses `08:20` ART (`utc_offset -3`). Do not set the boundary to `:00` if the box restarts on the hour. Only used when `mgemod_rating_engine` is `glicko2`.
+* `mgemod_glicko_period_days` (float) - inactivity knob: how many missed wall-clock periods of RD inflation to apply when a player does not play. Default `1.0` means one Glicko period of RD growth per missed window. This is not the seal interval (that is `mgemod_glicko_period_hours`). Only used when `mgemod_rating_engine` is `glicko2`.
 * `mgemod_glicko_provisional_rd` (float) - RD threshold above which a player's rating is considered provisional. Only used when `mgemod_rating_engine` is `glicko2`.
 * `mgemod_glicko_ranked_rd` (float) - RD threshold a player must be below to appear on `!top` and external leaderboards. Only used when `mgemod_rating_engine` is `glicko2`.
 * `mgemod_glicko_ranked_min_games` (int) - minimum games (wins+losses) a player needs to appear on `!top` and external leaderboards. Only used when `mgemod_rating_engine` is `glicko2`.
@@ -24,13 +26,21 @@ This is a fork of sappho's repository, with the following improvements:
 MGEMod supports two pluggable rating engines, selected server-wide via `mgemod_rating_engine`. Only one engine is active at a time; there is no dual leaderboard.
 
 * **Elo (default)**: the original K-factor Elo formula this plugin has always used. Selecting this engine (or leaving the convar untouched) is a zero-behavior-change no-op.
-* **Glicko-2 (opt-in)**: an extension of Elo that tracks each player's Rating Deviation (RD, a confidence measure) and Volatility (how erratic their results are) alongside their rating. This lets the system react faster to smurfs and improving players. Inactive players' RD grows, which marks their rating as provisional (`?`) until they play again. HUD, chat, `!rank`, and `!top` always show the raw stored rating. See [glicko.net](http://www.glicko.net/glicko/glicko2.pdf) for the published algorithm this implementation follows.
+* **Glicko-2 (opt-in)**: an extension of Elo that tracks each player's Rating Deviation (RD, a confidence measure) and Volatility (how erratic their results are) alongside their rating. This lets the system react faster to smurfs and improving players. Inactive players' RD grows, which marks their rating as provisional (`?`) until they play again. See [glicko.net](http://www.glicko.net/glicko/glicko2.pdf) for the published algorithm this implementation follows.
 
-`!top` and the external leaderboards (platform API, website) apply a stricter "ranked" bar on top of the provisional flag: a player only shows up there once their RD drops below `mgemod_glicko_ranked_rd` (default 100) and they've played at least `mgemod_glicko_ranked_min_games` (default 10) games. This keeps someone's first lucky win from parking them at #1. `!rank` is exempt from this gate: it always shows your own rank/rating (with the `?` marker if provisional), plus a "Leaderboard: Ranked" / "Leaderboard: Not ranked (...)" line explaining whether and why you're missing from the public tables.
+Under Glicko-2, a **rating period is a wall-clock window** (`mgemod_glicko_period_hours`, default 24h), not one duel. Each 1v1 appends a row to `mgemod_duels` with a freeze of both players' **sealed** rating/RD/volatility. Wins/losses update immediately. Sealed `mgemod_stats.rating` / `rd` / `volatility` only change when a period closes. HUD estimate columns (`rating_est` / `rd_est` / `period_dirty`) are written after each 1v1 so the arena HUD can show a preview as `~2450`. `!top`, `!rank`, the platform poller, and the website read the sealed `rating` column. After close, estimate is copied from the seal and the tilde drops. `?` still means provisional **sealed** RD.
+
+Period close runs **inside the plugin** (30s timer plus a lazy close on `OnPluginStart`). Empty boxes must keep ticking: set `sv_hibernate_when_empty 0`. Because mge.tf boxes already restart every hour, the boot lazy-close is the real safety net. Do not align the close phase with the restart cron (`:00`). Cross-server election uses a **per-SQL-driver advisory lock** on the same stats Database handle (`GET_LOCK` on MySQL/MariaDB, `pg_try_advisory_lock` on Postgres, `BEGIN IMMEDIATE` on SQLite). This is not `SQL_LockDatabase`, which is only an in-process threader mutex and cannot coordinate other srcds instances. Match-end INSERTs do not take that lock. Classelo uses a different lock name so it does not queue behind overall.
+
+Several 1v1s in the same window become one Glicko period (one `phiStar`). One game per window is still one period each. That is expected, not a missed batch.
+
+2v2 duels do **not** write rating, RD, or volatility under either engine. Wins/losses still increment and `mgemod_duels_2v2` is still inserted for audit. `mgemod_2v2_elo` only gates whether 2v2 HUD lines show rating digits.
+
+`!top` and the external leaderboards (platform API, website) apply a stricter "ranked" bar on top of the provisional flag: a player only shows up there once their **sealed** RD drops below `mgemod_glicko_ranked_rd` (default 100) and they've played at least `mgemod_glicko_ranked_min_games` (default 10) games. This keeps someone's first lucky win from parking them at #1. `!rank` is exempt from this gate: it always shows your own sealed rank/rating (with the `?` marker if provisional), plus a "Leaderboard: Ranked" / "Leaderboard: Not ranked (...)" line explaining whether and why you're missing from the public tables.
 
 Both engines share the same `rating` column and the same leaderboard/`!rank`/`min_elo`/`max_elo` gating; Glicko-2 additionally persists `rd` and `volatility` in two nullable columns on `mgemod_stats`. Nullability of `rd` is a strict, unambiguous engine signal: **`rd IS NULL` always means Elo is active, `rd IS NOT NULL` always means Glicko-2 is active** - never "Glicko-2 player who just hasn't played a duel yet". New players get `rd = 350`, `volatility = 0.06` written immediately when their row is created (not lazily on first duel), migration `008_seed_glicko_rd_defaults` backfills any pre-existing rows once, and switching `mgemod_rating_engine` at runtime re-syncs every row both ways (populates defaults when turning Glicko-2 on, clears both columns when turning it off). External tools (the platform sync, the website) rely on this invariant to tell Elo regions and not-yet-established Glicko-2 players apart.
 
-2v2 duels are scored the same way under both engines: each team's rating (and RD/volatility, for Glicko-2) is averaged into a single "virtual player" for the calculation, and the resulting delta is applied identically to both teammates. This mirrors the existing Elo 2v2 behavior and is not a pairwise per-player breakdown.
+2v2 duels do not move `rating` under either engine. Wins/losses and the 2v2 duel log still persist. `mgemod_2v2_elo` only controls whether rating digits appear on 2v2 HUD lines.
 
 ## Database & Backend
 
@@ -80,7 +90,7 @@ Both engines share the same `rating` column and the same leaderboard/`!rank`/`mi
 * Fixed names sometimes getting cut off in the HUD text
 * Improved displaying player names in the HUD
 * Teammates no longer spawn in the same spot
-* Added `mgemod_2v2_elo` (0/1) ConVar to allow server owners to enable/disable 2v2 duels from affecting players ELOs
+* Added `mgemod_2v2_elo` (0/1) ConVar to allow server owners to enable/disable rating digits on 2v2 HUD lines. 2v2 never writes rating/RD/volatility.
 
 ## Developer Experience
 
