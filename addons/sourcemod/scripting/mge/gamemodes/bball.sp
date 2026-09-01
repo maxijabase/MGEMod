@@ -260,6 +260,13 @@ Action OnTouchHoop(int entity, int other)
 
             MC_PrintToChatAll("%t", "XdefeatsY", client_name, g_iArenaScore[arena_index][client_team_slot], foe_name, g_iArenaScore[arena_index][foe_team_slot], fraglimit, g_sArenaName[arena_index]);
 
+            if (!g_bFourPersonArena[arena_index])
+                CallForward_On1v1MatchEnd(arena_index, client, foe, g_iArenaScore[arena_index][client_team_slot], g_iArenaScore[arena_index][foe_team_slot]);
+            else
+                CallForward_On2v2MatchEnd(arena_index, (client_team_slot == SLOT_ONE) ? TEAM_RED : TEAM_BLU, g_iArenaScore[arena_index][client_team_slot], g_iArenaScore[arena_index][foe_team_slot],
+                    g_iArenaQueue[arena_index][SLOT_ONE], g_iArenaQueue[arena_index][SLOT_THREE],
+                    g_iArenaQueue[arena_index][SLOT_TWO], g_iArenaQueue[arena_index][SLOT_FOUR]);
+
             Rating_ReportResult(client, client_teammate, foe, foe_teammate);
 
             HideIntel(arena_index);
