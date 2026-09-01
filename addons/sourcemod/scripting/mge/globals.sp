@@ -53,6 +53,7 @@ int g_iGlickoPeriodHours;
 int g_iGlickoPeriodHour;
 int g_iGlickoPeriodMinute;
 int g_iGlickoPeriodUtcOffset;
+bool g_bGlickoPeriodCloseEnabled;
 bool g_bGlickoPeriodSchemaReady;
 bool g_bGlickoPeriodCloseRunning;
 bool g_bGlickoPeriodLockHeld;
@@ -134,7 +135,8 @@ Convar
     gcvar_glickoPeriodHours,
     gcvar_glickoPeriodHour,
     gcvar_glickoPeriodMinute,
-    gcvar_glickoPeriodUtcOffset;
+    gcvar_glickoPeriodUtcOffset,
+    gcvar_glickoPeriodClose;
 
 // Classes
 bool g_tfctClassAllowed[10];

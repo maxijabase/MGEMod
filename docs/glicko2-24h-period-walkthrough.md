@@ -60,7 +60,7 @@ Period **length** is `mgemod_glicko_period_hours` (1–168, default 24). Separat
 
 ### 3.2 Close inside the plugin, no Railway worker
 
-MGEMod must stay a self-contained SourceMod plugin. An external closer would break third-party servers. Close is a 30s repeating timer plus a boot pass. Empty boxes must keep ticking: **`sv_hibernate_when_empty 0`**.
+MGEMod must stay a self-contained SourceMod plugin. An external closer would break third-party servers. Close is a 30s repeating timer plus a boot pass, gated by **`mgemod_glicko_period_close`** (default `0`). On mge.tf only the `db+gameserver` host sets this to `1` (localhost MariaDB). Other regional game servers stay at `0`. Third-party single-server installs set it to `1`. The closer box must keep ticking: **`sv_hibernate_when_empty 0`**. The advisory lock is a second line of defense if more than one instance on that box has the cvar on.
 
 Do not freeze arenas during close. Updates are chunked (`GLICKO_PERIOD_UPDATE_CHUNK` 40 rows). Typical close is sub-second to a few seconds on current SA volume, not minutes.
 
@@ -74,7 +74,7 @@ Do not freeze arenas during close. Updates are chunked (`GLICKO_PERIOD_UPDATE_CH
 | PostgreSQL | `SELECT pg_try_advisory_lock(hashtext('mgemod_period_close'))` |
 | SQLite | no cross-process lock (single writer). Skip or rely on one box. |
 
-Timeout 0: try once, leave if busy. The loser retries on the next 30s tick. First winner is whichever srcds timer fires first. That race is accepted.
+Timeout 0: try once, leave if busy. The loser retries on the next 30s tick. With `mgemod_glicko_period_close` only enabled on the DB host, the lock is belt-and-suspenders among slots on that box — not a fleet-wide race.
 
 classelo uses a **different** lock name: `mge_classelo_period_close`. It must not queue behind overall MGE close.
 
@@ -195,8 +195,8 @@ Harness: SourceMod MCP `user-sourcemod`, MariaDB Docker `sbpp-db` database `sm` 
 
 ### Not tested (non-blocking)
 
-- Real 08:20 on an empty production box (hibernate off is required).
-- Two live srcds fighting the lock at once (lock SQL was unit-tested, not two processes).
+- Real 08:20 on an empty production closer box (hibernate off is required on that host).
+- Two live srcds on the same DB host fighting the lock at once (lock SQL was unit-tested, not two processes).
 - SQLite and Postgres close paths.
 - Flipping `mgemod_rating_engine` back to Elo after a sealed Glicko history.
 
@@ -208,7 +208,7 @@ Pre-existing compile warning: `migrations.sp` `IsAlreadyAppliedMigrationError` s
 
 **HUD has `~` but website does not.** Expected until the next seal. Website reads sealed `rating`.
 
-**HUD `~` never drops.** Check `mgemod_period_state.last_sealed_period_id`, plugin timer, `sv_hibernate_when_empty`, and whether this box lost `GET_LOCK` to another srcds that then crashed mid-close (`period_sealed` leftover). Force a leftover close by advancing `last_sealed_period_id` only if you understand leftover recompute. Do not delete `mgemod_duels` rows from the open period.
+**HUD `~` never drops.** Check `mgemod_glicko_period_close` is `1` on the DB host, `mgemod_period_state.last_sealed_period_id`, plugin timer, `sv_hibernate_when_empty`, and whether this box lost `GET_LOCK` to another srcds that then crashed mid-close (`period_sealed` leftover). Force a leftover close by advancing `last_sealed_period_id` only if you understand leftover recompute. Do not delete `mgemod_duels` rows from the open period.
 
 **Two servers double-sealed.** Should be impossible with `GET_LOCK`. If you see it, they are not on the same MariaDB, lock name changed, or driver is SQLite.
 

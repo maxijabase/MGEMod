@@ -98,6 +98,9 @@ void GlickoPeriod_TryClose()
     if (g_eRatingEngine != RATING_ENGINE_GLICKO2 || g_bNoStats || g_DB == null || !g_bGlickoPeriodSchemaReady)
         return;
 
+    if (!g_bGlickoPeriodCloseEnabled)
+        return;
+
     if (g_bGlickoPeriodCloseRunning)
         return;
 

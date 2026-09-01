@@ -39,7 +39,7 @@ addons/sourcemod/scripting/
 │   │   ├── rating_core.sp    # Rating_ReportResult dispatcher, display/leaderboard/win-chance helpers
 │   │   ├── engine_elo.sp # Default rating engine (original ELO math, unchanged)
 │   │   ├── engine_glicko2.sp # Opt-in Glicko-2 math (mgemod_rating_engine "glicko2")
-│   │   └── glicko_period.sp # Wall-clock period close, lock, leftover, HUD estimates
+│   │   └── glicko_period.sp # Wall-clock period close (only if mgemod_glicko_period_close 1), lock, leftover, HUD estimates
 │   ├── gamemodes/
 │   │   ├── bball.sp          # Basketball mode
 │   │   ├── koth.sp           # King of the Hill mode
@@ -133,7 +133,7 @@ Supports three backends (auto-detected from SourceMod's `databases.cfg`):
 
 Schema is managed through `migrations.sp` — migrations run automatically on plugin load. The plugin functions without a database (stats/ELO disabled).
 
-`mgemod_stats.rating` is shared by both engines. Under **Elo** it updates every duel. Under **Glicko-2** it is the **sealed** rating and only moves when a wall-clock period closes (`glicko_period.sp`). HUD preview columns `rating_est` / `rd_est` / `period_dirty` are not read by `!top`, platform, or the website. `rd` and `volatility` (nullable, migration `007_add_glicko_columns`) are only meaningful when `mgemod_rating_engine` is `glicko2`. **`rd IS NULL` means Elo. `rd IS NOT NULL` means Glicko-2.** Period schema is migration `009_glicko_period_schema`. Full decisions and test notes: [docs/glicko2-24h-period-walkthrough.md](docs/glicko2-24h-period-walkthrough.md).
+`mgemod_stats.rating` is shared by both engines. Under **Elo** it updates every duel. Under **Glicko-2** it is the **sealed** rating and only moves when a wall-clock period closes (`glicko_period.sp`), and only on the instance with `mgemod_glicko_period_close 1` (the localhost DB host). HUD preview columns `rating_est` / `rd_est` / `period_dirty` are not read by `!top`, platform, or the website. `rd` and `volatility` (nullable, migration `007_add_glicko_columns`) are only meaningful when `mgemod_rating_engine` is `glicko2`. **`rd IS NULL` means Elo. `rd IS NOT NULL` means Glicko-2.** Period schema is migration `009_glicko_period_schema`. Full decisions and test notes: [docs/glicko2-24h-period-walkthrough.md](docs/glicko2-24h-period-walkthrough.md).
 
 ## Build & Release
 
