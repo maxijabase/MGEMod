@@ -173,6 +173,9 @@ void ResetPlayerStatsIdentity(int client)
     g_fPlayerRD[client] = 0.0;
     g_fPlayerVolatility[client] = 0.0;
     g_iPlayerLastPlayed[client] = 0;
+    g_iPlayerRatingEst[client] = 0;
+    g_fPlayerRDEst[client] = 0.0;
+    g_bPlayerPeriodDirty[client] = false;
     g_ePlayerStatsRetryFailureState[client] = MGE_STATS_DB_FAILED;
     SetPlayerStatsLoadState(client, MGE_STATS_NONE);
 }

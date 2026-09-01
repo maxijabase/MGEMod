@@ -15,7 +15,9 @@
 // textually before any file that uses it, unlike function symbols.
 #define MATCH_TXN_MAX_QUERIES 8
 #define MATCH_TXN_MAX_RETRIES 5
-#define MATCH_TXN_QUERY_LEN 1024
+#define MATCH_TXN_QUERY_LEN 2048
+#define GLICKO2_MAX_PERIOD_GAMES 512
+#define GLICKO_PERIOD_LOCK_NAME "mgemod_period_close"
 
 #define MODEL_POINT             "models/props_gameplay/cap_point_base.mdl"
 #define MODEL_BRIEFCASE         "models/flag/briefcase.mdl"
@@ -47,6 +49,15 @@ float g_fGlickoPeriodDays;
 float g_fGlickoProvisionalRd;
 float g_fGlickoRankedRd;
 int g_iGlickoRankedMinGames;
+int g_iGlickoPeriodHours;
+int g_iGlickoPeriodHour;
+int g_iGlickoPeriodMinute;
+int g_iGlickoPeriodUtcOffset;
+bool g_bGlickoPeriodSchemaReady;
+bool g_bGlickoPeriodCloseRunning;
+bool g_bGlickoPeriodLockHeld;
+int g_iGlickoLastSealedPeriodId;
+Handle g_hGlickoPeriodTimer;
 
 #define GLICKO2_SCALE               173.7178
 #define GLICKO2_MAX_RD              350.0
@@ -119,7 +130,11 @@ Convar
     gcvar_glickoPeriodDays,
     gcvar_glickoProvisionalRd,
     gcvar_glickoRankedRd,
-    gcvar_glickoRankedMinGames;
+    gcvar_glickoRankedMinGames,
+    gcvar_glickoPeriodHours,
+    gcvar_glickoPeriodHour,
+    gcvar_glickoPeriodMinute,
+    gcvar_glickoPeriodUtcOffset;
 
 // Classes
 bool g_tfctClassAllowed[10];
@@ -243,9 +258,12 @@ int
 
 // Glicko-2 rating engine state (only meaningful when mgemod_rating_engine is "glicko2")
 bool g_bPlayerGlickoSeeded [MAXPLAYERS + 1];
+bool g_bPlayerPeriodDirty  [MAXPLAYERS + 1];
 float
     g_fPlayerRD             [MAXPLAYERS + 1],
-    g_fPlayerVolatility     [MAXPLAYERS + 1];
+    g_fPlayerVolatility     [MAXPLAYERS + 1],
+    g_fPlayerRDEst          [MAXPLAYERS + 1];
+int g_iPlayerRatingEst     [MAXPLAYERS + 1];
 
 // Pending arena context used when presenting menus without committing to arena changes yet
 int g_iPendingArena[MAXPLAYERS + 1];

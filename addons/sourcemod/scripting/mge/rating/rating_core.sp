@@ -48,6 +48,14 @@ void Rating_RecordMatchOutcome(int winner1, int winner2, int loser1, int loser2)
 // Returns the number to show/gate on for a player, regardless of active engine.
 // Always the stored rating. Glicko-2 uncertainty is the HUD/join "?" via Rating_IsProvisional,
 // not a subtracted display value.
+int Rating_GetHudDisplayValue(int client)
+{
+    if (g_eRatingEngine == RATING_ENGINE_GLICKO2 && g_bPlayerPeriodDirty[client])
+        return g_iPlayerRatingEst[client];
+
+    return g_iPlayerRating[client];
+}
+
 int Rating_GetDisplayValue(int client)
 {
     return g_iPlayerRating[client];

@@ -15,7 +15,7 @@
 #include <convar_class>
 #include <mge>
 
-#define PL_VERSION "3.1.0-beta35"
+#define PL_VERSION "3.1.0-beta36"
 
 #define MAXARENAS 63
 #define MAXSPAWNS 15
@@ -30,6 +30,7 @@
 #include "mge/rating/rating_core.sp"
 #include "mge/rating/engine_elo.sp"
 #include "mge/rating/engine_glicko2.sp"
+#include "mge/rating/glicko_period.sp"
 #include "mge/sql.sp"
 #include "mge/hud.sp"
 #include "mge/arenas.sp"
@@ -120,6 +121,10 @@ public void OnPluginStart()
     gcvar_glickoProvisionalRd = new Convar("mgemod_glicko_provisional_rd", "200.0", "RD threshold above which a player's Glicko-2 rating is considered provisional. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 50.0, true, 350.0);
     gcvar_glickoRankedRd = new Convar("mgemod_glicko_ranked_rd", "100.0", "RD threshold a Glicko-2 player must be below to appear on !top and external leaderboards. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 30.0, true, 350.0);
     gcvar_glickoRankedMinGames = new Convar("mgemod_glicko_ranked_min_games", "10", "Minimum games (wins+losses) a Glicko-2 player needs to appear on !top and external leaderboards. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 0.0, true, 1000.0);
+    gcvar_glickoPeriodHours = new Convar("mgemod_glicko_period_hours", "24", "Length of one Glicko-2 rating period in hours (1-168). Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 1.0, true, 168.0);
+    gcvar_glickoPeriodHour = new Convar("mgemod_glicko_period_hour", "8", "Local hour (0-23) of the period boundary. Combined with mgemod_glicko_period_minute. Do not use 0 if the box restarts on the hour. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 0.0, true, 23.0);
+    gcvar_glickoPeriodMinute = new Convar("mgemod_glicko_period_minute", "20", "Local minute (0-59) of the period boundary. Only used when mgemod_rating_engine is \"glicko2\".", FCVAR_NONE, true, 0.0, true, 59.0);
+    gcvar_glickoPeriodUtcOffset = new Convar("mgemod_glicko_period_utc_offset", "-3", "Hours added to UTC to get local time for the period boundary (ART is -3). Only used when mgemod_rating_engine is \"glicko2\".");
 
     // Create config file
     Convar.CreateConfig("mge");
@@ -140,6 +145,10 @@ public void OnPluginStart()
     g_fGlickoProvisionalRd = gcvar_glickoProvisionalRd.FloatValue;
     g_fGlickoRankedRd = gcvar_glickoRankedRd.FloatValue;
     g_iGlickoRankedMinGames = gcvar_glickoRankedMinGames.IntValue;
+    g_iGlickoPeriodHours = gcvar_glickoPeriodHours.IntValue;
+    g_iGlickoPeriodHour = gcvar_glickoPeriodHour.IntValue;
+    g_iGlickoPeriodMinute = gcvar_glickoPeriodMinute.IntValue;
+    g_iGlickoPeriodUtcOffset = gcvar_glickoPeriodUtcOffset.IntValue;
 
     char sRatingEngine[16];
     gcvar_ratingEngine.GetString(sRatingEngine, sizeof(sRatingEngine));
@@ -190,6 +199,10 @@ public void OnPluginStart()
     gcvar_glickoProvisionalRd.AddChangeHook(handler_ConVarChange);
     gcvar_glickoRankedRd.AddChangeHook(handler_ConVarChange);
     gcvar_glickoRankedMinGames.AddChangeHook(handler_ConVarChange);
+    gcvar_glickoPeriodHours.AddChangeHook(handler_ConVarChange);
+    gcvar_glickoPeriodHour.AddChangeHook(handler_ConVarChange);
+    gcvar_glickoPeriodMinute.AddChangeHook(handler_ConVarChange);
+    gcvar_glickoPeriodUtcOffset.AddChangeHook(handler_ConVarChange);
 
     // Client commands
     RegConsoleCmd("mgemod", Command_Menu, "MGEMod Menu");
@@ -644,6 +657,14 @@ void handler_ConVarChange(Handle convar, const char[] oldValue, const char[] new
         g_fGlickoRankedRd = floatValue;
     else if (convar == gcvar_glickoRankedMinGames)
         g_iGlickoRankedMinGames = intValue;
+    else if (convar == gcvar_glickoPeriodHours)
+        g_iGlickoPeriodHours = intValue;
+    else if (convar == gcvar_glickoPeriodHour)
+        g_iGlickoPeriodHour = intValue;
+    else if (convar == gcvar_glickoPeriodMinute)
+        g_iGlickoPeriodMinute = intValue;
+    else if (convar == gcvar_glickoPeriodUtcOffset)
+        g_iGlickoPeriodUtcOffset = intValue;
 }
 
 

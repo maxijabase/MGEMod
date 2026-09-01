@@ -71,23 +71,62 @@ float Glicko2_F(float delta, float phi, float v, float x, float a, float tau)
     return (num / den) - ((x - a) / (tau * tau));
 }
 
-// Pure Glicko-2 update for a single player against a single opponent in one rating period.
-// Operates entirely on the Elo-like display scale (rating ~1500, rd in points) so callers
-// never touch the internal mu/phi scale. Does not read or write any global state.
-void Glicko2_ComputeUpdate(float rating, float rd, float volatility, float oppRating, float oppRd, float score,
+// Inflates RD by one rating period with no games (Glickman step 6, no-game case).
+void Glicko2_InflateRdOnePeriod(float rd, float volatility, float &newRd)
+{
+    float phi = rd / GLICKO2_SCALE;
+    float inflatedPhi = SquareRoot((phi * phi) + (volatility * volatility));
+    float maxPhi = GLICKO2_MAX_RD / GLICKO2_SCALE;
+    if (inflatedPhi > maxPhi)
+        inflatedPhi = maxPhi;
+    newRd = inflatedPhi * GLICKO2_SCALE;
+}
+
+// Pure Glicko-2 update for one rating period against any number of opponents.
+// One phiStar, v and Δ as sums over the period. Display-scale in/out. No global writes.
+void Glicko2_ComputePeriodUpdate(float rating, float rd, float volatility, int gameCount,
+    const float[] oppRating, const float[] oppRd, const float[] score,
     float &newRating, float &newRd, float &newVolatility)
 {
+    if (gameCount <= 0)
+    {
+        newRating = rating;
+        newRd = rd;
+        newVolatility = volatility;
+        return;
+    }
+
     float mu = (rating - 1500.0) / GLICKO2_SCALE;
     float phi = rd / GLICKO2_SCALE;
     float sigma = volatility;
 
-    float oppMu = (oppRating - 1500.0) / GLICKO2_SCALE;
-    float oppPhi = oppRd / GLICKO2_SCALE;
+    float vInv = 0.0;
+    float deltaSum = 0.0;
 
-    float g = Glicko2_G(oppPhi);
-    float e = Glicko2_E(mu, oppMu, oppPhi);
-    float v = 1.0 / (g * g * e * (1.0 - e));
-    float delta = v * g * (score - e);
+    for (int i = 0; i < gameCount; i++)
+    {
+        float oppMu = (oppRating[i] - 1500.0) / GLICKO2_SCALE;
+        float oppPhi = oppRd[i] / GLICKO2_SCALE;
+        float g = Glicko2_G(oppPhi);
+        float e = Glicko2_E(mu, oppMu, oppPhi);
+        if (e < 0.0001)
+            e = 0.0001;
+        else if (e > 0.9999)
+            e = 0.9999;
+        vInv += g * g * e * (1.0 - e);
+        deltaSum += g * (score[i] - e);
+    }
+
+    if (vInv <= 0.0)
+    {
+        newRating = rating;
+        Glicko2_InflateRdOnePeriod(rd, volatility, newRd);
+        newVolatility = volatility;
+        return;
+    }
+
+    float v = 1.0 / vInv;
+    float delta = v * deltaSum;
 
     float a = Logarithm(sigma * sigma, GLICKO2_E);
     float tau = g_fGlickoTau;
@@ -136,12 +175,23 @@ void Glicko2_ComputeUpdate(float rating, float rd, float volatility, float oppRa
     float newSigma = Pow(GLICKO2_E, A / 2.0);
     float phiStar = SquareRoot((phi * phi) + (newSigma * newSigma));
     float newPhi = 1.0 / SquareRoot((1.0 / (phiStar * phiStar)) + (1.0 / v));
-    float newMu = mu + ((newPhi * newPhi) * g * (score - e));
+    float newMu = mu + ((newPhi * newPhi) * deltaSum);
 
     newRating = (newMu * GLICKO2_SCALE) + 1500.0;
     float newRdRaw = newPhi * GLICKO2_SCALE;
     newRd = (newRdRaw > GLICKO2_MAX_RD) ? GLICKO2_MAX_RD : newRdRaw;
     newVolatility = newSigma;
+}
+
+// Single-opponent wrapper. Same math as a one-game period.
+void Glicko2_ComputeUpdate(float rating, float rd, float volatility, float oppRating, float oppRd, float score,
+    float &newRating, float &newRd, float &newVolatility)
+{
+    float oppRatings[1], oppRds[1], scores[1];
+    oppRatings[0] = oppRating;
+    oppRds[0] = oppRd;
+    scores[0] = score;
+    Glicko2_ComputePeriodUpdate(rating, rd, volatility, 1, oppRatings, oppRds, scores, newRating, newRd, newVolatility);
 }
 
 // Calculates Glicko-2 ratings for 1v1 duels and updates player statistics in database
@@ -150,10 +200,57 @@ void Engine_Glicko2_OnMatchResult(int winner, int loser)
     if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || g_bSuppressEloUpdates)
         return;
 
-    // Skip rating calculations if either player has unverified stats
     if (!IsPlayerEligibleForElo(winner) || !IsPlayerEligibleForElo(loser))
         return;
 
+    if (!g_bGlickoPeriodSchemaReady)
+    {
+        Engine_Glicko2_OnMatchResultLegacy(winner, loser);
+        return;
+    }
+
+    int now = GetTime();
+
+    Glicko2_EnsureSeeded(winner);
+    Glicko2_EnsureSeeded(loser);
+
+    int winnerSealed = g_iPlayerRating[winner];
+    int loserSealed = g_iPlayerRating[loser];
+    float winnerSealedRd = g_fPlayerRD[winner];
+    float loserSealedRd = g_fPlayerRD[loser];
+    float winnerSealedVol = g_fPlayerVolatility[winner];
+    float loserSealedVol = g_fPlayerVolatility[loser];
+
+    g_iPlayerLastPlayed[winner] = now;
+    g_iPlayerLastPlayed[loser] = now;
+    Rating_RecordMatchOutcome(winner, 0, loser, 0);
+
+    int arena_index = g_iPlayerArena[winner];
+    int winner_team_slot = (g_iPlayerSlot[winner] > 2) ? (g_iPlayerSlot[winner] - 2) : g_iPlayerSlot[winner];
+    int loser_team_slot = (g_iPlayerSlot[loser] > 2) ? (g_iPlayerSlot[loser] - 2) : g_iPlayerSlot[loser];
+
+    char winnerClass[64], loserClass[64];
+    GetPlayerClassString(winner, arena_index, winnerClass, sizeof(winnerClass));
+    GetPlayerClassString(loser, arena_index, loserClass, sizeof(loserClass));
+
+    int periodId = GlickoPeriod_GetId();
+    int startTime = g_iArenaDuelStartTime[arena_index];
+
+    char txnQueries[MATCH_TXN_MAX_QUERIES][MATCH_TXN_QUERY_LEN];
+
+    GetInsertDuelQuery(txnQueries[0], MATCH_TXN_QUERY_LEN, g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], now, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass, winnerSealed, winnerSealed, loserSealed, loserSealed, periodId, winnerSealedRd, winnerSealedVol, loserSealedRd, loserSealedVol);
+
+    GetUpdateWinsOnlyQuery(txnQueries[1], MATCH_TXN_QUERY_LEN, now, g_sPlayerSteamID[winner]);
+    GetUpdateLossesOnlyQuery(txnQueries[2], MATCH_TXN_QUERY_LEN, now, g_sPlayerSteamID[loser]);
+
+    ExecuteMatchResultQueries(txnQueries, 3);
+
+    GlickoPeriod_RefreshEstimate(winner);
+    GlickoPeriod_RefreshEstimate(loser);
+}
+
+void Engine_Glicko2_OnMatchResultLegacy(int winner, int loser)
+{
     int now = GetTime();
 
     Glicko2_EnsureSeeded(winner);
@@ -185,7 +282,6 @@ void Engine_Glicko2_OnMatchResult(int winner, int loser)
     g_iPlayerLastPlayed[loser] = now;
     Rating_RecordMatchOutcome(winner, 0, loser, 0);
 
-    // Call rating change forwards
     int arena_index = g_iPlayerArena[winner];
     CallForward_OnPlayerELOChange(winner, winner_previous_elo, g_iPlayerRating[winner], arena_index);
     CallForward_OnPlayerELOChange(loser, loser_previous_elo, g_iPlayerRating[loser], arena_index);
@@ -201,38 +297,29 @@ void Engine_Glicko2_OnMatchResult(int winner, int loser)
     if (IsValidClient(loser) && !g_bNoDisplayRating && g_bShowElo[loser])
         MC_PrintToChat(loser, "%t", "LostRatingNow", (loserscore >= 0) ? loserscore : -loserscore, g_iPlayerRating[loser]);
 
-    // This is necessary for when a player leaves a 2v2 arena that is almost done.
     int winner_team_slot = (g_iPlayerSlot[winner] > 2) ? (g_iPlayerSlot[winner] - 2) : g_iPlayerSlot[winner];
     int loser_team_slot = (g_iPlayerSlot[loser] > 2) ? (g_iPlayerSlot[loser] - 2) : g_iPlayerSlot[loser];
 
-    // DB entry for this specific duel.
     char winnerClass[64], loserClass[64];
     GetPlayerClassString(winner, arena_index, winnerClass, sizeof(winnerClass));
     GetPlayerClassString(loser, arena_index, loserClass, sizeof(loserClass));
 
     int startTime = g_iArenaDuelStartTime[arena_index];
-    int endTime = now;
 
     char txnQueries[MATCH_TXN_MAX_QUERIES][MATCH_TXN_QUERY_LEN];
 
-    GetInsertDuelQuery(txnQueries[0], MATCH_TXN_QUERY_LEN, g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass, winner_previous_elo, g_iPlayerRating[winner], loser_previous_elo, g_iPlayerRating[loser]);
+    GetInsertDuelQuery(txnQueries[0], MATCH_TXN_QUERY_LEN, g_sPlayerSteamID[winner], g_sPlayerSteamID[loser], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], now, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, loserClass, winner_previous_elo, g_iPlayerRating[winner], loser_previous_elo, g_iPlayerRating[loser]);
 
-    // Winner's stats
     GetUpdateWinnerGlickoStatsQuery(txnQueries[1], MATCH_TXN_QUERY_LEN, g_iPlayerRating[winner] - winner_previous_elo, g_fPlayerRD[winner], g_fPlayerVolatility[winner], now, g_sPlayerSteamID[winner]);
-
-    // Loser's stats
     GetUpdateLoserGlickoStatsQuery(txnQueries[2], MATCH_TXN_QUERY_LEN, g_iPlayerRating[loser] - loser_previous_elo, g_fPlayerRD[loser], g_fPlayerVolatility[loser], now, g_sPlayerSteamID[loser]);
 
     ExecuteMatchResultQueries(txnQueries, 3);
 }
 
-// Calculates Glicko-2 ratings for 2v2 duels using team-averaged rating/RD/volatility
-// "virtual players", the same team-average approach CalcELO2 uses for Elo (explicit product
-// decision: no pairwise decomposition). Both teammates receive the identical resulting delta
-// and the identical resulting RD/volatility, mirroring the current Elo 2v2 behavior exactly.
+// 2v2 does not move rating, RD, or volatility. Wins/losses and the 2v2 duel log still persist.
 void Engine_Glicko2_OnMatchResult2v2(int winner, int winner2, int loser, int loser2)
 {
-    if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || g_bSuppressEloUpdates || IsFakeClient(loser2) || IsFakeClient(winner2) || !g_b2v2Elo)
+    if (IsFakeClient(winner) || IsFakeClient(loser) || g_bNoStats || g_bSuppressEloUpdates || IsFakeClient(loser2) || IsFakeClient(winner2))
         return;
 
     if (!IsPlayerEligibleForElo(winner) || !IsPlayerEligibleForElo(winner2) ||
@@ -240,53 +327,10 @@ void Engine_Glicko2_OnMatchResult2v2(int winner, int winner2, int loser, int los
         return;
 
     int now = GetTime();
-
-    Glicko2_EnsureSeeded(winner);
-    Glicko2_EnsureSeeded(winner2);
-    Glicko2_EnsureSeeded(loser);
-    Glicko2_EnsureSeeded(loser2);
-    Glicko2_ApplyInactivityDecay(winner, now);
-    Glicko2_ApplyInactivityDecay(winner2, now);
-    Glicko2_ApplyInactivityDecay(loser, now);
-    Glicko2_ApplyInactivityDecay(loser2, now);
-
     int winner_previous_elo = g_iPlayerRating[winner];
     int winner2_previous_elo = g_iPlayerRating[winner2];
     int loser_previous_elo = g_iPlayerRating[loser];
     int loser2_previous_elo = g_iPlayerRating[loser2];
-
-    float winnerTeamRating = float(winner_previous_elo + winner2_previous_elo) / 2.0;
-    float loserTeamRating = float(loser_previous_elo + loser2_previous_elo) / 2.0;
-    float winnerTeamRd = (g_fPlayerRD[winner] + g_fPlayerRD[winner2]) / 2.0;
-    float loserTeamRd = (g_fPlayerRD[loser] + g_fPlayerRD[loser2]) / 2.0;
-    float winnerTeamVolatility = (g_fPlayerVolatility[winner] + g_fPlayerVolatility[winner2]) / 2.0;
-    float loserTeamVolatility = (g_fPlayerVolatility[loser] + g_fPlayerVolatility[loser2]) / 2.0;
-
-    float newWinnerTeamRating, newWinnerTeamRd, newWinnerTeamVolatility;
-    float newLoserTeamRating, newLoserTeamRd, newLoserTeamVolatility;
-
-    Glicko2_ComputeUpdate(winnerTeamRating, winnerTeamRd, winnerTeamVolatility, loserTeamRating, loserTeamRd, 1.0,
-        newWinnerTeamRating, newWinnerTeamRd, newWinnerTeamVolatility);
-    Glicko2_ComputeUpdate(loserTeamRating, loserTeamRd, loserTeamVolatility, winnerTeamRating, winnerTeamRd, 0.0,
-        newLoserTeamRating, newLoserTeamRd, newLoserTeamVolatility);
-
-    int winnerscore = RoundFloat(newWinnerTeamRating - winnerTeamRating);
-    int loserscore = RoundFloat(loserTeamRating - newLoserTeamRating);
-
-    g_iPlayerRating[winner] += winnerscore;
-    g_iPlayerRating[winner2] += winnerscore;
-    g_iPlayerRating[loser] -= loserscore;
-    g_iPlayerRating[loser2] -= loserscore;
-
-    g_fPlayerRD[winner] = newWinnerTeamRd;
-    g_fPlayerRD[winner2] = newWinnerTeamRd;
-    g_fPlayerRD[loser] = newLoserTeamRd;
-    g_fPlayerRD[loser2] = newLoserTeamRd;
-
-    g_fPlayerVolatility[winner] = newWinnerTeamVolatility;
-    g_fPlayerVolatility[winner2] = newWinnerTeamVolatility;
-    g_fPlayerVolatility[loser] = newLoserTeamVolatility;
-    g_fPlayerVolatility[loser2] = newLoserTeamVolatility;
 
     g_iPlayerLastPlayed[winner] = now;
     g_iPlayerLastPlayed[winner2] = now;
@@ -294,33 +338,10 @@ void Engine_Glicko2_OnMatchResult2v2(int winner, int winner2, int loser, int los
     g_iPlayerLastPlayed[loser2] = now;
     Rating_RecordMatchOutcome(winner, winner2, loser, loser2);
 
-    // Call rating change forwards for all players
     int arena_index = g_iPlayerArena[winner];
-    CallForward_OnPlayerELOChange(winner, winner_previous_elo, g_iPlayerRating[winner], arena_index);
-    CallForward_OnPlayerELOChange(winner2, winner2_previous_elo, g_iPlayerRating[winner2], arena_index);
-    CallForward_OnPlayerELOChange(loser, loser_previous_elo, g_iPlayerRating[loser], arena_index);
-    CallForward_OnPlayerELOChange(loser2, loser2_previous_elo, g_iPlayerRating[loser2], arena_index);
-    CallForward_OnPlayerRatingChange(winner, winner_previous_elo, g_iPlayerRating[winner], winnerTeamRd, g_fPlayerRD[winner], arena_index);
-    CallForward_OnPlayerRatingChange(winner2, winner2_previous_elo, g_iPlayerRating[winner2], winnerTeamRd, g_fPlayerRD[winner2], arena_index);
-    CallForward_OnPlayerRatingChange(loser, loser_previous_elo, g_iPlayerRating[loser], loserTeamRd, g_fPlayerRD[loser], arena_index);
-    CallForward_OnPlayerRatingChange(loser2, loser2_previous_elo, g_iPlayerRating[loser2], loserTeamRd, g_fPlayerRD[loser2], arena_index);
-
     int winner_team_slot = (g_iPlayerSlot[winner] > 2) ? (g_iPlayerSlot[winner] - 2) : g_iPlayerSlot[winner];
     int loser_team_slot = (g_iPlayerSlot[loser] > 2) ? (g_iPlayerSlot[loser] - 2) : g_iPlayerSlot[loser];
 
-    if (IsValidClient(winner) && !g_bNoDisplayRating && g_bShowElo[winner])
-        MC_PrintToChat(winner, "%t", "GainedRatingNow", (winnerscore >= 0) ? winnerscore : -winnerscore, g_iPlayerRating[winner]);
-
-    if (IsValidClient(winner2) && !g_bNoDisplayRating && g_bShowElo[winner2])
-        MC_PrintToChat(winner2, "%t", "GainedRatingNow", (winnerscore >= 0) ? winnerscore : -winnerscore, g_iPlayerRating[winner2]);
-
-    if (IsValidClient(loser) && !g_bNoDisplayRating && g_bShowElo[loser])
-        MC_PrintToChat(loser, "%t", "LostRatingNow", (loserscore >= 0) ? loserscore : -loserscore, g_iPlayerRating[loser]);
-
-    if (IsValidClient(loser2) && !g_bNoDisplayRating && g_bShowElo[loser2])
-        MC_PrintToChat(loser2, "%t", "LostRatingNow", (loserscore >= 0) ? loserscore : -loserscore, g_iPlayerRating[loser2]);
-
-    // DB entry for this specific duel.
     char winnerClass[64], winner2Class[64], loserClass[64], loser2Class[64];
     GetPlayerClassString(winner, arena_index, winnerClass, sizeof(winnerClass));
     GetPlayerClassString(winner2, arena_index, winner2Class, sizeof(winner2Class));
@@ -328,23 +349,15 @@ void Engine_Glicko2_OnMatchResult2v2(int winner, int winner2, int loser, int los
     GetPlayerClassString(loser2, arena_index, loser2Class, sizeof(loser2Class));
 
     int startTime = g_iArenaDuelStartTime[arena_index];
-    int endTime = now;
 
     char txnQueries[MATCH_TXN_MAX_QUERIES][MATCH_TXN_QUERY_LEN];
 
-    GetInsert2v2DuelQuery(txnQueries[0], MATCH_TXN_QUERY_LEN, g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], endTime, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class, winner_previous_elo, g_iPlayerRating[winner], winner2_previous_elo, g_iPlayerRating[winner2], loser_previous_elo, g_iPlayerRating[loser], loser2_previous_elo, g_iPlayerRating[loser2]);
+    GetInsert2v2DuelQuery(txnQueries[0], MATCH_TXN_QUERY_LEN, g_sPlayerSteamID[winner], g_sPlayerSteamID[winner2], g_sPlayerSteamID[loser], g_sPlayerSteamID[loser2], g_iArenaScore[arena_index][winner_team_slot], g_iArenaScore[arena_index][loser_team_slot], g_iArenaFraglimit[arena_index], now, startTime, g_sMapName, g_sArenaName[arena_index], winnerClass, winner2Class, loserClass, loser2Class, winner_previous_elo, winner_previous_elo, winner2_previous_elo, winner2_previous_elo, loser_previous_elo, loser_previous_elo, loser2_previous_elo, loser2_previous_elo);
 
-    // Winner's stats
-    GetUpdateWinnerGlickoStatsQuery(txnQueries[1], MATCH_TXN_QUERY_LEN, g_iPlayerRating[winner] - winner_previous_elo, g_fPlayerRD[winner], g_fPlayerVolatility[winner], now, g_sPlayerSteamID[winner]);
-
-    // Winner's teammate stats
-    GetUpdateWinnerGlickoStatsQuery(txnQueries[2], MATCH_TXN_QUERY_LEN, g_iPlayerRating[winner2] - winner2_previous_elo, g_fPlayerRD[winner2], g_fPlayerVolatility[winner2], now, g_sPlayerSteamID[winner2]);
-
-    // Loser's stats
-    GetUpdateLoserGlickoStatsQuery(txnQueries[3], MATCH_TXN_QUERY_LEN, g_iPlayerRating[loser] - loser_previous_elo, g_fPlayerRD[loser], g_fPlayerVolatility[loser], now, g_sPlayerSteamID[loser]);
-
-    // Loser's teammate stats
-    GetUpdateLoserGlickoStatsQuery(txnQueries[4], MATCH_TXN_QUERY_LEN, g_iPlayerRating[loser2] - loser2_previous_elo, g_fPlayerRD[loser2], g_fPlayerVolatility[loser2], now, g_sPlayerSteamID[loser2]);
+    GetUpdateWinsOnlyQuery(txnQueries[1], MATCH_TXN_QUERY_LEN, now, g_sPlayerSteamID[winner]);
+    GetUpdateWinsOnlyQuery(txnQueries[2], MATCH_TXN_QUERY_LEN, now, g_sPlayerSteamID[winner2]);
+    GetUpdateLossesOnlyQuery(txnQueries[3], MATCH_TXN_QUERY_LEN, now, g_sPlayerSteamID[loser]);
+    GetUpdateLossesOnlyQuery(txnQueries[4], MATCH_TXN_QUERY_LEN, now, g_sPlayerSteamID[loser2]);
 
     ExecuteMatchResultQueries(txnQueries, 5);
 }

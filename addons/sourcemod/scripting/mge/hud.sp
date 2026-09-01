@@ -280,9 +280,16 @@ void PopulateHudLineInfo(int viewer, int player, int arena_index, int slot, bool
     info.slot = slot;
     info.score = score;
     info.isSpectator = is_spectator;
-    info.elo = (player && IsValidClient(player)) ? Rating_GetDisplayValue(player) : 0;
+    info.elo = (player && IsValidClient(player)) ? Rating_GetHudDisplayValue(player) : 0;
     if (player && IsValidClient(player) && Rating_IsProvisional(player))
-        Format(info.extraDisplay, sizeof(info.extraDisplay), "%d?", info.elo);
+    {
+        if (g_eRatingEngine == RATING_ENGINE_GLICKO2 && g_bPlayerPeriodDirty[player])
+            Format(info.extraDisplay, sizeof(info.extraDisplay), "~%d?", info.elo);
+        else
+            Format(info.extraDisplay, sizeof(info.extraDisplay), "%d?", info.elo);
+    }
+    else if (player && IsValidClient(player) && g_eRatingEngine == RATING_ENGINE_GLICKO2 && g_bPlayerPeriodDirty[player])
+        Format(info.extraDisplay, sizeof(info.extraDisplay), "~%d", info.elo);
     else
         Format(info.extraDisplay, sizeof(info.extraDisplay), "%d", info.elo);
 }

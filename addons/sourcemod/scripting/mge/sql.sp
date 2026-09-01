@@ -309,6 +309,17 @@ void SQL_OnPlayerReceived(Database db, DBResultSet results, const char[] error, 
             g_fPlayerVolatility[client] = results.FetchFloat(4);
         }
         g_iPlayerLastPlayed[client] = results.FetchInt(5);
+        g_iPlayerRatingEst[client] = g_iPlayerRating[client];
+        g_fPlayerRDEst[client] = g_fPlayerRD[client];
+        g_bPlayerPeriodDirty[client] = false;
+        if (g_bGlickoPeriodSchemaReady && results.FieldCount > 6)
+        {
+            if (!results.IsFieldNull(6))
+                g_iPlayerRatingEst[client] = results.FetchInt(6);
+            if (!results.IsFieldNull(7))
+                g_fPlayerRDEst[client] = results.FetchFloat(7);
+            g_bPlayerPeriodDirty[client] = (results.FetchInt(8) != 0);
+        }
 
         CancelEloRetry(client);
         SetPlayerStatsLoadState(client, MGE_STATS_LOADED);
@@ -353,12 +364,18 @@ void SQL_OnPlayerInserted(Database db, DBResultSet results, const char[] error, 
         g_bPlayerGlickoSeeded[client] = true;
         g_fPlayerRD[client] = GLICKO2_MAX_RD;
         g_fPlayerVolatility[client] = GLICKO2_DEFAULT_VOLATILITY;
+        g_iPlayerRatingEst[client] = DEFAULT_STARTING_ELO;
+        g_fPlayerRDEst[client] = GLICKO2_MAX_RD;
+        g_bPlayerPeriodDirty[client] = false;
     }
     else
     {
         g_bPlayerGlickoSeeded[client] = false;
         g_fPlayerRD[client] = 0.0;
         g_fPlayerVolatility[client] = 0.0;
+        g_iPlayerRatingEst[client] = DEFAULT_STARTING_ELO;
+        g_fPlayerRDEst[client] = 0.0;
+        g_bPlayerPeriodDirty[client] = false;
     }
     g_iPlayerLastPlayed[client] = 0;
     CancelEloRetry(client);
@@ -592,7 +609,10 @@ void GetInsertPlayerQuery(char[] query, int maxlen, const char[] steamid, const 
 // Gets database-specific SELECT statement for player stats
 void GetSelectPlayerStatsQuery(char[] query, int maxlen, const char[] steamid)
 {
-    g_DB.Format(query, maxlen, "SELECT rating, wins, losses, rd, volatility, lastplayed FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
+    if (g_bGlickoPeriodSchemaReady)
+        g_DB.Format(query, maxlen, "SELECT rating, wins, losses, rd, volatility, lastplayed, rating_est, rd_est, period_dirty FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
+    else
+        g_DB.Format(query, maxlen, "SELECT rating, wins, losses, rd, volatility, lastplayed FROM mgemod_stats WHERE steamid='%s' LIMIT 1", steamid);
 }
 
 // Gets database-specific UPDATE statement for player name
@@ -633,14 +653,47 @@ void GetUpdateLoserGlickoStatsQuery(char[] query, int maxlen, int ratingDelta, f
     g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET rating=rating+(%i),rd=%f,volatility=%f,losses=losses+1,lastplayed=%i WHERE steamid='%s'", ratingDelta, rd, volatility, timestamp, steamid);
 }
 
-// Gets database-specific INSERT statement for duel results
-void GetInsertDuelQuery(char[] query, int maxlen, const char[] winner, const char[] loser, int winnerScore, int loserScore, int fragLimit, int endTime, int startTime, const char[] mapName, const char[] arenaName, const char[] winnerClass, const char[] loserClass, int winnerPrevElo, int winnerNewElo, int loserPrevElo, int loserNewElo)
+void GetUpdateWinsOnlyQuery(char[] query, int maxlen, int timestamp, const char[] steamid)
 {
+    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET wins=wins+1,lastplayed=%i WHERE steamid='%s'", timestamp, steamid);
+}
+
+void GetUpdateLossesOnlyQuery(char[] query, int maxlen, int timestamp, const char[] steamid)
+{
+    g_DB.Format(query, maxlen, "UPDATE mgemod_stats SET losses=losses+1,lastplayed=%i WHERE steamid='%s'", timestamp, steamid);
+}
+
+// Gets database-specific INSERT statement for duel results
+void GetInsertDuelQuery(char[] query, int maxlen, const char[] winner, const char[] loser, int winnerScore, int loserScore, int fragLimit, int endTime, int startTime, const char[] mapName, const char[] arenaName, const char[] winnerClass, const char[] loserClass, int winnerPrevElo, int winnerNewElo, int loserPrevElo, int loserNewElo, int periodId = 0, float winnerSealedRd = 0.0, float winnerSealedVol = 0.0, float loserSealedRd = 0.0, float loserSealedVol = 0.0)
+{
+    if (g_bGlickoPeriodSchemaReady)
+    {
+        switch (g_DatabaseType)
+        {
+            case DB_SQLITE:
+            {
+                g_DB.Format(query, maxlen, "INSERT OR IGNORE INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, loserclass, winner_previous_elo, winner_new_elo, loser_previous_elo, loser_new_elo, period_id, winner_sealed_rating, winner_sealed_rd, winner_sealed_volatility, loser_sealed_rating, loser_sealed_rd, loser_sealed_volatility, period_sealed) VALUES ('%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, %i, %f, %f, %i, %f, %f, 0)",
+                    winner, loser, winnerScore, loserScore, fragLimit, endTime, startTime, mapName, arenaName, winnerClass, loserClass, winnerPrevElo, winnerNewElo, loserPrevElo, loserNewElo, periodId, winnerPrevElo, winnerSealedRd, winnerSealedVol, loserPrevElo, loserSealedRd, loserSealedVol);
+            }
+            case DB_MYSQL:
+            {
+                g_DB.Format(query, maxlen, "INSERT IGNORE INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, loserclass, winner_previous_elo, winner_new_elo, loser_previous_elo, loser_new_elo, period_id, winner_sealed_rating, winner_sealed_rd, winner_sealed_volatility, loser_sealed_rating, loser_sealed_rd, loser_sealed_volatility, period_sealed) VALUES ('%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, %i, %f, %f, %i, %f, %f, 0)",
+                    winner, loser, winnerScore, loserScore, fragLimit, endTime, startTime, mapName, arenaName, winnerClass, loserClass, winnerPrevElo, winnerNewElo, loserPrevElo, loserNewElo, periodId, winnerPrevElo, winnerSealedRd, winnerSealedVol, loserPrevElo, loserSealedRd, loserSealedVol);
+            }
+            default:
+            {
+                g_DB.Format(query, maxlen, "INSERT INTO mgemod_duels (winner, loser, winnerscore, loserscore, winlimit, endtime, starttime, mapname, arenaname, winnerclass, loserclass, winner_previous_elo, winner_new_elo, loser_previous_elo, loser_new_elo, period_id, winner_sealed_rating, winner_sealed_rd, winner_sealed_volatility, loser_sealed_rating, loser_sealed_rd, loser_sealed_volatility, period_sealed) VALUES ('%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i, %i, %i, %f, %f, %i, %f, %f, 0) ON CONFLICT (winner, loser, starttime, endtime) DO NOTHING",
+                    winner, loser, winnerScore, loserScore, fragLimit, endTime, startTime, mapName, arenaName, winnerClass, loserClass, winnerPrevElo, winnerNewElo, loserPrevElo, loserNewElo, periodId, winnerPrevElo, winnerSealedRd, winnerSealedVol, loserPrevElo, loserSealedRd, loserSealedVol);
+            }
+        }
+        return;
+    }
+
     switch (g_DatabaseType)
     {
         case DB_SQLITE:
         {
-            g_DB.Format(query, maxlen, "INSERT INTO mgemod_duels VALUES (NULL, '%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i)", 
+            g_DB.Format(query, maxlen, "INSERT INTO mgemod_duels VALUES (NULL, '%s', '%s', %i, %i, %i, %i, %i, '%s', '%s', '%s', '%s', %i, %i, %i, %i)",
                 winner, loser, winnerScore, loserScore, fragLimit, endTime, startTime, mapName, arenaName, winnerClass, loserClass, winnerPrevElo, winnerNewElo, loserPrevElo, loserNewElo);
         }
         case DB_MYSQL, DB_POSTGRESQL:

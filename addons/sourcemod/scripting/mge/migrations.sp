@@ -101,6 +101,11 @@ void RunMigration(const char[] migrationName)
         g_migrationProgress.SetValue(migrationName, 1);
         Migration_008_SeedGlickoRdDefaults();
     }
+    else if (StrEqual(migrationName, "009_glicko_period_schema"))
+    {
+        g_migrationProgress.SetValue(migrationName, 15);
+        Migration_009_GlickoPeriodSchema();
+    }
 }
 
 // Executes individual migration steps with progress tracking and error handling
@@ -129,7 +134,14 @@ bool IsAlreadyAppliedMigrationError(const char[] error)
     if (StrContains(error, "no such column: gametime", false) != -1)
         return true;
 
-    return false;
+    if (StrContains(error, "UNIQUE constraint failed", false) != -1)
+        return true;
+
+    if (StrContains(error, "Duplicate entry", false) != -1)
+        return true;
+
+    if (StrContains(error, "already exists", false) != -1)
+        return true;
 }
 
 // Records successful migration completion in the migrations tracking table
@@ -169,6 +181,7 @@ void CreateMigrationsTableCallback(Database db, DBResultSet results, const char[
     CheckAndRunMigration("006_drop_hitblip_column");
     CheckAndRunMigration("007_add_glicko_columns");
     CheckAndRunMigration("008_seed_glicko_rd_defaults");
+    CheckAndRunMigration("009_glicko_period_schema");
 }
 
 // Processes migration existence check results and triggers migration execution if needed
@@ -202,6 +215,8 @@ void CheckMigrationCallback(Database db, DBResultSet results, const char[] error
         else
         {
             LogMessage("[Migrations] Migration %s already executed (skipping)", migrationName);
+            if (StrEqual(migrationName, "009_glicko_period_schema"))
+                GlickoPeriod_OnSchemaReady();
         }
     }
 }
@@ -258,6 +273,9 @@ void GenericMigrationCallback(Database db, DBResultSet results, const char[] err
     {
         LogMessage("[Migration %s] All steps completed successfully", migrationName);
         MarkMigrationComplete(migrationName);
+
+        if (StrEqual(migrationName, "009_glicko_period_schema"))
+            GlickoPeriod_OnSchemaReady();
         
         // Clean up progress tracking for this migration
         g_migrationProgress.Remove(migrationName);
@@ -533,4 +551,67 @@ void Migration_008_SeedGlickoRdDefaults()
     char query[256];
     Rating_GetGlickoReconcileQuery(query, sizeof(query));
     ExecuteMigrationStep("008_seed_glicko_rd_defaults", query, 1);
+}
+
+void Migration_009_GlickoPeriodSchema()
+{
+    LogMessage("[Migration 009] Adding Glicko-2 period columns, duel snapshots, and period_state");
+
+    switch (g_DatabaseType)
+    {
+        case DB_MYSQL:
+        {
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_stats ADD COLUMN rating_est INT DEFAULT NULL", 1);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_stats ADD COLUMN rd_est FLOAT DEFAULT NULL", 2);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_stats ADD COLUMN period_dirty TINYINT NOT NULL DEFAULT 0", 3);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN period_id INT NOT NULL DEFAULT 0", 4);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN winner_sealed_rating INT DEFAULT NULL", 5);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN winner_sealed_rd FLOAT DEFAULT NULL", 6);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN winner_sealed_volatility FLOAT DEFAULT NULL", 7);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN loser_sealed_rating INT DEFAULT NULL", 8);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN loser_sealed_rd FLOAT DEFAULT NULL", 9);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN loser_sealed_volatility FLOAT DEFAULT NULL", 10);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN period_sealed TINYINT NOT NULL DEFAULT 0", 11);
+            ExecuteMigrationStep("009_glicko_period_schema", "CREATE UNIQUE INDEX idx_mgemod_duels_match ON mgemod_duels (winner, loser, starttime, endtime)", 12);
+            ExecuteMigrationStep("009_glicko_period_schema", "CREATE TABLE IF NOT EXISTS mgemod_period_state (id INT NOT NULL PRIMARY KEY, last_sealed_period_id INT NOT NULL)", 13);
+            ExecuteMigrationStep("009_glicko_period_schema", "INSERT IGNORE INTO mgemod_period_state (id, last_sealed_period_id) VALUES (1, 0)", 14);
+            ExecuteMigrationStep("009_glicko_period_schema", "UPDATE mgemod_stats SET rating_est = rating, rd_est = rd, period_dirty = 0 WHERE rating_est IS NULL", 15);
+        }
+        case DB_SQLITE:
+        {
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_stats ADD COLUMN rating_est INTEGER DEFAULT NULL", 1);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_stats ADD COLUMN rd_est REAL DEFAULT NULL", 2);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_stats ADD COLUMN period_dirty INTEGER NOT NULL DEFAULT 0", 3);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN period_id INTEGER NOT NULL DEFAULT 0", 4);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN winner_sealed_rating INTEGER DEFAULT NULL", 5);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN winner_sealed_rd REAL DEFAULT NULL", 6);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN winner_sealed_volatility REAL DEFAULT NULL", 7);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN loser_sealed_rating INTEGER DEFAULT NULL", 8);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN loser_sealed_rd REAL DEFAULT NULL", 9);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN loser_sealed_volatility REAL DEFAULT NULL", 10);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN period_sealed INTEGER NOT NULL DEFAULT 0", 11);
+            ExecuteMigrationStep("009_glicko_period_schema", "CREATE UNIQUE INDEX IF NOT EXISTS idx_mgemod_duels_match ON mgemod_duels (winner, loser, starttime, endtime)", 12);
+            ExecuteMigrationStep("009_glicko_period_schema", "CREATE TABLE IF NOT EXISTS mgemod_period_state (id INTEGER PRIMARY KEY, last_sealed_period_id INTEGER NOT NULL)", 13);
+            ExecuteMigrationStep("009_glicko_period_schema", "INSERT OR IGNORE INTO mgemod_period_state (id, last_sealed_period_id) VALUES (1, 0)", 14);
+            ExecuteMigrationStep("009_glicko_period_schema", "UPDATE mgemod_stats SET rating_est = rating, rd_est = rd, period_dirty = 0 WHERE rating_est IS NULL", 15);
+        }
+        case DB_POSTGRESQL:
+        {
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_stats ADD COLUMN rating_est INTEGER", 1);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_stats ADD COLUMN rd_est REAL", 2);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_stats ADD COLUMN period_dirty INTEGER NOT NULL DEFAULT 0", 3);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN period_id INTEGER NOT NULL DEFAULT 0", 4);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN winner_sealed_rating INTEGER", 5);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN winner_sealed_rd REAL", 6);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN winner_sealed_volatility REAL", 7);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN loser_sealed_rating INTEGER", 8);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN loser_sealed_rd REAL", 9);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN loser_sealed_volatility REAL", 10);
+            ExecuteMigrationStep("009_glicko_period_schema", "ALTER TABLE mgemod_duels ADD COLUMN period_sealed INTEGER NOT NULL DEFAULT 0", 11);
+            ExecuteMigrationStep("009_glicko_period_schema", "CREATE UNIQUE INDEX IF NOT EXISTS idx_mgemod_duels_match ON mgemod_duels (winner, loser, starttime, endtime)", 12);
+            ExecuteMigrationStep("009_glicko_period_schema", "CREATE TABLE IF NOT EXISTS mgemod_period_state (id INTEGER PRIMARY KEY, last_sealed_period_id INTEGER NOT NULL)", 13);
+            ExecuteMigrationStep("009_glicko_period_schema", "INSERT INTO mgemod_period_state (id, last_sealed_period_id) VALUES (1, 0) ON CONFLICT (id) DO NOTHING", 14);
+            ExecuteMigrationStep("009_glicko_period_schema", "UPDATE mgemod_stats SET rating_est = rating, rd_est = rd, period_dirty = 0 WHERE rating_est IS NULL", 15);
+        }
+    }
 }
